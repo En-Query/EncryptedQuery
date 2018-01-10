@@ -129,31 +129,13 @@ $cat demographic-plain-result
 
 ## Sample Run in Hadoop Mode
 
-These are notes about running a simple Encrypted query in MapReduce mode using the command line tools.  For testing, the easiest place to run all of these commands is from one of the Hadoop nodes, such as one of the Name Nodes.  In practice the query creation and response decryption steps would need to be done in a secure location.
+These are notes about running a simple Encrypted query in MapReduce mode using the command line tools.
 
 We upload our database (data and schema files) and the query schema into HDFS, lets say under the current user's home encryptedquery directory.
 
 ```
 hadoop fs -put datafile.json   encryptedquery/
 hadoop fs -put dataschema.xml  encryptedquery/
-```
-
-Now we need to create an encrypted query.  We need to the dataschema.xml above in our local directory from where we will run the tools.
-
-Additionally, we need to create a query schema file that details the fields to match and the fields to be returned.
-
-```
-<?xml version="1.0" encoding="UTF-8" ?>
-<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-    <schemaName>simple query</schemaName>
-    <dataSchemaName>Simple Data</dataSchemaName>
-    <selectorName>name</selectorName>
-    <elements>
-        <name>name</name>
-        <name>age</name>
-    </elements>
-</schema>
 ```
 
 We create the encrypted query object as before:
