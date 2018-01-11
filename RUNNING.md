@@ -10,7 +10,7 @@ Currently Step 2 supports two different modes: standalone and Hadoop.  Steps 1 a
 
 ## Test Data
 
-We describe a test run in each mode.  Both test runs use the following Data File (datafile.json):
+We describe a test run in each mode.  Both test runs use the following Data File from the examples folder (datafile.json):
 ```
 { "name": "Alice", "age": "31", "children": [ "Zack", "Yvette" ] }
 { "name": "Bob",   "age": "25", "children": [ "Xavier", "Wendy" ] }
@@ -18,11 +18,13 @@ We describe a test run in each mode.  Both test runs use the following Data File
 { "name": "Donna", "age": "19", "children": [ ] }
 ```
 
-Here is the schema (dataschema.xml) describing our data file:
+Here is the schema from the examples folder (dataschema.xml) describing our data file:
 ```
+
+View file
+
 <?xml version="1.0" encoding="UTF-8" ?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" >
-
     <schemaName>Simple Data</schemaName>
     <element>
         <name>name</name>
@@ -50,7 +52,6 @@ Query schema file (queryschema.xml):
 ```
 <?xml version="1.0" encoding="UTF-8" ?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
     <schemaName>simple query</schemaName>
     <dataSchemaName>Simple Data</dataSchemaName>
     <selectorName>name</selectorName>
@@ -76,7 +77,7 @@ So, this query is looking for a record with name file = "Bob" and returning the 
 
 ###Creating the encrypted query file:
 ```
-java org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a encrypt -c 128 -dps 8 -hb 12 -pbs 3072  -i query.txt -qt "simple query" -nt 1 -qs queryschema.xml -ds dataschema.xml -o demographic
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a encrypt -c 128 -dps 8 -hb 12 -pbs 3072  -i query.txt -qt "simple query" -nt 1 -qs queryschema.xml -ds dataschema.xml -o demographic
 ```
 
 Where:
@@ -98,7 +99,7 @@ Where:
 ###Run the encrypted query in standalone mode
 
 ```
-java org.enquery.encryptedquery.responder.wideskies.ResponderDriver -d base -ds ./dataschema.xml -i ./datafile.json -p standalone -qs ./queryschema.xml -q ./demographic-query -o ./demographic-query-result
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.responder.wideskies.ResponderDriver -d base -ds ./dataschema.xml -i ./datafile.json -p standalone -qs ./queryschema.xml -q ./demographic-query -o ./demographic-query-result
 ```
 
 ###Decrypting the server response
@@ -183,7 +184,7 @@ hadoop fs -get encryptedquery/demographic-query-result .
 Decrypt query results:
 
 ```
-java org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a decrypt -qf demographic-querier -i demographic-query-result -nt 1 -o demographic-plain-result -qs queryschema.xml -ds dataschema.xml
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar  org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a decrypt -qf demographic-querier -i demographic-query-result -nt 1 -o demographic-plain-result -qs queryschema.xml -ds dataschema.xml
 ```
 
 

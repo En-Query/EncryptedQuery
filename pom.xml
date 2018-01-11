@@ -389,6 +389,9 @@
                             <exclude>KEYS</exclude> <!-- GPG keys of Release Managers -->
                             <exclude>eclipse*.xml</exclude> <!-- Exclude eclipse* xml -->
                             <exclude>docs/*</exclude> <!-- Exclude docs -->
+                            <exclude>examples/*</exclude> <!-- Exclude Examples -->
+                            <exclude>examples/simple/*</exclude> <!-- Exclude simple example -->
+                            <exclude>examples/phone/*</exclude> <!-- Exclude Phone example -->
                             <exclude>logs/*</exclude> <!-- Exclude logs -->
                             <exclude>jni/*</exclude> <!-- Exclude jni -->
                             <exclude>**/m2.conf
