@@ -86,7 +86,7 @@ Where:
 | -------- | --------------------- |
 | -a | Action to perform, in this case 'encrypt' to create an encrypted query. |
 | -c | Certainty of prime generation for Paillier |
-| -dps | Partition bit size in data partitioning |
+| -dps | Partition bit size in data partitioning must be a multiple of 8 |
 | -hb | Bit size of keyed hash |
 | -pbs | Paillier modulus size N |
 | -i | The file name containing the concrete query. | 
@@ -104,7 +104,7 @@ java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.respon
 
 ###Decrypting the server response
 ```
-java org.apache.enquery.encryptedquery.wideskies.QuerierDriver -a decrypt -qf demographic-querier -i demographic-query-result -nt 1 -o demographic-plain-result -qs queryschema.xml -ds dataschema.xml
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a decrypt -qf demographic-querier -i demographic-query-result -nt 1 -o demographic-plain-result -qs queryschema.xml -ds dataschema.xml
 ```
 
 Where:
@@ -135,13 +135,13 @@ These are notes about running a simple Encrypted query in MapReduce mode using t
 We upload our database (data and schema files) and the query schema into HDFS, lets say under the current user's home encryptedquery directory.
 
 ```
-hadoop fs -put datafile.json   encryptedquery/
-hadoop fs -put dataschema.xml  encryptedquery/
+hdfs dfs -put datafile.json   /user/encryptedquery/
+hdfs dfs -put dataschema.xml  /user/encryptedquery/
 ```
 
 We create the encrypted query object as before:
 ```
-java org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a encrypt -c 128 -dps 8 -hb 12 -pbs 3072  -i query.txt -qt "simple query" -nt 1 -qs queryschema.xml -ds dataschema.xml -o demographic
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.querier.wideskies.QuerierDriver -a encrypt -c 128 -dps 8 -hb 12 -pbs 3072  -i query.txt -qt "simple query" -nt 1 -qs queryschema.xml -ds dataschema.xml -o demographic
 ```
 
 Two files are created locally:
@@ -152,14 +152,14 @@ Two files are created locally:
 We upload the encrypted query (not the querier!) and the query schema to HDFS:
 
 ```
-hadoop fs -put queryschema.xml encryptedquery/
-hadoop fs -put demographic-query encryptedquery/
+hdfs dfs -put queryschema.xml /user/encryptedquery/
+hdfs dfs -put demographic-query /user/encryptedquery/
 ```
 
 Now you can run this encrypted query in the Hadoop cluster by issuing this command:
 
 ```
-hadoop jar encryptedquery.jar org.enquery.encryptedquery.responder.wideskies.ResponderDriver -bif org.enquery.encryptedquery.inputformat.hadoop.json.JSONInputFormatBase -d base -ds /user/cloudera/encryptedquery/dataschema.xml -i /user/cloudera/encryptedquery/datafile.json -p mapreduce -qs /user/cloudera/encryptedquery/queryschema.xml -q encryptedquery/demographic-query -o encryptedquery/demographic-query-result
+hadoop jar encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.responder.wideskies.ResponderDriver -bif org.enquery.encryptedquery.inputformat.hadoop.json.JSONInputFormatBase -d base -ds /user/encryptedquery/dataschema.xml -i /user/encryptedquery/datafile.json -p mapreduce -qs /user/encryptedquery/queryschema.xml -q /user/encryptedquery/demographic-query -o /user/encryptedquery/demographic-query-result
 ```
 
 Where:
@@ -167,18 +167,18 @@ Where:
 | Option | Description |
 | -------- | --------------------- |
 | -bif | The input format class, which in this case, corresponds to the JSON file format of our data file. | 
-| -d | Execution mode.  In this case we use 'base' for distributed MapReduce mode.  Other options are 'elasticsearch', or 'standalone'. | 
-| -ds | The schema file describing the data file.  This path is in HDFS. | 
-| -i | The data file path in HDFS.   In our case we point to the JSON data file. | 
-| -p | Platform to run the query, in this case we want to run in MapReduce distributed mode. | 
-| -qs | The path to the file containing the Query Schema in HDFS. | 
-| -q | The path to the encrypted query file in HDFS, which we uploaded earlier. | 
-| -o | The file name where to store the encrypted result in HDFS. | 
+| -d | Input data format use 'base'. | 
+| -ds | The fully qualified schema file describing the data file.  This path is in HDFS. | 
+| -i | The fully qualified filename of the data file in HDFS.   In our case we point to the JSON data file. | 
+| -p | Method to run the query, in this case we want to run in mapreduce distributed mode.  Other option is 'standalone' | 
+| -qs | The fully qualified filename of Query Schema file in HDFS. | 
+| -q | The fully qualified encrypted query file in HDFS, which we uploaded earlier. | 
+| -o | The fully qualified file name where to store the encrypted result in HDFS. | 
 
 Download the Encrypted Query result from HDFS to local current directory:
 
 ```
-hadoop fs -get encryptedquery/demographic-query-result .
+hdfs dfs -get /user/encryptedquery/demographic-query-result .
 ```
 
 Decrypt query results:

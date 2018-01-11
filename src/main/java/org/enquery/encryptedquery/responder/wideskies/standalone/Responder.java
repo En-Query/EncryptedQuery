@@ -124,17 +124,24 @@ public class Responder
 
       String line;
       JSONParser jsonParser = new JSONParser();
+      logger.info("Reading and processing datafile...");
+      int lineCounter = 0;
       while ((line = br.readLine()) != null)
       {
-        logger.info("line = " + line);
+        logger.debug("line = " + line);
         JSONObject jsonData = (JSONObject) jsonParser.parse(line);
 
-        logger.info("jsonData = " + jsonData.toJSONString());
+        logger.debug("jsonData = " + jsonData.toJSONString());
 
         String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
         addDataElement(selector, jsonData);
+        lineCounter++;
+        if ( (lineCounter % 1000) == 0) {
+        	logger.info("Processed {} records so far...", lineCounter);
+        }
       }
       br.close();
+      logger.info("Processed {} total records", lineCounter -1);
     } catch (Exception e)
     {
       e.printStackTrace();
@@ -185,7 +192,7 @@ public class Responder
     else {
     	logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
     }
-	logger.info("bytesPerPartition {}", bytesPerPartition);
+	logger.debug("bytesPerPartition {}", bytesPerPartition);
     if (bytesPerPartition > 1) {
         byte[] tempByteArray = new byte[bytesPerPartition];
         int j = 0;
@@ -260,7 +267,7 @@ public class Responder
 
     // Update the rowCounter (next free column position) for the selector
     rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
-    logger.info("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
+    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
   }
 
   // Sets the elements of the response object that will be passed back to the

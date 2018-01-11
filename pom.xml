@@ -387,6 +387,7 @@
                             <exclude>.travis.yml</exclude> <!-- Travis CI Build Descriptor File -->
                             <exclude>findbugs-exclude.xml</exclude> <!-- False positives for FindBugs analysis -->
                             <exclude>KEYS</exclude> <!-- GPG keys of Release Managers -->
+                            <exclude>RUNNING.md</exclude>
                             <exclude>eclipse*.xml</exclude> <!-- Exclude eclipse* xml -->
                             <exclude>docs/*</exclude> <!-- Exclude docs -->
                             <exclude>examples/*</exclude> <!-- Exclude Examples -->
