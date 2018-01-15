@@ -30,11 +30,14 @@ import org.slf4j.LoggerFactory;
 /**
  * Class for the PIR keyed hash
  * <p>
- * Defaults to SHA-256; can optionally choose MD5, SHA-1, or java .hashCode()
+ * Computes the hash as the bitwise AND of a mask and MD5(key ||
+ * input).  The MD5 algorithm is assumed to be supported on all Java
+ * platforms.
  * 
  */
 public class KeyedHash
 {
+  private static final String HASH_METHOD = "MD5";
   private static final Logger logger = LoggerFactory.getLogger(KeyedHash.class);
 
   /**
@@ -42,54 +45,25 @@ public class KeyedHash
    */
   public static int hash(String key, int bitSize, String input)
   {
-	  int fullHash = 0;
-	  try {
-         MessageDigest md = MessageDigest.getInstance("SHA-256");
-         byte[] array = md.digest(input.getBytes());
+    int fullHash = 0;
+    try {
+      MessageDigest md = MessageDigest.getInstance(HASH_METHOD);
+      md.update(key.getBytes());
+      byte[] array = md.digest(input.getBytes());
 
-         fullHash = fromByteArray(array);
-	  } catch (Exception e) {
-	      logger.info(e.toString());
-	      //This hash method works, but can create a lot of duplicate hashs if using a small hashbit size(bitsize) .
-  	      fullHash = (key + input).hashCode();
-	  
-	  }
+      fullHash = fromByteArray(array);
+    } catch (NoSuchAlgorithmException e) {
+      // This is not expected to happen, as every implementation of
+      // the Java platform is required to implement MD5.
+      logger.debug("failed to compute a hash of type " + HASH_METHOD);
+      throw new UnsupportedOperationException("failed to compute a hash of type " + HASH_METHOD);
+    }
 
     // Take only the lower bitSize-many bits of the resultant hash
     int bitLimitedHash = fullHash;
     if (bitSize < 32)
     {
       bitLimitedHash = (0xFFFFFFFF >>> (32 - bitSize)) & fullHash;
-    }
-
-    return bitLimitedHash;
-  }
-
-  /**
-   * Hash method to optionally specify a hash type other than the default java hashCode() hashType must be MD5, SHA-1, or SHA-256
-   * 
-   */
-  public static int hash(String key, int bitSize, String input, String hashType)
-  {
-    int bitLimitedHash;
-
-    try
-    {
-      MessageDigest md = MessageDigest.getInstance(hashType);
-      byte[] array = md.digest(input.getBytes());
-
-      int hashInt = fromByteArray(array);
-      bitLimitedHash = hashInt;
-      if (bitSize < 32)
-      {
-        bitLimitedHash = (0xFFFFFFFF >>> (32 - bitSize)) & hashInt;
-      }
-      logger.debug("hashType = " + hashType + " key = " + key + " hashInt = " + hashInt + " bitLimitedHash = " + bitLimitedHash + " Selector = " + input);
-
-    } catch (NoSuchAlgorithmException e)
-    {
-      logger.info(e.toString());
-      bitLimitedHash = hash(key, bitSize, input);
     }
 
     return bitLimitedHash;

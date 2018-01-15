@@ -22,6 +22,7 @@
 package org.enquery.encryptedquery.general;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.junit.Test;
@@ -50,37 +51,13 @@ public class KeyedHashTest
     int hash3 = KeyedHash.hash("someKey", 34, "someInput");
     logger.info("hash3 = " + hash3 + " hash3 = " + Integer.toString(hash3, 2));
 
+    int hash4 = KeyedHash.hash("someOtherKey", 32, "someInput");
+    logger.info("hash4 = " + hash4 + " hash4 = " + Integer.toString(hash4, 2));
+
     assertEquals(hash2, hash3);
     assertEquals(hash1, hash2 & 0xFFF);
+    assertNotEquals(hash2, hash4);
 
     logger.info("Successfully completed testKeyedHash");
-  }
-
-  @Test
-  public void testKeyedHashWithType()
-  {
-    testKeyedHashType("MD5");
-    testKeyedHashType("SHA-1");
-    testKeyedHashType("SHA-256");
-    testKeyedHashType("FAKE-HASH-TYPE");
-  }
-
-  private void testKeyedHashType(String type)
-  {
-    logger.info("Starting testKeyedHashType with type: " + type);
-
-    int hash1 = KeyedHash.hash("someKey", 12, "someInput", type);
-    logger.info("hash1 = " + hash1 + " hash1 = " + Integer.toString(hash1, 2));
-
-    int hash2 = KeyedHash.hash("someKey", 32, "someInput", type);
-    logger.info("hash2 = " + hash2 + " hash2 = " + Integer.toString(hash2, 2));
-
-    int hash3 = KeyedHash.hash("someKey", 34, "someInput", type);
-    logger.info("hash3 = " + hash3 + " hash3 = " + Integer.toString(hash3, 2));
-
-    assertEquals(hash2, hash3);
-    assertEquals(hash1, hash2 & 0xFFF);
-
-    logger.info("Successfully completed testKeyedHashType with type: " + type);
   }
 }
