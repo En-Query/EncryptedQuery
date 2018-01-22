@@ -213,7 +213,7 @@ public class QueryUtils {
 		int partitionBits = partitioner.getBits(type);
 		if (partitionBits > 32) // hash and add 32-bit hash value to partitions
 		{
-			int hashedSelector = KeyedHash.hash("aux", 32, selector, "MD5");
+			int hashedSelector = KeyedHash.hash("aux", 32, selector);
 			parts = partitioner.toPartitions(hashedSelector, PrimitiveTypePartitioner.INT);
 	        logger.debug("selector {} hash {}", selector, hashedSelector);
 		} else
@@ -234,7 +234,7 @@ public class QueryUtils {
 		int partitionBits = partitioner.getBits(type);
 		if (partitionBits > 32) // hash and add 32-bit hash value to partitions
 		{
-			embeddedSelector = String.valueOf(KeyedHash.hash("aux", 32, selector, "MD5"));
+			embeddedSelector = String.valueOf(KeyedHash.hash("aux", 32, selector));
 		} else
 		// if selector size <= 32 bits, add actual selector
 		{
