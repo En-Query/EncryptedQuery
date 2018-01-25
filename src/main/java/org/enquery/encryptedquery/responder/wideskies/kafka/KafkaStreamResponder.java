@@ -19,16 +19,22 @@
  * 
  * This file has been modified from its original source.
  */
-package org.enquery.encryptedquery.responder.wideskies.standalone;
+package org.enquery.encryptedquery.responder.wideskies.kafka;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
@@ -55,14 +61,26 @@ import org.slf4j.LoggerFactory;
  * <p>
  * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs as this is a standalone responder
  */
-public class Responder
+public class KafkaStreamResponder
 {
-  private static final Logger logger = LoggerFactory.getLogger(Responder.class);
+  private static final Logger logger = LoggerFactory.getLogger(KafkaStreamResponder.class);
 
   private Query query = null;
   private QueryInfo queryInfo = null;
   private QuerySchema qSchema = null;
   private int dataPartitionBitSize = 8;
+  private int lineCounter = 0;
+  
+  private final KafkaConsumer<String, String> consumer;
+  private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "KafkaSpout");
+//  private static final String brokerZk = SystemConfiguration.getProperty("kafka.zk", "localhost:2181");
+  private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
+  private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery_01");
+  private static final String kafkaTopic = SystemConfiguration.getProperty("kafka.topic", "phone-log");
+  private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
+  private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
+  private static final Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
+
 
   private Response response = null;
 
@@ -70,7 +88,7 @@ public class Responder
 
   private ArrayList<Integer> rowColumnCounters; // keeps track of how many hit partitions have been recorded for each row/selector
 
-  public Responder(Query queryInput)
+  public KafkaStreamResponder(Query queryInput)
   {
     query = queryInput;
     queryInfo = query.getQueryInfo();
@@ -86,19 +104,27 @@ public class Responder
       qSchema = QuerySchemaRegistry.get(queryType);
     }
 
-    response = new Response(queryInfo);
-
-    // Columns are allocated as needed, initialized to 1
-    columns = new TreeMap<>();
-
-    // Initialize row counters
-    rowColumnCounters = new ArrayList<>();
-    for (int i = 0; i < Math.pow(2, queryInfo.getHashBitSize()); ++i)
-    {
-      rowColumnCounters.add(0);
-    }
+    resetResponse();
+    
+    Properties kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId);
+    consumer = new KafkaConsumer<>(kafkaProperties);
+    consumer.subscribe(Arrays.asList(kafkaTopic));
   }
 
+  private static Properties createConsumerConfig(String brokers, String groupId) {
+	    Properties props = new Properties();
+	    props.put("bootstrap.servers", brokers);
+	    props.put("group.id", groupId);
+	    props.put("enable.auto.commit", "true");
+	    props.put("max.poll.records", "100");
+	    props.put("auto.commit.interval.ms", "2000");
+	    props.put("session.timeout.ms", "30000");
+	    props.put("auto.offset.reset", "earliest");
+	    props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	    return props;
+	  }
+  
   public Response getResponse()
   {
     return response;
@@ -108,49 +134,90 @@ public class Responder
   {
     return columns;
   }
+  
+/**
+ * Reset The response for the next iteration
+ */
+  private void resetResponse() {
+	  
+	    response = new Response(queryInfo);
 
+	    // Columns are allocated as needed, initialized to 1
+	    columns = new TreeMap<>();
+
+	    // Initialize row counters
+	    rowColumnCounters = new ArrayList<>();
+	    for (int i = 0; i < Math.pow(2, queryInfo.getHashBitSize()); ++i)
+	    {
+	      rowColumnCounters.add(0);
+	    }
+	    lineCounter = 0;
+  }
   /**
    * Method to compute the standalone response
    * <p>
    * Assumes that the input data is a single file in the local filesystem and is fully qualified
    */
-  public void computeStandaloneResponse() throws IOException
+  public void computeKafkaStreamResponse() throws IOException
   {
-    // Read in data, perform query
-    String inputData = SystemConfiguration.getProperty("pir.inputData");
-    try
-    {
-      BufferedReader br = new BufferedReader(new FileReader(inputData));
+	  try
+	  {
+		  JSONParser jsonParser = new JSONParser();
+		  logger.info("Kafka ClientId {} Brokers {} GroupId {} Topic {} ForceFromStart {}", kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart);
+		  int iterationCounter = 0;
+		  while (streamIterations == 0 || iterationCounter < streamIterations ) {
+			  logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
+			  long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(streamDuration);
+			  while (System.currentTimeMillis() < endTime)
+			  {
+				  ConsumerRecords<String, String> records = consumer.poll(100);
+				  for (ConsumerRecord<String, String> record : records) {
+//					  logger.info("line {} Received {}", record.offset(), record.value());
+					  //= System.out.println("Receive message: " + record.value() + ", Partition: "
+					  //    + record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
+					  //    + Thread.currentThread().getId());
+					  JSONObject jsonData = null;
+					  try {
+						  jsonData = (JSONObject) jsonParser.parse(record.value());
+//						  logger.info("jsonData = " + jsonData.toJSONString());
+					  } catch (Exception e) {
+						  logger.error("Exception JSON parsing record # {} : {} ", record.offset(), record.value());
+					  }
+					  if (jsonData != null) {
+						  String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
+						  addDataElement(selector, jsonData);
+						  lineCounter++;
+						  if ( (lineCounter % 1000) == 0) {
+							  logger.info("Processed {} records so far...", lineCounter);
+						  }
+					  }
+				  }
 
-      String line;
-      JSONParser jsonParser = new JSONParser();
-      logger.info("Reading and processing datafile...");
-      int lineCounter = 0;
-      while ((line = br.readLine()) != null)
-      {
-        logger.debug("line = " + line);
-        JSONObject jsonData = (JSONObject) jsonParser.parse(line);
+			  }
+			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
-        logger.debug("jsonData = " + jsonData.toJSONString());
+			  logger.info("Processed {} total records for iteration {}", lineCounter, iterationCounter);
 
-        String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
-        addDataElement(selector, jsonData);
-        lineCounter++;
-        if ( (lineCounter % 1000) == 0) {
-        	logger.info("Processed {} records so far...", lineCounter);
-        }
-      }
-      br.close();
-      logger.info("Processed {} total records", lineCounter);
-    } catch (Exception e)
-    {
-      e.printStackTrace();
-    }
+			  // Set the response object, extract, write to file
+			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" + Integer.toString(iterationCounter);
+			  setResponseElements();
+			  new LocalFileSystemStore().store(outputFile, response);
+			  iterationCounter++;
 
-    // Set the response object, extract, write to file
-    String outputFile = SystemConfiguration.getProperty("pir.outputFile");
-    setResponseElements();
-    new LocalFileSystemStore().store(outputFile, response);
+			  // Reset for next run
+			  resetResponse();
+			  
+		  }
+
+		  if (consumer != null) {
+			  consumer.close();
+		  }
+
+	  } catch (Exception e)
+	  {
+		  e.printStackTrace();
+	  }
+
   }
 
   /**
@@ -192,7 +259,7 @@ public class Responder
     else {
     	logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
     }
-	logger.debug("bytesPerPartition {}", bytesPerPartition);
+//	logger.debug("bytesPerPartition {}", bytesPerPartition);
     if (bytesPerPartition > 1) {
         byte[] tempByteArray = new byte[bytesPerPartition];
         int j = 0;
@@ -202,7 +269,7 @@ public class Responder
            } else {
         	   BigInteger bi = new BigInteger(1, tempByteArray);
         	   hitValPartitions.add(bi);
-               logger.debug("Part added {}", bi.toString(16));
+//               logger.debug("Part added {}", bi.toString(16));
         	   j = 0;
                tempByteArray[j] = inputData.get(i).byteValue();
            }
@@ -215,24 +282,24 @@ public class Responder
         	}
        	    BigInteger bi = new BigInteger(1, tempByteArray);
         	hitValPartitions.add( bi );
-         	logger.debug("Part added {}", bi.toString(16));
+//         	logger.debug("Part added {}", bi.toString(16));
         }
     } else {  // Since there is only one byte per partition lets avoid the extra work
       hitValPartitions = inputData;
     }
-    int index = 1;
-    for (BigInteger bi : hitValPartitions) {
-    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-    	index++;
-    }
+//    int index = 1;
+//    for (BigInteger bi : hitValPartitions) {
+//    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
+//    	index++;
+//    }
     
     // Pull the necessary elements
     int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
     int rowCounter = rowColumnCounters.get(rowIndex);
     BigInteger rowQuery = query.getQueryElement(rowIndex);
 
-    logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
-        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
+//    logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
+//        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
 
     // Update the associated column values
     for (int i = 0; i < hitValPartitions.size(); ++i)
@@ -242,7 +309,7 @@ public class Responder
         columns.put(i + rowCounter, BigInteger.valueOf(1));
       }
       BigInteger column = columns.get(i + rowCounter); // the next 'free' column relative to the selector
-      logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
+//      logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
 
       BigInteger exp;
       if (query.getQueryInfo().useExpLookupTable() && !query.getQueryInfo().useHDFSExpLookupTable()) // using the standalone
@@ -253,28 +320,28 @@ public class Responder
       else
       // without lookup table
       {
-        logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
+//        logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
         exp = ModPowAbstraction.modPow(rowQuery, hitValPartitions.get(i), query.getNSquared());
       }
       column = (column.multiply(exp)).mod(query.getNSquared());
 
       columns.put(i + rowCounter, column);
 
-      logger.debug(
-          "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
-      logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
+//      logger.debug(
+//          "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
+//      logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
     }
 
     // Update the rowCounter (next free column position) for the selector
     rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
-    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
+//    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
   }
 
   // Sets the elements of the response object that will be passed back to the
   // querier for decryption
   public void setResponseElements()
   {
-    logger.debug("numResponseElements = " + columns.size());
+//    logger.debug("numResponseElements = " + columns.size());
     // for(int key: columns.keySet())
     // {
     // logger.debug("key = " + key + " column = " + columns.get(key));

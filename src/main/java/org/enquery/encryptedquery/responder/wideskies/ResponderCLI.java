@@ -190,7 +190,7 @@ public class ResponderCLI
 
     // platform
     Option optionPlatform = new Option("p", ResponderProps.PLATFORM, true,
-        "required -- 'mapreduce', 'spark', 'sparkstreaming', 'storm', or 'standalone' : Processing platform technology for the responder");
+        "required -- 'mapreduce', 'kafka', 'sparkstreaming', 'storm', or 'standalone' : Processing platform technology for the responder");
     optionPlatform.setRequired(false);
     optionPlatform.setArgName(ResponderProps.PLATFORM);
     optionPlatform.setType(String.class);
