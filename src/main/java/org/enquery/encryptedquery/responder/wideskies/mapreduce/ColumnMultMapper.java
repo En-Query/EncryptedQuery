@@ -61,7 +61,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
   @Override
   public void map(LongWritable key, Text value, Context ctx) throws IOException, InterruptedException
   {
-    logger.debug("key = " + key.toString() + " value = " + value.toString() );
+    // logger.debug("key = " + key.toString() + " value = " + value.toString() );
     
     int bytesPerPartition = 1;
     if (( dataPartitionBitSize % 8 ) == 0 ) {
@@ -70,10 +70,10 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
     else {
     	logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
     }
-	logger.debug(" dataPartitionBitSize {} bytesPerPartition {} numPartitionsPerElement {}", dataPartitionBitSize, bytesPerPartition, numPartitionsPerElement);
+	// logger.debug(" dataPartitionBitSize {} bytesPerPartition {} numPartitionsPerElement {}", dataPartitionBitSize, bytesPerPartition, numPartitionsPerElement);
 	
     String tokens[] = CSVOutputUtils.extractCSVOutput(value);
-    logger.debug("value = " + value.toString() + " tokens[0] = " + tokens[0] + " tokens[1] = " + tokens[1]);
+    // logger.debug("value = " + value.toString() + " tokens[0] = " + tokens[0] + " tokens[1] = " + tokens[1]);
     
     byte[] decodedString = Base64.getDecoder().decode(tokens[1]);
     if (bytesPerPartition > 1) {
@@ -86,7 +86,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
            } else {
                keyOut.set(partsCounter++); // colNum
                valueOut.set(tokens[0] + "," + QueryUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
-               logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
+              // logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
                ctx.write(keyOut, valueOut);
 
         	   j = 0;
@@ -101,7 +101,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
         	}
             keyOut.set(partsCounter++); // colNum
             valueOut.set(tokens[0] + "," + QueryUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
-            logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
+            // logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
             ctx.write(keyOut, valueOut);
         }
     } else {
@@ -110,7 +110,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
         {
         	keyOut.set(i++); // colNum
             valueOut.set(tokens[0] + "," + String.format("%02x", b)); // rowIndex, colValue
-            logger.debug("single columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
+          //  logger.debug("single columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
             ctx.write(keyOut, valueOut);
         }
     }

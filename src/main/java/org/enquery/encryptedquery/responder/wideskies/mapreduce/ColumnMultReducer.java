@@ -103,14 +103,14 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
         String[] valueInfo = val.toString().split(",");
         int rowIndex = Integer.valueOf(valueInfo[0]);
         String part = valueInfo[1];
-        logger.debug("Processing rowIndex {}, value {}", rowIndex, part);
+      //  logger.debug("Processing rowIndex {}, value {}", rowIndex, part);
         
         byte[] partAsByteArray = QueryUtils.hexStringToByteArray(part);
         BigInteger partAsBI = new BigInteger(1, partAsByteArray);
-        logger.debug("partAsBi: " + partAsBI.toString(16));
+      //  logger.debug("partAsBi: " + partAsBI.toString(16));
         
         BigInteger rowQuery = query.getQueryElement(rowIndex);
-        logger.debug("rowQuery: " + rowQuery.toString());
+      //  logger.debug("rowQuery: " + rowQuery.toString());
 
         BigInteger exp = null;   	
         try
@@ -128,12 +128,12 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
           e.printStackTrace();
         }     
         
-        logger.debug("exp = " + exp.toString());
+      //  logger.debug("exp = " + exp.toString());
         column = (column.multiply(exp)).mod(query.getNSquared());
-        logger.debug("column = " + column.toString());   	
+      //  logger.debug("column = " + column.toString());   	
 
     }
-    logger.debug("final column value = " + column.toString());
+    // logger.debug("final column value = " + column.toString());
     outputValue.set(column.toString());
     mos.write(FileConst.PIR_COLS, colNum, outputValue);
   }

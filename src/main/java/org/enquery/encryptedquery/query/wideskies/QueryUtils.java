@@ -63,7 +63,7 @@ public class QueryUtils {
 
 		int numArrayElementsToReturn = SystemConfiguration.getIntProperty("pir.numReturnArrayElements", 1);
 
-		logger.debug("parts.size() = " + parts.size());
+	//	logger.debug("parts.size() = " + parts.size());
 
 		int partsIndex = 0;
 		if (queryInfo.getEmbedSelector()) {
@@ -74,7 +74,7 @@ public class QueryUtils {
 			qrJSON.setSelector(embeddedSelector);
 			partsIndex += 4;
 
-			logger.debug("Extracted embedded selector = " + embeddedSelector + " parts.size() = " + parts.size());
+	//		logger.debug("Extracted embedded selector = " + embeddedSelector + " parts.size() = " + parts.size());
 		}
 
 		List<String> dataFieldsToExtract = qSchema.getElementNames();
@@ -86,14 +86,14 @@ public class QueryUtils {
 			// Decode elements
 			for (int i = 0; i < numElements; ++i) {
 				String type = dSchema.getElementType(fieldName);
-				logger.debug("Extracting value for fieldName = " + fieldName + " type = " + type + " partsIndex = " + partsIndex);
+	//			logger.debug("Extracting value for fieldName = " + fieldName + " type = " + type + " partsIndex = " + partsIndex);
 
 				Object element = dSchema.getPartitionerForElement(fieldName).fromPartitions(parts, partsIndex, type);
 
 				qrJSON.setMapping(fieldName, element);
 				partsIndex += dSchema.getPartitionerForElement(fieldName).getNumPartitions(type);
 
-				logger.debug("Adding qrJSON element = " + element + " element.getClass() = " + element.getClass());
+	//			logger.debug("Adding qrJSON element = " + element + " element.getClass() = " + element.getClass());
 			}
 		}
 
@@ -116,7 +116,7 @@ public class QueryUtils {
 
 			parts.addAll(embeddedSelectorToPartitions(selector, type, dSchema.getPartitionerForElement(selectorFieldName)));
 
-			logger.debug("Added embedded selector for selector = " + selector + " type = " + type + " parts.size() = " + parts.size());
+		//	logger.debug("Added embedded selector for selector = " + selector + " type = " + type + " parts.size() = " + parts.size());
 		}
 
 		// Add all appropriate data fields
@@ -134,19 +134,19 @@ public class QueryUtils {
 				} else {
 					elementArray = StringUtils.jsonArrayStringToArrayList(dataElement.toString());
 				}
-				logger.debug("Adding parts for fieldName = " + fieldName + " type = " + dSchema.getElementType(fieldName) + " jsonData = " + dataElement);
+			//	logger.debug("Adding parts for fieldName = " + fieldName + " type = " + dSchema.getElementType(fieldName) + " jsonData = " + dataElement);
 
 				parts.addAll(dSchema.getPartitionerForElement(fieldName).arrayToPartitions(elementArray, dSchema.getElementType(fieldName)));
 			} else {
 				if (dataElement == null) {
 					dataElement = "0";
 				}
-				logger.debug("Adding parts for fieldName = " + fieldName + " type = " + dSchema.getElementType(fieldName) + " jsonData = " + dataElement);
+		//		logger.debug("Adding parts for fieldName = " + fieldName + " type = " + dSchema.getElementType(fieldName) + " jsonData = " + dataElement);
 
 				parts.addAll(dSchema.getPartitionerForElement(fieldName).toPartitions(dataElement.toString(), dSchema.getElementType(fieldName)));
 			}
 		}
-		logger.debug("parts.size() = " + parts.size());
+	//	logger.debug("parts.size() = " + parts.size());
 
 		return parts;
 	}
@@ -158,7 +158,7 @@ public class QueryUtils {
 	public static List<BigInteger> partitionDataElement(MapWritable dataMap, QuerySchema qSchema, DataSchema dSchema, boolean embedSelector) throws PIRException {
 		List<BigInteger> parts = new ArrayList<>();
 
-		logger.debug("queryType = " + qSchema.getSchemaName());
+	//	logger.debug("queryType = " + qSchema.getSchemaName());
 
 		// Add the embedded selector to the parts
 		if (embedSelector) {
@@ -168,7 +168,7 @@ public class QueryUtils {
 
 			parts.addAll(embeddedSelectorToPartitions(selector, type, dSchema.getPartitionerForElement(selectorFieldName)));
 
-			logger.debug("Added embedded selector for selector = " + selector + " parts.size() = " + parts.size());
+		//	logger.debug("Added embedded selector for selector = " + selector + " parts.size() = " + parts.size());
 		}
 
 		// Add all appropriate data fields
@@ -199,7 +199,7 @@ public class QueryUtils {
 				parts.addAll(dSchema.getPartitionerForElement(fieldName).toPartitions(dataElement, dSchema.getElementType(fieldName)));
 			}
 		}
-		logger.debug("parts.size() = " + parts.size());
+	//	logger.debug("parts.size() = " + parts.size());
 
 		return parts;
 	}
@@ -215,7 +215,7 @@ public class QueryUtils {
 		{
 			int hashedSelector = KeyedHash.hash("aux", 32, selector);
 			parts = partitioner.toPartitions(hashedSelector, PrimitiveTypePartitioner.INT);
-	        logger.debug("selector {} hash {}", selector, hashedSelector);
+	       // logger.debug("selector {} hash {}", selector, hashedSelector);
 		} else
 		// if selector size <= 32 bits or is an IP, add actual selector
 		{
@@ -279,7 +279,7 @@ public class QueryUtils {
 		String fieldName = qSchema.getSelectorName();
 		Text textName = dSchema.getTextName(fieldName);
 		Writable writable = dataMap.get(textName);
-		logger.debug("fieldName={}, textName={}, writable={}", fieldName, textName, writable);
+		// logger.debug("fieldName={}, textName={}, writable={}", fieldName, textName, writable);
 
 		if (dSchema.isArrayElement(fieldName)) {
 			if (writable instanceof WritableArrayWritable) {

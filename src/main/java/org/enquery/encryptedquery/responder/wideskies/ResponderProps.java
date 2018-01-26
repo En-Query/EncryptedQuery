@@ -84,11 +84,17 @@ public class ResponderProps
   // hdfs
   public static final String HDFSURI = "hdfs.uri";
   public static final String USEHDFS = "hdfs.use";
+  
   // kafka
   public static final String KAFKATOPIC = "kafka.topic";
   public static final String KAFKACLIENTID = "kafka.clientId";
   public static final String KAFKAZK = "kafka.zk";
+  public static final String KAFKABROKERS = "kafka.brokers";
+  public static final String KAFKAGROUPID = "kafka.groupId";
   public static final String KAFKAFORCEFROMSTART = "kafka.forceFromStart";
+  public static final String KAFKASTREAMDURATION = "kafka.streamDuration";
+  public static final String KAFKASTREAMITERATIONS = "kafka.streamIterations";
+ 
   // EncryptedQuery topo
   public static final String STORMTOPONAME = "storm.topoName";
   public static final String STORMWORKERS = "storm.workers";

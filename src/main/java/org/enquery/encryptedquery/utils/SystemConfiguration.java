@@ -243,17 +243,23 @@ public class SystemConfiguration
   public static void loadPropsFromDir(String dirName)
   {
     logger.info("Loading properties from dirName = " + dirName);
-    File[] directoryListing = new File(dirName).listFiles(new FilenameFilter()
-    {
-      @Override
-      public boolean accept(File dir, String name)
-      {
-        return name.endsWith(".properties");
-      }
-    });
+    File directory = new File(dirName);
+    if (directory != null) {
+    	logger.info("New Directory {}", directory.getAbsoluteFile());
+    }
+    File[] directoryListing = new File(dirName).listFiles();
+//    File[] directoryListing = new File(dirName).listFiles(new FilenameFilter()
+//    {
+//      @Override
+//      public boolean accept(File dir, String name)
+//      {
+//        return name.endsWith(".properties");
+//      }
+//    });
 
     if (directoryListing != null)
     {
+      logger.info("Found {} property files in folder {}", directoryListing.length, dirName);
       for (File file : directoryListing)
       {
         loadPropsFromFile(file);

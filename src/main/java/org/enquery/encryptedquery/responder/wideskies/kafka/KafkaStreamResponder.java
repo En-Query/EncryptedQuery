@@ -51,15 +51,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class to perform stand alone responder functionalities
- * <p>
- * Used primarily for testing, although it can be used anywhere in standalone mode
+ * Class to perform kafka responder functionalities
  * <p>
  * Does not bound the number of hits that can be returned per selector
  * <p>
  * Does not use the DataFilter class -- assumes all filtering happens before calling addDataElement()
  * <p>
- * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs as this is a standalone responder
+ * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs
  */
 public class KafkaStreamResponder
 {
@@ -72,11 +70,10 @@ public class KafkaStreamResponder
   private int lineCounter = 0;
   
   private final KafkaConsumer<String, String> consumer;
-  private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "KafkaSpout");
-//  private static final String brokerZk = SystemConfiguration.getProperty("kafka.zk", "localhost:2181");
+  private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "enquery");
   private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
   private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery_01");
-  private static final String kafkaTopic = SystemConfiguration.getProperty("kafka.topic", "phone-log");
+  private static final String kafkaTopic = SystemConfiguration.getProperty("kafka.topic", "kafkaTopic");
   private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
   private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
   private static final Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
@@ -84,7 +81,7 @@ public class KafkaStreamResponder
 
   private Response response = null;
 
-  private TreeMap<Integer,BigInteger> columns = null; // the column values for the PIR calculations
+  private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
 
   private ArrayList<Integer> rowColumnCounters; // keeps track of how many hit partitions have been recorded for each row/selector
 
@@ -106,15 +103,16 @@ public class KafkaStreamResponder
 
     resetResponse();
     
-    Properties kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId);
+    Properties kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId);
     consumer = new KafkaConsumer<>(kafkaProperties);
     consumer.subscribe(Arrays.asList(kafkaTopic));
   }
 
-  private static Properties createConsumerConfig(String brokers, String groupId) {
+  private static Properties createConsumerConfig(String brokers, String groupId, String clientId) {
 	    Properties props = new Properties();
 	    props.put("bootstrap.servers", brokers);
 	    props.put("group.id", groupId);
+	    props.put("client.id", clientId);
 	    props.put("enable.auto.commit", "true");
 	    props.put("max.poll.records", "100");
 	    props.put("auto.commit.interval.ms", "2000");
@@ -154,16 +152,17 @@ public class KafkaStreamResponder
 	    lineCounter = 0;
   }
   /**
-   * Method to compute the standalone response
+   * Method to compute the response
    * <p>
-   * Assumes that the input data is a single file in the local filesystem and is fully qualified
+   * Assumes that the input data is from a kafka topic and is fully qualified
    */
   public void computeKafkaStreamResponse() throws IOException
   {
 	  try
 	  {
 		  JSONParser jsonParser = new JSONParser();
-		  logger.info("Kafka ClientId {} Brokers {} GroupId {} Topic {} ForceFromStart {}", kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart);
+		  logger.info("Kafka: ClientId {} | Brokers {} | GroupId {} | Topic {} | ForceFromStart {} | Iterations {}", 
+				  kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart, streamIterations);
 		  int iterationCounter = 0;
 		  while (streamIterations == 0 || iterationCounter < streamIterations ) {
 			  logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
@@ -171,6 +170,7 @@ public class KafkaStreamResponder
 			  while (System.currentTimeMillis() < endTime)
 			  {
 				  ConsumerRecords<String, String> records = consumer.poll(100);
+				  logger.info("Records Returned from Kafka: {}", records.count());
 				  for (ConsumerRecord<String, String> record : records) {
 //					  logger.info("line {} Received {}", record.offset(), record.value());
 					  //= System.out.println("Receive message: " + record.value() + ", Partition: "
@@ -198,7 +198,8 @@ public class KafkaStreamResponder
 
 			  logger.info("Processed {} total records for iteration {}", lineCounter, iterationCounter);
 
-			  // Set the response object, extract, write to file
+			  // Set the response object, extract, write to file. 
+			  // There will be a separate file for each iteration.
 			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" + Integer.toString(iterationCounter);
 			  setResponseElements();
 			  new LocalFileSystemStore().store(outputFile, response);
