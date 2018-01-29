@@ -128,10 +128,10 @@ public class Responder
       int lineCounter = 0;
       while ((line = br.readLine()) != null)
       {
-        logger.debug("line = " + line);
+        //logger.debug("line = " + line);
         JSONObject jsonData = (JSONObject) jsonParser.parse(line);
 
-        logger.debug("jsonData = " + jsonData.toJSONString());
+        //logger.debug("jsonData = " + jsonData.toJSONString());
 
         String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
         addDataElement(selector, jsonData);
@@ -202,7 +202,7 @@ public class Responder
            } else {
         	   BigInteger bi = new BigInteger(1, tempByteArray);
         	   hitValPartitions.add(bi);
-               logger.debug("Part added {}", bi.toString(16));
+               //logger.debug("Part added {}", bi.toString(16));
         	   j = 0;
                tempByteArray[j] = inputData.get(i).byteValue();
            }
@@ -215,24 +215,24 @@ public class Responder
         	}
        	    BigInteger bi = new BigInteger(1, tempByteArray);
         	hitValPartitions.add( bi );
-         	logger.debug("Part added {}", bi.toString(16));
+         	//logger.debug("Part added {}", bi.toString(16));
         }
     } else {  // Since there is only one byte per partition lets avoid the extra work
       hitValPartitions = inputData;
     }
-    int index = 1;
-    for (BigInteger bi : hitValPartitions) {
-    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-    	index++;
-    }
+    //int index = 1;
+    //for (BigInteger bi : hitValPartitions) {
+    //  logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
+    //  index++;
+    //}
     
     // Pull the necessary elements
     int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
     int rowCounter = rowColumnCounters.get(rowIndex);
     BigInteger rowQuery = query.getQueryElement(rowIndex);
 
-    logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
-        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
+    //logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
+    //    + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
 
     // Update the associated column values
     for (int i = 0; i < hitValPartitions.size(); ++i)
@@ -242,7 +242,7 @@ public class Responder
         columns.put(i + rowCounter, BigInteger.valueOf(1));
       }
       BigInteger column = columns.get(i + rowCounter); // the next 'free' column relative to the selector
-      logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
+      //logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
 
       BigInteger exp;
       if (query.getQueryInfo().useExpLookupTable() && !query.getQueryInfo().useHDFSExpLookupTable()) // using the standalone
@@ -253,28 +253,28 @@ public class Responder
       else
       // without lookup table
       {
-        logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
+        //logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
         exp = ModPowAbstraction.modPow(rowQuery, hitValPartitions.get(i), query.getNSquared());
       }
       column = (column.multiply(exp)).mod(query.getNSquared());
 
       columns.put(i + rowCounter, column);
 
-      logger.debug(
-          "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
-      logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
+      //logger.debug(
+      //    "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
+      //logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
     }
 
     // Update the rowCounter (next free column position) for the selector
     rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
-    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
+    //logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
   }
 
   // Sets the elements of the response object that will be passed back to the
   // querier for decryption
   public void setResponseElements()
   {
-    logger.debug("numResponseElements = " + columns.size());
+    //logger.debug("numResponseElements = " + columns.size());
     // for(int key: columns.keySet())
     // {
     // logger.debug("key = " + key + " column = " + columns.get(key));
