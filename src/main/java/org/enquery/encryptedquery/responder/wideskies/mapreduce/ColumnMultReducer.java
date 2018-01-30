@@ -95,8 +95,9 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
   {
     logger.info("Processing reducer for colNum = " + colNum.toString());
     ctx.getCounter(MRStats.NUM_COLUMNS).increment(1);
-
+    long startTime = System.currentTimeMillis();
     BigInteger column = BigInteger.valueOf(1);
+    long columnCounter = 0;
     for (Text val : colVals)
     {
     	
@@ -131,9 +132,11 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
       //  logger.debug("exp = " + exp.toString());
         column = (column.multiply(exp)).mod(query.getNSquared());
       //  logger.debug("column = " + column.toString());   	
-
+        columnCounter++;
     }
     // logger.debug("final column value = " + column.toString());
+    long duration = System.currentTimeMillis() - startTime;
+    logger.info("It took {} Milliseconds to process {} parts for column {}", duration, columnCounter, colNum.toString());
     outputValue.set(column.toString());
     mos.write(FileConst.PIR_COLS, colNum, outputValue);
   }
