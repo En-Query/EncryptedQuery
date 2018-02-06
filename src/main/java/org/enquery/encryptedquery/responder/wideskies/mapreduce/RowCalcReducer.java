@@ -47,11 +47,11 @@ import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 /**
- * Reducer class to calculate the encrypted rows of the encrypted query
+ * Reducer class to concatenate the requested data based on the selector
  * <p>
- * For each row (as indicated by key = hash(selector)), iterates over each dataElement and calculates the column values.
+ * For each row (as indicated by key = hash(selector)), combines the partitions from each record retrieved with the same hash.
  * <p>
- * Emits {@code <colNum, colVal>}
+ * Emits {@code hash, concatenated-partitions}
  *
  */
 public class RowCalcReducer extends Reducer<IntWritable,BytesArrayWritable,LongWritable,Text>
@@ -116,16 +116,16 @@ public class RowCalcReducer extends Reducer<IntWritable,BytesArrayWritable,LongW
   @Override
   public void reduce(IntWritable rowIndex, Iterable<BytesArrayWritable> dataElementPartitions, Context ctx) throws IOException, InterruptedException
   {
-    logger.info("Processing reducer for hash = " + rowIndex);
+//    logger.info("Processing reducer for hash = " + rowIndex);
     ctx.getCounter(MRStats.NUM_HASHES_REDUCER).increment(1);
 
-    if (queryInfo.useHDFSExpLookupTable())
-    {
-      ComputeEncryptedRow.loadCacheFromHDFS(fs, query.getExpFile(rowIndex.get()), query);
-    }
+//    if (queryInfo.useHDFSExpLookupTable())
+//    {
+//      ComputeEncryptedRow.loadCacheFromHDFS(fs, query.getExpFile(rowIndex.get()), query);
+//    }
 
     List<Tuple2<Long,Byte>> concatenatedRowValues = ConcatenateRow.concatenateRow(dataElementPartitions, query, rowIndex.get(), limitHitsPerSelector,
-            maxHitsPerSelector, useLocalCache);
+            maxHitsPerSelector);
 
     byte[] values = new byte[concatenatedRowValues.size()];
     int j = 0;
@@ -136,9 +136,9 @@ public class RowCalcReducer extends Reducer<IntWritable,BytesArrayWritable,LongW
     }
 
     String valueB64 = Base64.getEncoder().encodeToString(values);
-    keyOut.set(rowIndex.get());
-    valueOut.set(valueB64);
-    logger.debug("Reduce output rowIndex {} / Value {}", keyOut.get(), valueB64 );
+    keyOut.set(rowIndex.get());  // hash
+    valueOut.set(valueB64);      // concatenated partitions from all records with this hash
+//    logger.debug("Reduce output rowIndex {} / Value {}", keyOut.get(), valueB64 );
     mos.write(FileConst.PIR, keyOut, valueOut);
 
   }

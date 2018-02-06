@@ -22,8 +22,6 @@
 package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.List;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.IntWritable;
@@ -50,10 +48,10 @@ import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 /**
- * Initialization mapper for PIR
+ * Initialization mapper for EncryptedQuery
  * <p>
  * Reads in data, extracts the selector by queryType from each dataElement, performs a keyed hash of the selector, extracts the partitions of the dataElement,
- * and emits {@link <hash(selector), dataPartitions>}
+ * and emits {@link hash(selector), dataPartitions}
  *
  */
 public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable,IntWritable,BytesArrayWritable>
@@ -61,7 +59,6 @@ public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable
   private static final Logger logger = LoggerFactory.getLogger(HashSelectorsAndPartitionDataMapper.class);
 
   private IntWritable keyOut = null;
-  private Text valueOut = null;
 
   private QueryInfo queryInfo = null;
   private QuerySchema qSchema = null;
@@ -76,7 +73,6 @@ public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable
     logger.info("Setting up the mapper");
 
     keyOut = new IntWritable();
-    valueOut = new Text();
     
     FileSystem fs = FileSystem.newInstance(ctx.getConfiguration());
 
@@ -124,8 +120,9 @@ public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable
   @Override
   public void map(Text key, MapWritable value, Context ctx) throws IOException, InterruptedException
   {
-    logger.debug("key = " + key.toString());
-    logger.debug("value: " + StringUtils.mapWritableToString(value));
+//    logger.debug("key = " + key.toString());
+//    logger.debug("value: " + StringUtils.mapWritableToString(value));
+    ctx.getCounter(MRStats.NUM_RECORDS_INIT_MAPPER).increment(1);
 
     boolean passFilter = true;
     if (filter != null)
@@ -147,7 +144,7 @@ public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable
         throw new RuntimeException(e);
       }
 
-      logger.debug("Writing key {}", returnTuple._1 );
+//      logger.debug("Writing key {}", returnTuple._1 );
       keyOut.set(returnTuple._1);
       ctx.write(keyOut, returnTuple._2);
     }

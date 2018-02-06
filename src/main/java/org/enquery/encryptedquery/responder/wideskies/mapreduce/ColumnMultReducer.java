@@ -23,7 +23,16 @@ package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.LongWritable;
@@ -55,6 +64,8 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
   private Text outputValue = null;
   private MultipleOutputs<LongWritable,Text> mos = null;
   private boolean useLocalCache = false;
+  private int threadPoolSize = 10;
+  private int partitionsPerThread = 1000;
   
   private Query query = null;
 
@@ -82,7 +93,9 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
     FileSystem fs = FileSystem.newInstance(ctx.getConfiguration());
     String queryDir = ctx.getConfiguration().get("pirMR.queryInputDir");
     query = new HadoopFileSystemStore(fs).recall(queryDir, Query.class);
-    
+    threadPoolSize = ctx.getConfiguration().getInt("computeThreadPoolSize", 10);
+    partitionsPerThread = ctx.getConfiguration().getInt("computePartitionsPerThread", 1000);
+
     if (ctx.getConfiguration().get("pirWL.useLocalCache").equals("true"))
     {
       useLocalCache = true;
@@ -93,52 +106,58 @@ public class ColumnMultReducer extends Reducer<LongWritable,Text,LongWritable,Te
   @Override
   public void reduce(LongWritable colNum, Iterable<Text> colVals, Context ctx) throws IOException, InterruptedException
   {
-    logger.info("Processing reducer for colNum = " + colNum.toString());
-    ctx.getCounter(MRStats.NUM_COLUMNS).increment(1);
+    logger.info("Processing reducer for colNum {} threadPoolSize {} recordsPerThread {}", colNum.toString(), threadPoolSize, partitionsPerThread);
+    ctx.getCounter(MRStats.NUM_HASHES_REDUCER).increment(1);
+    
     long startTime = System.currentTimeMillis();
-    BigInteger column = BigInteger.valueOf(1);
+    ExecutorService executorService = Executors.newFixedThreadPool(threadPoolSize);
+    
+    List<String> valuesToProcess = new ArrayList<String>();
+    
+    List<Callable<ColumnValue>> lst = new ArrayList<Callable<ColumnValue>>();
     long columnCounter = 0;
-    for (Text val : colVals)
-    {
-    	
-        String[] valueInfo = val.toString().split(",");
-        int rowIndex = Integer.valueOf(valueInfo[0]);
-        String part = valueInfo[1];
-      //  logger.debug("Processing rowIndex {}, value {}", rowIndex, part);
-        
-        byte[] partAsByteArray = QueryUtils.hexStringToByteArray(part);
-        BigInteger partAsBI = new BigInteger(1, partAsByteArray);
-      //  logger.debug("partAsBi: " + partAsBI.toString(16));
-        
-        BigInteger rowQuery = query.getQueryElement(rowIndex);
-      //  logger.debug("rowQuery: " + rowQuery.toString());
-
-        BigInteger exp = null;   	
-        try
-        {
-          if (useLocalCache)
-          {
-            exp = expCache.get(new Tuple3<>(rowQuery, partAsBI, query.getNSquared()));
-          }
-          else
-          {
-            exp = ModPowAbstraction.modPow(rowQuery, partAsBI, query.getNSquared());
-          }
-        } catch (ExecutionException e)
-        {
-          e.printStackTrace();
-        }     
-        
-      //  logger.debug("exp = " + exp.toString());
-        column = (column.multiply(exp)).mod(query.getNSquared());
-      //  logger.debug("column = " + column.toString());   	
+    
+    for (Text val : colVals) {
+        valuesToProcess.add(val.toString());
         columnCounter++;
+        if ( columnCounter % partitionsPerThread == 0) {
+        	List<String> valuesToSend = Optional.ofNullable(valuesToProcess)
+                    .map(List::stream)
+                    .orElseGet(Stream::empty)
+                    .collect(Collectors.toList());
+            lst.add(new ComputeColumnValue(colNum.toString(), valuesToSend, query));
+            valuesToProcess.clear();
+        }
     }
-    // logger.debug("final column value = " + column.toString());
-    long duration = System.currentTimeMillis() - startTime;
-    logger.info("It took {} Milliseconds to process {} parts for column {}", duration, columnCounter, colNum.toString());
+    if (valuesToProcess.size() > 0) {
+        lst.add(new ComputeColumnValue(colNum.toString(), valuesToProcess, query));
+    }
+
+//    logger.info("Submitted {} Records in {} tasks", columnCounter, lst.size());
+    
+    // returns a list of Futures holding their status and results when all complete
+    List<Future<ColumnValue>> tasks = executorService.invokeAll(lst);
+     
+//    logger.info("{} Tasks Completed", tasks.size());
+    BigInteger column = BigInteger.valueOf(1);
+     
+    for(Future<ColumnValue> task : tasks)
+    {
+        try {
+            column = (column.multiply(task.get().getValue())).mod(query.getNSquared());
+		} catch (ExecutionException e) {
+            logger.error("Error Exception getting value from task thread: \n" + e.getMessage());
+		}
+    }
+     
     outputValue.set(column.toString());
     mos.write(FileConst.PIR_COLS, colNum, outputValue);
+
+    /* shutdown your thread pool, else your application will keep running */
+    executorService.shutdown();
+    long duration = System.currentTimeMillis() - startTime;
+    logger.info("It took {} Milliseconds to process {} parts for column {} in {} threads", duration, columnCounter, colNum.toString(), tasks.size());
+
   }
 
   @Override

@@ -22,20 +22,22 @@
 package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Base64;
 
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.storm.shade.org.apache.commons.codec.binary.Hex;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.utils.CSVOutputUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Pass through mapper for encrypted column multiplication
+ * This Mapper reads in the data from phase 1 of the map reduce.  Each record is broken down into dps sized chunks
+ * to be sent to the reducer.  
+ * Input record in the form of:  Hash, Base64 string of partition data
+ * Output to Reducer: Key:   Column Number
+ *                    Value: hash, partition data in dps sized chunk 
  *
  */
 public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text>
@@ -45,6 +47,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
   private LongWritable keyOut = null;
   private Text valueOut = null;
   private int dataPartitionBitSize = 8;
+  @SuppressWarnings("unused")
   private int numPartitionsPerElement = 0;
 
   @Override
@@ -57,12 +60,14 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
     numPartitionsPerElement = Integer.valueOf(ctx.getConfiguration().get("numPartitionsPerElement"));
   }
-
+/**
+ * Read in the results from the prior phase and break the list of parts into individual parts based on dps size.
+ * Output to Reduce the partNum or Colnum as the key and the hash and the individual part as the value
+ */
   @Override
   public void map(LongWritable key, Text value, Context ctx) throws IOException, InterruptedException
   {
     // logger.debug("key = " + key.toString() + " value = " + value.toString() );
-    
     int bytesPerPartition = 1;
     if (( dataPartitionBitSize % 8 ) == 0 ) {
     	bytesPerPartition = dataPartitionBitSize / 8 ;
@@ -71,7 +76,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
     	logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
     }
 	// logger.debug(" dataPartitionBitSize {} bytesPerPartition {} numPartitionsPerElement {}", dataPartitionBitSize, bytesPerPartition, numPartitionsPerElement);
-	
+	// Extract tokens from value.  Token[0] is the Hash or rowIndex, Token[1] is the list of partition data.
     String tokens[] = CSVOutputUtils.extractCSVOutput(value);
     // logger.debug("value = " + value.toString() + " tokens[0] = " + tokens[0] + " tokens[1] = " + tokens[1]);
     
@@ -88,7 +93,6 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
                valueOut.set(tokens[0] + "," + QueryUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
               // logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
                ctx.write(keyOut, valueOut);
-
         	   j = 0;
                tempByteArray[j] = decodedString[i];
            }
