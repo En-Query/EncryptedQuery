@@ -64,7 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tool for computing the PIR response in MapReduce
+ * Tool for computing the EncryptedQuery response in MapReduce
  * <p>
  * Each query run consists of three MR jobs:
  * <p>

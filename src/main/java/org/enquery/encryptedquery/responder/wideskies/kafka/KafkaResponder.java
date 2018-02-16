@@ -48,13 +48,13 @@ public class KafkaResponder implements ResponderPlugin
 	  @Override
   public void run()
   {
-    logger.info("Launching Kafka Responder:");
+    logger.info("Launching Kafka Simple Responder:");
     String queryInput = SystemConfiguration.getProperty("pir.queryInput");
     try
     {
 	      Query query = new LocalFileSystemStore().recall(queryInput, Query.class);
 	      KafkaStreamResponder pirResponder = new KafkaStreamResponder(query);
-	      pirResponder.computeKafkaStreamResponse();
+	  		      pirResponder.computeKafkaStreamResponse();
     } catch (IOException e)
     {
 	      logger.error("Error reading {}, {}", queryInput, e.getMessage());

@@ -27,7 +27,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.PartitionInfo;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
@@ -68,11 +71,13 @@ public class KafkaStreamResponder
   private QuerySchema qSchema = null;
   private int dataPartitionBitSize = 8;
   private int lineCounter = 0;
+  private boolean kafkaServerOk = true;
+  private static String offsetLocation;
   
   private final KafkaConsumer<String, String> consumer;
-  private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "enquery");
+  private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "Encrypted-Query");
   private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
-  private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery_01");
+  private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery");
   private static final String kafkaTopic = SystemConfiguration.getProperty("kafka.topic", "kafkaTopic");
   private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
   private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
@@ -92,6 +97,12 @@ public class KafkaStreamResponder
     String queryType = queryInfo.getQueryType();
     dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
 
+    if (forceFromStart) {
+    	offsetLocation = "earliest";
+    } else {
+    	offsetLocation = "latest";
+    }
+    
     if (SystemConfiguration.getBooleanProperty("pir.allowAdHocQuerySchemas", false))
     {
       qSchema = queryInfo.getQuerySchema();
@@ -114,10 +125,9 @@ public class KafkaStreamResponder
 	    props.put("group.id", groupId);
 	    props.put("client.id", clientId);
 	    props.put("enable.auto.commit", "true");
-	    props.put("max.poll.records", "100");
 	    props.put("auto.commit.interval.ms", "2000");
 	    props.put("session.timeout.ms", "30000");
-	    props.put("auto.offset.reset", "earliest");
+	    props.put("auto.offset.reset", offsetLocation);
 	    props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 	    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 	    return props;
@@ -158,19 +168,36 @@ public class KafkaStreamResponder
    */
   public void computeKafkaStreamResponse() throws IOException
   {
+		//Test for Kafka Server
+
+			try {
+				Map<String, List<PartitionInfo>> topics = consumer.listTopics();
+				if (topics.containsKey(kafkaTopic)) {
+					logger.info("Consuming records from Kafka Topic {} which has {} partitions"
+							, kafkaTopic, topics.get(kafkaTopic).size());
+				} else {
+					kafkaServerOk = false;
+					logger.error("Kafka Topic {} not found in server", kafkaTopic);
+				}
+				
+			} catch (Exception e) {
+				logger.error("Connection Error to Kafka Broker {} exception: {}", kafkaBrokers, e.getMessage());
+				kafkaServerOk = false;
+			}
+		
 	  try
 	  {
 		  JSONParser jsonParser = new JSONParser();
 		  logger.info("Kafka: ClientId {} | Brokers {} | GroupId {} | Topic {} | ForceFromStart {} | Iterations {}", 
 				  kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart, streamIterations);
 		  int iterationCounter = 0;
-		  while (streamIterations == 0 || iterationCounter < streamIterations ) {
+		  while ( (streamIterations == 0 ||  iterationCounter < streamIterations ) && kafkaServerOk) {
 			  logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
 			  long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(streamDuration);
 			  while (System.currentTimeMillis() < endTime)
 			  {
 				  ConsumerRecords<String, String> records = consumer.poll(100);
-				  logger.info("Records Returned from Kafka: {}", records.count());
+				  logger.debug("Records Returned from Kafka: {}", records.count());
 				  for (ConsumerRecord<String, String> record : records) {
 //					  logger.info("line {} Received {}", record.offset(), record.value());
 					  //= System.out.println("Receive message: " + record.value() + ", Partition: "
@@ -194,8 +221,8 @@ public class KafkaStreamResponder
 				  }
 
 			  }
-			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
+			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.
@@ -209,6 +236,9 @@ public class KafkaStreamResponder
 			  resetResponse();
 			  
 		  }
+          if (!kafkaServerOk) {
+        	  logger.error("Error connecting with Kafka Server {}", kafkaBrokers);
+          }
 
 		  if (consumer != null) {
 			  consumer.close();
