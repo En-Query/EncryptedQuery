@@ -23,6 +23,7 @@ package org.enquery.encryptedquery.responder.wideskies.kafka;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -33,35 +34,27 @@ public final class KafkaConsumerGroup {
       private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerGroup.class);
 
 	  private final int numberOfConsumers;
-	  private final String groupId;
 	  private final String topic;
-	  private final String brokers;
 	  private final String hdfsuri;
 	  private final String hdfsUser;
 	  private final String hdfsFolder;
-	  private final String clientId;
 	  private final UUID uuid;
-	  private final Boolean forceFromStart;
 	  
 	  private List<KafkaConsumerThread> consumers;
 
-	  public KafkaConsumerGroup(String brokers, String groupId, String topic, String hdfsURI, String hdfsUser,
-			  String hdfsFolder, String clientId, UUID uuid, Boolean forceFromStart, int numberOfConsumers) {
-	    this.brokers = brokers;
+	  public KafkaConsumerGroup(Properties kafkaProperties, String topic, String hdfsURI, String hdfsUser,
+			  String hdfsFolder, UUID uuid, int numberOfConsumers) {
 	    this.topic = topic;
-	    this.groupId = groupId;
 	    this.hdfsuri = hdfsURI;
 	    this.hdfsUser = hdfsUser;
 	    this.hdfsFolder = hdfsFolder;
-	    this.clientId = clientId;
 	    this.uuid = uuid;
-	    this.forceFromStart = forceFromStart;
 	    this.numberOfConsumers = numberOfConsumers;
 	    consumers = new ArrayList<>();
 	    for (int i = 0; i < this.numberOfConsumers; i++) {
 	      KafkaConsumerThread ncThread =
-	          new KafkaConsumerThread(this.brokers, this.groupId, this.topic,
-	        		  this.hdfsuri, this.hdfsUser, this.hdfsFolder, this.clientId, this.uuid, this.forceFromStart); 
+	          new KafkaConsumerThread(kafkaProperties, this.topic,
+	        		  this.hdfsuri, this.hdfsUser, this.hdfsFolder, this.uuid, null); 
 	      consumers.add(ncThread);
 	    }
 	  }
@@ -80,13 +73,7 @@ public final class KafkaConsumerGroup {
 	    return numberOfConsumers;
 	  }
 
-	  /**
-	   * @return the groupId
-	   */
-	  public String getGroupId() {
-	    return groupId;
-	  }
-	  
+  
 	  /**
 	   *  Stop the consumer threads
 	   */

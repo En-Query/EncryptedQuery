@@ -24,6 +24,7 @@ package org.enquery.encryptedquery.responder.wideskies.kafka;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -56,6 +57,7 @@ public class MultiThreadedKafkaStreamResponder {
 	private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
 	private static Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
 
+	
 	private static final String hdfsURI = SystemConfiguration.getProperty("hadoop.URI", "hdfs://localhost:9000");
 	private static final String hdfsUser = SystemConfiguration.getProperty("hadoop.user", "enquery");
 	private static final String hdfsFolder = SystemConfiguration.getProperty("hadoop.folder", "encrypted-query");
@@ -71,7 +73,29 @@ public class MultiThreadedKafkaStreamResponder {
 		logger.info("Working Folder set to {}", workingFolder);
 	}
 	
-	  /**
+	private static Properties createConsumerConfig(String brokers, String groupId, String clientId, 
+			boolean forceFromStart) {
+		logger.info("Configuring Kafka Consumer");
+		Properties props = new Properties();
+		props.put("bootstrap.servers", brokers);
+		props.put("group.id", groupId);
+//		props.put("client.id", clientId);
+		props.put("enable.auto.commit", "true");
+		props.put("auto.commit.interval.ms", "1000");
+		props.put("session.timeout.ms", "30000");
+
+        if (forceFromStart) {
+        	props.put("auto.offset.reset", "earliest");
+        	
+        } else {
+        	props.put("auto.offset.reset", "latest");
+        }
+		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+		return props;
+	}
+
+	/**
 	   * Method to compute the response
 	   * <p>
 	   * Assumes that the input data is from a kafka topic and is fully qualified
@@ -85,6 +109,8 @@ public class MultiThreadedKafkaStreamResponder {
 					kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart, streamIterations);
 			logger.info("HDFS: URI {} | User {} | Folder {} | Number of Consumers {}", 
 					hdfsURI, hdfsUser, hdfsFolder, kafkaNumberOfConsumers);
+			Properties kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId, forceFromStart);
+			
 			int iterationCounter = 0;
 			while (streamIterations == 0 || iterationCounter < streamIterations ) {
 				
@@ -95,8 +121,8 @@ public class MultiThreadedKafkaStreamResponder {
 				logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
 
 				KafkaConsumerGroup consumerGroup =
-						new KafkaConsumerGroup(kafkaBrokers, kafkaGroupId, kafkaTopic, hdfsURI, hdfsUser, 
-								hdfsFolder, kafkaClientId, uuid, forceFromStart, kafkaNumberOfConsumers);
+						new KafkaConsumerGroup(kafkaProperties, kafkaTopic, hdfsURI, hdfsUser, 
+								hdfsFolder, uuid, kafkaNumberOfConsumers);
 				consumerGroup.execute();
 
                 // Wait until the time window duration has finished before we stop the consumers 

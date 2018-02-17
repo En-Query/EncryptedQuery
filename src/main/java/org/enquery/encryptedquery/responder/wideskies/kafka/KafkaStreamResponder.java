@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -67,14 +68,12 @@ public class KafkaStreamResponder
   private static final Logger logger = LoggerFactory.getLogger(KafkaStreamResponder.class);
 
   private Query query = null;
-  private QueryInfo queryInfo = null;
-  private QuerySchema qSchema = null;
-  private int dataPartitionBitSize = 8;
-  private int lineCounter = 0;
-  private boolean kafkaServerOk = true;
-  private static String offsetLocation;
   
-  private final KafkaConsumer<String, String> consumer;
+  private  ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
+  private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
+
+  private List<QueryProcessingThread> queryProcessors;
+
   private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "Encrypted-Query");
   private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
   private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery");
@@ -82,85 +81,47 @@ public class KafkaStreamResponder
   private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
   private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
   private static final Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
+  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("query.processing.threads", "1"));
 
+  private Properties kafkaProperties;
 
   private Response response = null;
 
-  private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
-
-  private ArrayList<Integer> rowColumnCounters; // keeps track of how many hit partitions have been recorded for each row/selector
-
   public KafkaStreamResponder(Query queryInput)
   {
-    query = queryInput;
-    queryInfo = query.getQueryInfo();
-    String queryType = queryInfo.getQueryType();
-    dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
-
-    if (forceFromStart) {
-    	offsetLocation = "earliest";
-    } else {
-    	offsetLocation = "latest";
-    }
+    this.query = queryInput;
     
-    if (SystemConfiguration.getBooleanProperty("pir.allowAdHocQuerySchemas", false))
-    {
-      qSchema = queryInfo.getQuerySchema();
-    }
-    if (qSchema == null)
-    {
-      qSchema = QuerySchemaRegistry.get(queryType);
-    }
+    kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId, forceFromStart);
 
-    resetResponse();
-    
-    Properties kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId);
-    consumer = new KafkaConsumer<>(kafkaProperties);
-    consumer.subscribe(Arrays.asList(kafkaTopic));
   }
 
-  private static Properties createConsumerConfig(String brokers, String groupId, String clientId) {
-	    Properties props = new Properties();
-	    props.put("bootstrap.servers", brokers);
-	    props.put("group.id", groupId);
-	    props.put("client.id", clientId);
-	    props.put("enable.auto.commit", "true");
-	    props.put("auto.commit.interval.ms", "2000");
-	    props.put("session.timeout.ms", "30000");
-	    props.put("auto.offset.reset", offsetLocation);
-	    props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-	    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-	    return props;
-	  }
-  
+	private static Properties createConsumerConfig(String brokers, String groupId, String clientId, 
+			boolean forceFromStart) {
+		logger.info("Configuring Kafka Consumer");
+		Properties props = new Properties();
+		props.put("bootstrap.servers", brokers);
+		props.put("group.id", groupId);
+//		props.put("client.id", clientId);
+		props.put("enable.auto.commit", "true");
+		props.put("auto.commit.interval.ms", "1000");
+		props.put("session.timeout.ms", "30000");
+
+        if (forceFromStart) {
+        	props.put("auto.offset.reset", "earliest");
+        	
+        } else {
+        	props.put("auto.offset.reset", "latest");
+        }
+		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+		return props;
+	}
+ 
   public Response getResponse()
   {
     return response;
   }
 
-  public TreeMap<Integer,BigInteger> getColumns()
-  {
-    return columns;
-  }
-  
-/**
- * Reset The response for the next iteration
- */
-  private void resetResponse() {
-	  
-	    response = new Response(queryInfo);
-
-	    // Columns are allocated as needed, initialized to 1
-	    columns = new TreeMap<>();
-
-	    // Initialize row counters
-	    rowColumnCounters = new ArrayList<>();
-	    for (int i = 0; i < Math.pow(2, queryInfo.getHashBitSize()); ++i)
-	    {
-	      rowColumnCounters.add(0);
-	    }
-	    lineCounter = 0;
-  }
   /**
    * Method to compute the response
    * <p>
@@ -168,80 +129,68 @@ public class KafkaStreamResponder
    */
   public void computeKafkaStreamResponse() throws IOException
   {
-		//Test for Kafka Server
 
-			try {
-				Map<String, List<PartitionInfo>> topics = consumer.listTopics();
-				if (topics.containsKey(kafkaTopic)) {
-					logger.info("Consuming records from Kafka Topic {} which has {} partitions"
-							, kafkaTopic, topics.get(kafkaTopic).size());
-				} else {
-					kafkaServerOk = false;
-					logger.error("Kafka Topic {} not found in server", kafkaTopic);
-				}
-				
-			} catch (Exception e) {
-				logger.error("Connection Error to Kafka Broker {} exception: {}", kafkaBrokers, e.getMessage());
-				kafkaServerOk = false;
-			}
-		
 	  try
 	  {
-		  JSONParser jsonParser = new JSONParser();
 		  logger.info("Kafka: ClientId {} | Brokers {} | GroupId {} | Topic {} | ForceFromStart {} | Iterations {}", 
 				  kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart, streamIterations);
 		  int iterationCounter = 0;
-		  while ( (streamIterations == 0 ||  iterationCounter < streamIterations ) && kafkaServerOk) {
+		  while ( (streamIterations == 0 ||  iterationCounter < streamIterations ) ) {
 			  logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
+
+			  // Initialize Threads
+			  KafkaConsumerThread consumerThread =
+					  new KafkaConsumerThread(kafkaProperties, kafkaTopic,
+							  null, null, null, null, newRecordQueue); 
+
+			  queryProcessors = new ArrayList<>();
+			  for (int i = 0; i < numberOfProcessorThreads; i++) {
+				  QueryProcessingThread qpThread =
+						  new QueryProcessingThread(newRecordQueue, responseQueue, query); 
+				  queryProcessors.add(qpThread);
+			  }
+
 			  long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(streamDuration);
 			  while (System.currentTimeMillis() < endTime)
 			  {
-				  ConsumerRecords<String, String> records = consumer.poll(100);
-				  logger.debug("Records Returned from Kafka: {}", records.count());
-				  for (ConsumerRecord<String, String> record : records) {
-//					  logger.info("line {} Received {}", record.offset(), record.value());
-					  //= System.out.println("Receive message: " + record.value() + ", Partition: "
-					  //    + record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
-					  //    + Thread.currentThread().getId());
-					  JSONObject jsonData = null;
-					  try {
-						  jsonData = (JSONObject) jsonParser.parse(record.value());
-//						  logger.info("jsonData = " + jsonData.toJSONString());
-					  } catch (Exception e) {
-						  logger.error("Exception JSON parsing record # {} : {} ", record.offset(), record.value());
-					  }
-					  if (jsonData != null) {
-						  String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
-						  addDataElement(selector, jsonData);
-						  lineCounter++;
-						  if ( (lineCounter % 1000) == 0) {
-							  logger.info("Processed {} records so far...", lineCounter);
-						  }
-					  }
+				  // Start Processing Threads
+				  for (QueryProcessingThread qpThread : queryProcessors) {
+					  Thread pt = new Thread(qpThread);
+					  pt.start();
 				  }
+				  // Start Consumer Thread
+				  Thread ct = new Thread(consumerThread);
+				  ct.start();
 
+				  try {
+					  Thread.sleep(500);
+				  } catch (Exception e) {
+					  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+				  }
 			  }
+			  consumerThread.stopListening();
+
+			  // Wait for all Processors to finish 
+			  try {
+				  Thread.sleep(2000);
+			  } catch (Exception e) {
+				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+			  }
+
+			  for (QueryProcessingThread qpThread : queryProcessors) {
+				  qpThread.stopProcessing();
+			  }             
 
 			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.
 			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" + Integer.toString(iterationCounter);
-			  logger.info("Processed {} total records for iteration {} storing result in file {}", lineCounter, iterationCounter, outputFile);
-			  setResponseElements();
+			  logger.info("Processed {} iterations, storing result in file {}", iterationCounter, outputFile);
+			  setResponse();
 			  new LocalFileSystemStore().store(outputFile, response);
 			  iterationCounter++;
 
-			  // Reset for next run
-			  resetResponse();
-			  
-		  }
-          if (!kafkaServerOk) {
-        	  logger.error("Error connecting with Kafka Server {}", kafkaBrokers);
-          }
-
-		  if (consumer != null) {
-			  consumer.close();
 		  }
 
 	  } catch (Exception e)
@@ -251,133 +200,18 @@ public class KafkaStreamResponder
 
   }
 
-  /**
-   * Method to add a data element associated with the given selector to the Response
-   * <p>
-   * Assumes that the dataMap contains the data in the schema specified
-   * <p>
-   * Initialize Paillier ciphertext values Y_i to 1 (as needed -- column values as the # of hits grows)
-   * <p>
-   * Initialize 2^hashBitSize counters: c_t = 0, 0 <= t <= (2^hashBitSize - 1)
-   * <p>
-   * For selector T:
-   * <p>
-   * For data element D, split D into partitions of size partitionSize-many bits:
-   * <p>
-   * D = D_0 || ... ||D_{\ceil{bitLength(D)/partitionSize} - 1)}
-   * <p>
-   * Compute H_k(T); let E_T = query.getQueryElement(H_k(T)).
-   * <p>
-   * For each data partition D_i:
-   * <p>
-   * Compute/Update:
-   * <p>
-   * Y_{i+c_{H_k(T)}} = (Y_{i+c_{H_k(T)}} * ((E_T)^{D_i} mod N^2)) mod N^2 ++c_{H_k(T)}
-   * 
-   */
-  public void addDataElement(String selector, JSONObject jsonData) throws Exception
-  {
-    // Extract the data from the input record into byte chunks based on the query type
-    List<BigInteger> inputData = QueryUtils.partitionDataElement(qSchema, jsonData, queryInfo.getEmbedSelector());
-    List<BigInteger> hitValPartitions = new ArrayList<BigInteger>();
-    
-    // determine how many bytes per partition based on the dataPartitionBitSize
-    // dataPartitionBitSize needs to be a multiple of 8 as we are using UTF-8 and we do not want to split a byte.
-    int bytesPerPartition = 1;
-    if (( dataPartitionBitSize % 8 ) == 0 ) {
-    	bytesPerPartition = dataPartitionBitSize / 8 ;
-    }
-    else {
-    	logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
-    }
-//	logger.debug("bytesPerPartition {}", bytesPerPartition);
-    if (bytesPerPartition > 1) {
-        byte[] tempByteArray = new byte[bytesPerPartition];
-        int j = 0;
-    	for (int i = 0; i < inputData.size(); i++) {
-           if (j < bytesPerPartition) {
-               tempByteArray[j] = inputData.get(i).byteValue();
-           } else {
-        	   BigInteger bi = new BigInteger(1, tempByteArray);
-        	   hitValPartitions.add(bi);
-//               logger.debug("Part added {}", bi.toString(16));
-        	   j = 0;
-               tempByteArray[j] = inputData.get(i).byteValue();
-           }
-           j++;
-        }
-        if (j <= bytesPerPartition ) {
-        	while (j < bytesPerPartition) {
-    	    	tempByteArray[j] = new Byte("0");
-    	    	j++;
-        	}
-       	    BigInteger bi = new BigInteger(1, tempByteArray);
-        	hitValPartitions.add( bi );
-//         	logger.debug("Part added {}", bi.toString(16));
-        }
-    } else {  // Since there is only one byte per partition lets avoid the extra work
-      hitValPartitions = inputData;
-    }
-//    int index = 1;
-//    for (BigInteger bi : hitValPartitions) {
-//    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-//    	index++;
-//    }
-    
-    // Pull the necessary elements
-    int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
-    int rowCounter = rowColumnCounters.get(rowIndex);
-    BigInteger rowQuery = query.getQueryElement(rowIndex);
-
-//    logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
-//        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
-
-    // Update the associated column values
-    for (int i = 0; i < hitValPartitions.size(); ++i)
-    {
-      if (!columns.containsKey(i + rowCounter))
-      {
-        columns.put(i + rowCounter, BigInteger.valueOf(1));
-      }
-      BigInteger column = columns.get(i + rowCounter); // the next 'free' column relative to the selector
-//      logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
-
-      BigInteger exp;
-      if (query.getQueryInfo().useExpLookupTable() && !query.getQueryInfo().useHDFSExpLookupTable()) // using the standalone
-      // lookup table
-      {
-        exp = query.getExp(rowQuery, hitValPartitions.get(i).intValue());
-      }
-      else
-      // without lookup table
-      {
-//        logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
-        exp = ModPowAbstraction.modPow(rowQuery, hitValPartitions.get(i), query.getNSquared());
-      }
-      column = (column.multiply(exp)).mod(query.getNSquared());
-
-      columns.put(i + rowCounter, column);
-
-//      logger.debug(
-//          "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
-//      logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
-    }
-
-    // Update the rowCounter (next free column position) for the selector
-    rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
-//    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
-  }
-
   // Sets the elements of the response object that will be passed back to the
   // querier for decryption
-  public void setResponseElements()
+  public void setResponse()
   {
 //    logger.debug("numResponseElements = " + columns.size());
     // for(int key: columns.keySet())
     // {
     // logger.debug("key = " + key + " column = " + columns.get(key));
     // }
-
-    response.setResponseElements(columns);
+        Response nextResponse;
+		while ((nextResponse = responseQueue.poll()) != null) {
+		   response = nextResponse;
+		}
   }
 }
