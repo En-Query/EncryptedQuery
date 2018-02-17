@@ -132,42 +132,39 @@ public class KafkaStreamResponder
 
 	  try
 	  {
-		  logger.info("Kafka: ClientId {} | Brokers {} | GroupId {} | Topic {} | ForceFromStart {} | Iterations {}", 
-				  kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart, streamIterations);
+		  logger.info("Kafka: ClientId {} | Brokers {} | GroupId {} | Topic {} | ForceFromStart {}", 
+				  kafkaClientId, kafkaBrokers, kafkaGroupId, kafkaTopic, forceFromStart);
+		  logger.info("Responder info: TimeDuration {} | Iterations {} | Number of Processors {}", 
+				  streamDuration, streamIterations, numberOfProcessorThreads);
 		  int iterationCounter = 0;
 		  while ( (streamIterations == 0 ||  iterationCounter < streamIterations ) ) {
 			  logger.info("Processing Iteration {} for {} seconds", iterationCounter, streamDuration);
 
-			  // Initialize Threads
-			  KafkaConsumerThread consumerThread =
-					  new KafkaConsumerThread(kafkaProperties, kafkaTopic,
-							  null, null, null, null, newRecordQueue); 
-
+			  // Initialize & Start Threads
 			  queryProcessors = new ArrayList<>();
 			  for (int i = 0; i < numberOfProcessorThreads; i++) {
 				  QueryProcessingThread qpThread =
 						  new QueryProcessingThread(newRecordQueue, responseQueue, query); 
 				  queryProcessors.add(qpThread);
-			  }
+				  Thread pt = new Thread(qpThread);
+				  pt.start();
 
-			  long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(streamDuration);
-			  while (System.currentTimeMillis() < endTime)
-			  {
-				  // Start Processing Threads
-				  for (QueryProcessingThread qpThread : queryProcessors) {
-					  Thread pt = new Thread(qpThread);
-					  pt.start();
-				  }
-				  // Start Consumer Thread
-				  Thread ct = new Thread(consumerThread);
-				  ct.start();
-
-				  try {
-					  Thread.sleep(500);
-				  } catch (Exception e) {
-					  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
-				  }
 			  }
+			  KafkaConsumerThread consumerThread =
+					  new KafkaConsumerThread(kafkaProperties, kafkaTopic,
+							  null, null, null, null, newRecordQueue); 
+			  Thread ct = new Thread(consumerThread);
+			  ct.start();
+
+              //Wait for Time Window to expire
+			  try {
+				  Thread.sleep(TimeUnit.SECONDS.toMillis(streamDuration));
+			  } catch (Exception e) {
+				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+			  }
+			  
+			  logger.info("Time Duration Expired, issuing stop commands to Threads" );
+			  //Shutdown the Consumer Thread
 			  consumerThread.stopListening();
 
 			  // Wait for all Processors to finish 
@@ -179,9 +176,15 @@ public class KafkaStreamResponder
 
 			  for (QueryProcessingThread qpThread : queryProcessors) {
 				  qpThread.stopProcessing();
-			  }             
-
-			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
+			  }
+			  
+			  // Now Wait for all Processors to Update response Queue 
+			  try {
+				  Thread.sleep(2000);
+			  } catch (Exception e) {
+				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+			  }
+//			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.

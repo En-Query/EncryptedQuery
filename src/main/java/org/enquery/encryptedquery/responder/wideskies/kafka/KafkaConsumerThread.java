@@ -59,13 +59,18 @@ public class KafkaConsumerThread implements Runnable {
     
 	public KafkaConsumerThread(Properties kafkaProperties, String topic, String hdfsuri,
 			     String hdfsUser, String hdfsFolder, UUID uuid, ConcurrentLinkedQueue<String> inputQueue) {
+		logger.info("Initializing kafka Consumer thread");
         this.kafkaProperties = kafkaProperties;
         this.inputQueue = inputQueue;
         this.hdfsURI = hdfsuri;
  		this.topic = topic;
 		this.hdfsUser = hdfsUser;
 		this.hdfsFolder = hdfsFolder;
-        this.uuidString = uuid.toString();
+		if (uuid == null) {
+			this.uuidString = "none";
+		} else {
+	        this.uuidString = uuid.toString();
+		}
  		this.consumer = new KafkaConsumer<>(kafkaProperties);
 		this.consumer.subscribe(Arrays.asList(topic));
 
@@ -83,6 +88,7 @@ public class KafkaConsumerThread implements Runnable {
 
 	public void stopListening() {
 	     stopConsumer = true;
+	     logger.info("Stop consumer listening command received");
 	   }
 
 	@Override
@@ -115,9 +121,9 @@ public class KafkaConsumerThread implements Runnable {
 		while (!stopConsumer) {
 			ConsumerRecords<String, String> records = consumer.poll(100);
 			for (ConsumerRecord<String, String> record : records) {
-				//				logger.info("Receive message: " + record.value() + ", Partition: "
-				//						+ record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
-				//						+ Thread.currentThread().getId());
+//								logger.info("Receive message: " + record.value() + ", Partition: "
+//										+ record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
+//										+ Thread.currentThread().getId());
 				try {
                     if (hdfsOutput) {
 					    outputStream.writeBytes( record.value() + "\n");

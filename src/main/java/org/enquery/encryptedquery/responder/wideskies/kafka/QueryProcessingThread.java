@@ -61,6 +61,7 @@ public class QueryProcessingThread implements Runnable {
 	public QueryProcessingThread(ConcurrentLinkedQueue<String> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
 			Query queryInput) {
 
+		logger.info("Initializing Query Processing Thread");
 		this.query = queryInput;
 		this.inputQueue = inputQueue;
 		this.responseQueue = responseQueue;
@@ -84,18 +85,20 @@ public class QueryProcessingThread implements Runnable {
 
 	public void stopProcessing() {
 		stopProcessing = true;
+		logger.info("Stop queue processing command received");
 	}
 
 	@Override
 	public void run() {
 
+		logger.info("Running Query Processing Thread {}", Thread.currentThread().getId());
 		String nextRecord = null;
 		long recordCount = 0;
 		JSONParser jsonParser = new JSONParser();
 
 		while (!stopProcessing) {
 			while ((nextRecord = inputQueue.poll()) != null) {
-				logger.info("Retrieved record {} Data: {}", recordCount, nextRecord);
+//				logger.info("Retrieved record {} Data: {}", recordCount, nextRecord);
 				JSONObject jsonData = null;
 				try {
 					jsonData = (JSONObject) jsonParser.parse(nextRecord);
@@ -118,7 +121,8 @@ public class QueryProcessingThread implements Runnable {
 			}
 
 			try {
-				Thread.currentThread().sleep(100);
+				Thread.currentThread();
+				Thread.sleep(100);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
@@ -127,6 +131,7 @@ public class QueryProcessingThread implements Runnable {
 		//Process Response
 		setResponseElements();
 		responseQueue.add(response);
+		logger.info("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), Thread.currentThread().getId());
 	}
 
 	/**
@@ -272,7 +277,7 @@ public class QueryProcessingThread implements Runnable {
 		// {
 		// logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
-
+        logger.info("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
 		response.setResponseElements(columns);
 	}
 }
