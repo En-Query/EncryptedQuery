@@ -45,11 +45,13 @@ public class QueryProcessingThread implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueryProcessingThread.class);
 	private boolean stopProcessing = false;
+	private boolean isRunning = true;
 	private final Query query;
 	private QueryInfo queryInfo = null;
 	private QuerySchema qSchema = null;
 	private int dataPartitionBitSize = 8;
 	private Response response = null;
+	
 
 	private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
 
@@ -88,6 +90,10 @@ public class QueryProcessingThread implements Runnable {
 		logger.info("Stop queue processing command received");
 	}
 
+	public boolean isRunning() {
+		return isRunning;
+	}
+	
 	@Override
 	public void run() {
 
@@ -132,6 +138,8 @@ public class QueryProcessingThread implements Runnable {
 		setResponseElements();
 		responseQueue.add(response);
 		logger.info("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), Thread.currentThread().getId());
+		isRunning = false;
+
 	}
 
 	/**

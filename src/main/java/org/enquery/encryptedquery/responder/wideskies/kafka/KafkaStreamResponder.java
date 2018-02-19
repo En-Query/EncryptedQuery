@@ -73,6 +73,7 @@ public class KafkaStreamResponder
   private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
   private List<QueryProcessingThread> queryProcessors;
+  private List<Thread> queryProcessorThreads;
 
   private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "Encrypted-Query");
   private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
@@ -142,12 +143,14 @@ public class KafkaStreamResponder
 
 			  // Initialize & Start Threads
 			  queryProcessors = new ArrayList<>();
+			  queryProcessorThreads = new ArrayList<>();
 			  for (int i = 0; i < numberOfProcessorThreads; i++) {
 				  QueryProcessingThread qpThread =
 						  new QueryProcessingThread(newRecordQueue, responseQueue, query); 
 				  queryProcessors.add(qpThread);
 				  Thread pt = new Thread(qpThread);
 				  pt.start();
+				  queryProcessorThreads.add(pt);
 
 			  }
 			  KafkaConsumerThread consumerThread =
@@ -156,13 +159,13 @@ public class KafkaStreamResponder
 			  Thread ct = new Thread(consumerThread);
 			  ct.start();
 
-              //Wait for Time Window to expire
+			  //Wait for Time Window to expire
 			  try {
 				  Thread.sleep(TimeUnit.SECONDS.toMillis(streamDuration));
 			  } catch (Exception e) {
 				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 			  }
-			  
+
 			  logger.info("Time Duration Expired, issuing stop commands to Threads" );
 			  //Shutdown the Consumer Thread
 			  consumerThread.stopListening();
@@ -177,21 +180,48 @@ public class KafkaStreamResponder
 			  for (QueryProcessingThread qpThread : queryProcessors) {
 				  qpThread.stopProcessing();
 			  }
-			  
+
 			  // Now Wait for all Processors to Update response Queue 
 			  try {
 				  Thread.sleep(2000);
 			  } catch (Exception e) {
 				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 			  }
-//			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
+
+			  // We have issued a stop order to queue processors and have waited 2 seconds for them to complete
+			  // Now poll the processors for a max of 1 minute to see when they are finished
+			  long stopCheckingTime = System.currentTimeMillis() + 60000;
+			  int queryProcessorsStopped = 0;
+
+			  int running = 0;
+			  do {
+				  running = 0;
+				  queryProcessorsStopped = 0;
+				  for (Thread thread : queryProcessorThreads) {
+					  if (thread.isAlive()) {
+						  running++;
+					  } else {
+						  queryProcessorsStopped++;
+					  }
+				  }
+				  logger.info( "There are {} query processes still running",running);
+				  try {
+					  Thread.sleep(500);
+				  } catch (Exception e) {
+					  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+				  }
+
+			  } while ( ( running > 0 ) && (System.currentTimeMillis() < stopCheckingTime) );
+
+			  logger.info("{} Query Processors of {} have stopped processing", queryProcessorsStopped, queryProcessors.size());
+			  //			  logger.info("Current time {} supposed to finish time {}", System.currentTimeMillis(), endTime);
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.
 			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" + Integer.toString(iterationCounter);
-			  logger.info("Processed {} iterations, storing result in file {}", iterationCounter, outputFile);
-			  setResponse();
-			  new LocalFileSystemStore().store(outputFile, response);
+			  logger.info("Processed iteration {}, storing result in file(s) {}", (iterationCounter + 1), outputFile + "-x-x");
+			  outputResponse(outputFile, iterationCounter + 1);
+			  //			  new LocalFileSystemStore().store(outputFile, response);
 			  iterationCounter++;
 
 		  }
@@ -205,7 +235,7 @@ public class KafkaStreamResponder
 
   // Sets the elements of the response object that will be passed back to the
   // querier for decryption
-  public void setResponse()
+  public void outputResponse(String outputFile, int iteration) 
   {
 //    logger.debug("numResponseElements = " + columns.size());
     // for(int key: columns.keySet())
@@ -213,8 +243,16 @@ public class KafkaStreamResponder
     // logger.debug("key = " + key + " column = " + columns.get(key));
     // }
         Response nextResponse;
+        int processorCounter = 1;
 		while ((nextResponse = responseQueue.poll()) != null) {
 		   response = nextResponse;
+		   String fileName = outputFile + "-" + iteration + "-" + processorCounter;
+		   try {
+ 		   new LocalFileSystemStore().store(fileName, response);
+ 		   processorCounter++;
+		   } catch (Exception e) {
+			   logger.error("Error writing Response File {} Exception: {}", fileName, e.getMessage());
+		   }
 		}
   }
 }
