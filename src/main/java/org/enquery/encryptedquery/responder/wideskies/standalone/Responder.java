@@ -280,6 +280,6 @@ public class Responder
     // logger.debug("key = " + key + " column = " + columns.get(key));
     // }
 
-    response.setResponseElements(columns);
+    response.addResponseElements(columns);
   }
 }

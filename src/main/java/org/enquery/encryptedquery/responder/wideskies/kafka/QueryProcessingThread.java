@@ -286,6 +286,6 @@ public class QueryProcessingThread implements Runnable {
 		// logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
         logger.info("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
-		response.setResponseElements(columns);
+		response.addResponseElements(columns);
 	}
 }

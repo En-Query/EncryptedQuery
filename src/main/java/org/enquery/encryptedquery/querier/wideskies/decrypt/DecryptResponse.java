@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -92,7 +93,8 @@ public class DecryptResponse
    */
   public Map<String,List<QueryResponseJSON>> decrypt(int numThreads) throws InterruptedException, PIRException
   {
-    Map<String,List<QueryResponseJSON>> resultMap = new HashMap<>(); // selector -> ArrayList of hits
+    Map<String,List<QueryResponseJSON>> returnResultMap = new HashMap<>(); // selector -> ArrayList of hits to return
+    Map<String,List<QueryResponseJSON>> resultMap; // selector -> ArrayList of hits
 
     QueryInfo queryInfo = response.getQueryInfo();
 
@@ -100,73 +102,90 @@ public class DecryptResponse
     List<String> selectors = querier.getSelectors();
     Map<Integer,String> embedSelectorMap = querier.getEmbedSelectorMap();
 
-    // Perform decryption on the encrypted columns
-    List<BigInteger> rElements = decryptElements(response.getResponseElements(), paillier);
-    logger.debug("rElements.size() = " + rElements.size());
+    for (TreeMap<Integer, BigInteger> responseLine : response.getResponseElements()) {
+    	resultMap = new HashMap<>();
+    	// Perform decryption on the encrypted columns
+    	List<BigInteger> rElements = decryptElements(responseLine, paillier);
+    	logger.debug("rElements.size() = " + rElements.size());
 
-    // Pull the necessary parameters
-    int dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+    	// Pull the necessary parameters
+    	int dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
 
-    // Initialize the result map and masks-- removes initialization checks from code below
-    Map<String,BigInteger> selectorMaskMap = new HashMap<>();
-    int selectorNum = 0;
-    for (String selector : selectors)
-    {
-      resultMap.put(selector, new ArrayList<>());
+    	// Initialize the result map and masks-- removes initialization checks from code below
+    	Map<String,BigInteger> selectorMaskMap = new HashMap<>();
+    	int selectorNum = 0;
+    	for (String selector : selectors)
+    	{
+    		resultMap.put(selector, new ArrayList<>());
 
-      // 2^{selectorNum*dataPartitionBitSize}(2^{dataPartitionBitSize} - 1)
-      BigInteger mask = TWO_BI.pow(selectorNum * dataPartitionBitSize).multiply((TWO_BI.pow(dataPartitionBitSize).subtract(BigInteger.ONE)));
-      logger.debug("selector = " + selector + " mask = " + mask.toString(2));
-      selectorMaskMap.put(selector, mask);
+    		// 2^{selectorNum*dataPartitionBitSize}(2^{dataPartitionBitSize} - 1)
+    		BigInteger mask = TWO_BI.pow(selectorNum * dataPartitionBitSize).multiply((TWO_BI.pow(dataPartitionBitSize).subtract(BigInteger.ONE)));
+    		logger.debug("selector = " + selector + " mask = " + mask.toString(2));
+    		selectorMaskMap.put(selector, mask);
 
-      ++selectorNum;
+    		++selectorNum;
+    	}
+
+    	// Decrypt via Runnables
+    	ExecutorService es = Executors.newCachedThreadPool();
+    	if (selectors.size() < numThreads)
+    	{
+    		numThreads = selectors.size();
+    	}
+    	int elementsPerThread = selectors.size() / numThreads; // Integral division.
+
+    	List<Future<Map<String,List<QueryResponseJSON>>>> futures = new ArrayList<>();
+    	for (int i = 0; i < numThreads; ++i)
+    	{
+    		// Grab the range of the thread and create the corresponding partition of selectors
+    		int start = i * elementsPerThread;
+    		int stop = start + elementsPerThread - 1;
+    		if (i == (numThreads - 1))
+    		{
+    			stop = selectors.size() - 1;
+    		}
+    		TreeMap<Integer,String> selectorsPartition = new TreeMap<>();
+    		for (int j = start; j <= stop; ++j)
+    		{
+    			selectorsPartition.put(j, selectors.get(j));
+    		}
+
+    		// Create the runnable and execute
+    		DecryptResponseTask<Map<String,List<QueryResponseJSON>>> runDec = new DecryptResponseTask<>(rElements, selectorsPartition, selectorMaskMap,
+    				queryInfo.clone(), embedSelectorMap);
+    		futures.add(es.submit(runDec));
+    	}
+
+    	// Pull all decrypted elements and add to resultMap
+    	try
+    	{
+    		for (Future<Map<String,List<QueryResponseJSON>>> future : futures)
+    		{
+    			resultMap.putAll(future.get(1, TimeUnit.DAYS));
+    		}
+    	} catch (TimeoutException | ExecutionException e)
+    	{
+    		throw new PIRException("Exception in decryption threads.", e);
+    	}
+
+    	es.shutdown();
+
+    	for (Entry<String, List<QueryResponseJSON>> key : resultMap.entrySet()) {
+    		if (returnResultMap.containsKey(key.getKey())) {
+    			List<QueryResponseJSON> currentValue = returnResultMap.get(key.getKey());
+    			for (QueryResponseJSON item : resultMap.get(key.getKey())) {
+    				currentValue.add(item);
+    			}
+    			returnResultMap.put(key.getKey(), currentValue);
+        		logger.debug("ResultMap Key {} found in response, adding {} new items",key.getKey(), 
+        				 resultMap.get(key.getKey()).size());
+    		} else {
+    			returnResultMap.put(key.getKey(), key.getValue());
+        		logger.debug("ResultMap Key {} not found in response, adding key with {} items",key.getKey(), resultMap.get(key.getKey()).size());
+    		}
+    	}
     }
-
-    // Decrypt via Runnables
-    ExecutorService es = Executors.newCachedThreadPool();
-    if (selectors.size() < numThreads)
-    {
-      numThreads = selectors.size();
-    }
-    int elementsPerThread = selectors.size() / numThreads; // Integral division.
-
-    List<Future<Map<String,List<QueryResponseJSON>>>> futures = new ArrayList<>();
-    for (int i = 0; i < numThreads; ++i)
-    {
-      // Grab the range of the thread and create the corresponding partition of selectors
-      int start = i * elementsPerThread;
-      int stop = start + elementsPerThread - 1;
-      if (i == (numThreads - 1))
-      {
-        stop = selectors.size() - 1;
-      }
-      TreeMap<Integer,String> selectorsPartition = new TreeMap<>();
-      for (int j = start; j <= stop; ++j)
-      {
-        selectorsPartition.put(j, selectors.get(j));
-      }
-
-      // Create the runnable and execute
-      DecryptResponseTask<Map<String,List<QueryResponseJSON>>> runDec = new DecryptResponseTask<>(rElements, selectorsPartition, selectorMaskMap,
-          queryInfo.clone(), embedSelectorMap);
-      futures.add(es.submit(runDec));
-    }
-
-    // Pull all decrypted elements and add to resultMap
-    try
-    {
-      for (Future<Map<String,List<QueryResponseJSON>>> future : futures)
-      {
-        resultMap.putAll(future.get(1, TimeUnit.DAYS));
-      }
-    } catch (TimeoutException | ExecutionException e)
-    {
-      throw new PIRException("Exception in decryption threads.", e);
-    }
-
-    es.shutdown();
-
-    return resultMap;
+    return returnResultMap;
   }
 
   // Method to perform basic decryption of each raw response element - does not

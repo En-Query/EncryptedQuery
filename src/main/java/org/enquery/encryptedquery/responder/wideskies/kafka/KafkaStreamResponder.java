@@ -68,6 +68,7 @@ public class KafkaStreamResponder
   private static final Logger logger = LoggerFactory.getLogger(KafkaStreamResponder.class);
 
   private Query query = null;
+  private QueryInfo queryInfo = null;
   
   private  ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
   private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
@@ -91,6 +92,7 @@ public class KafkaStreamResponder
   public KafkaStreamResponder(Query queryInput)
   {
     this.query = queryInput;
+    this.queryInfo = queryInput.getQueryInfo();
     
     kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId, forceFromStart);
 
@@ -218,7 +220,7 @@ public class KafkaStreamResponder
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.
-			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" + Integer.toString(iterationCounter);
+			  String outputFile = SystemConfiguration.getProperty("pir.outputFile");
 			  logger.info("Processed iteration {}, storing result in file(s) {}", (iterationCounter + 1), outputFile + "-x-x");
 			  outputResponse(outputFile, iterationCounter + 1);
 			  //			  new LocalFileSystemStore().store(outputFile, response);
@@ -242,17 +244,21 @@ public class KafkaStreamResponder
     // {
     // logger.debug("key = " + key + " column = " + columns.get(key));
     // }
+	    Response outputResponse = new Response(queryInfo);
         Response nextResponse;
-        int processorCounter = 1;
+        int processorCounter = 0;
 		while ((nextResponse = responseQueue.poll()) != null) {
-		   response = nextResponse;
-		   String fileName = outputFile + "-" + iteration + "-" + processorCounter;
-		   try {
- 		   new LocalFileSystemStore().store(fileName, response);
- 		   processorCounter++;
-		   } catch (Exception e) {
-			   logger.error("Error writing Response File {} Exception: {}", fileName, e.getMessage());
+		   for (TreeMap<Integer, BigInteger> nextItem : nextResponse.getResponseElements()) {
+			   outputResponse.addResponseElements(nextItem);
 		   }
+           processorCounter++;
 		}
+        logger.info("Combined {} response files into outputFile {}", processorCounter, outputFile);
+        try {
+ 		   new LocalFileSystemStore().store(outputFile, outputResponse);
+ 		   processorCounter++;
+	    } catch (Exception e) {
+			   logger.error("Error writing Response File {} Exception: {}", outputFile, e.getMessage());
+	    }
   }
 }

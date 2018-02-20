@@ -65,6 +65,7 @@ public class SerializationTest
   @BeforeClass
   public static void setUp() throws Exception
   {
+	  
     StandaloneTest.setup();
     jsonSerializer = new JsonSerializer();
     javaSerializer = new JavaSerializer();
