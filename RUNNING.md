@@ -91,12 +91,15 @@ Some important options:
 | -i | The file name containing the concrete query. | 
 | -qt | The name of the schema describing this query.  This value needs to match the schemaName value in the query schema defined earlier. | 
 | -nt | Number of threads. | 
-| -qs | Comma separated list of query schema file names.  In this case, the path to the queryschema.xml file created earlier in HDFS. | 
-| -ds | Comma separated list of data schema file names.  In this case, the path to the dataschema.xml file created earlier in HDFS. | 
+| -qs | Comma separated list of query schema file names. | 
+| -ds | Comma separated list of data schema file names. | 
 | -o | Prefix of output files names. | 
-| -m | Query generation method.  May be "default" (the default) or "fast". |
+| -m | Query generation method.  May be "default" (the default), "fast", or "fastwithjni". |
 
-**Note:** For higher hash bit sizes (`-hb`), query generation can take a while.  In this case this step can be sped up by increasing the number of threads (`-nt`) or using the fast query generation method (`-m fast`).
+**Note:** For higher hash bit sizes (`-hb`), query generation can take a while.  If extra cores are available, this step can be sped up by increasing the number of threads (e.g. `-nt 4`).  In addition, the "fast" and "fastwithjni" methods should be significantly faster than the default method.  To use the "fastwithjni" method, you will need to compile a native library separately (located in the `jni/` of the source subdirectory).  This should produce a library file called `libquerygen.so` or `libquerygen.dylib` (depending on your platform), which you can optionally copy to a more convenient location.  When creating the query file, the `java.library.path` property can be used to indicate where to locate the library:
+```
+java -cp encryptedquery-1.0.0-SNAPSHOT-exe.jar -Djava.library.path=<directory-containing-library> org.enquery.encryptedquery.querier.wideskies.QuerierDriver -m fastwithjni ...
+```
 
 ### Running the encrypted query (standalone mode)
 To perform the query, we copy the encrypted query file `demographic-query` to the server side and then run:
