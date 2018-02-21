@@ -62,7 +62,8 @@ public class EncryptQuery
   // Available methods for query generation.
   public static final String DEFAULT = "default";
   public static final String FAST = "fast";
-  public static final String[] METHODS = { DEFAULT, FAST };
+  public static final String FASTWITHJNI = "fastwithjni";
+  public static final String[] METHODS = { DEFAULT, FAST, FASTWITHJNI };
 
   // Method to use for query generation.
   private final String method;
@@ -267,7 +268,11 @@ public class EncryptQuery
     EncryptQueryTaskFactory factory;
     EncryptQueryTask task;
 
-    if (method.equals(FAST))
+    if (method.equals(FASTWITHJNI))
+    {
+      factory = new EncryptQueryFixedBaseWithJNITaskFactory(dataPartitionBitSize, paillier, selectorQueryVecMapping);
+    }
+    else if (method.equals(FAST))
     {
       factory = new EncryptQueryFixedBaseTaskFactory(dataPartitionBitSize, paillier, selectorQueryVecMapping);
     }
@@ -302,7 +307,11 @@ public class EncryptQuery
     // Create factory object to produce tasks for all the threads, and to pre-compute data used by all the threads if necessary
     EncryptQueryTaskFactory factory;
     EncryptQueryTask task;
-    if (method.equals(FAST))
+    if (method.equals(FASTWITHJNI))
+    {
+      factory = new EncryptQueryFixedBaseWithJNITaskFactory(dataPartitionBitSize, paillier, selectorQueryVecMapping);
+    }
+    else if (method.equals(FAST))
     {
       factory = new EncryptQueryFixedBaseTaskFactory(dataPartitionBitSize, paillier, selectorQueryVecMapping);
     }
