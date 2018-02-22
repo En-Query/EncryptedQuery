@@ -220,8 +220,8 @@ public class KafkaStreamResponder
 
 			  // Set the response object, extract, write to file. 
 			  // There will be a separate file for each iteration.
-			  String outputFile = SystemConfiguration.getProperty("pir.outputFile");
-			  logger.info("Processed iteration {}, storing result in file(s) {}", (iterationCounter + 1), outputFile + "-x-x");
+			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" +(iterationCounter + 1) ;
+			  logger.info("Processed iteration {}, storing result in file(s) {}", (iterationCounter + 1), outputFile );
 			  outputResponse(outputFile, iterationCounter + 1);
 			  //			  new LocalFileSystemStore().store(outputFile, response);
 			  iterationCounter++;
