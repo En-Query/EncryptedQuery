@@ -101,7 +101,7 @@ public class QueryProcessingThread implements Runnable {
 		String nextRecord = null;
 		long recordCount = 0;
 		JSONParser jsonParser = new JSONParser();
-
+        int selectorNullCount = 0;
 		while (!stopProcessing) {
 			while ((nextRecord = inputQueue.poll()) != null) {
 //				logger.info("Retrieved record {} Data: {}", recordCount, nextRecord);
@@ -114,6 +114,7 @@ public class QueryProcessingThread implements Runnable {
 				}
 				if (jsonData != null) {
 					String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
+					if (selector != null) {
 					try {
 						addDataElement(selector, jsonData);
 						recordCount++;
@@ -122,6 +123,10 @@ public class QueryProcessingThread implements Runnable {
 						}
 					} catch (Exception e) {
 						logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
+					}
+					} else {
+                        selectorNullCount++;
+//						logger.warn("No selector value found, record not added to queue for processing {}", nextRecord);
 					}
 				}
 			}
@@ -134,6 +139,9 @@ public class QueryProcessingThread implements Runnable {
 			}
 		}
 
+		if (selectorNullCount > 0) {
+			logger.warn("{} Records had a null selector from Query Processing thread {}", selectorNullCount, Thread.currentThread().getId());
+		}
 		//Process Response
 		setResponseElements();
 		responseQueue.add(response);

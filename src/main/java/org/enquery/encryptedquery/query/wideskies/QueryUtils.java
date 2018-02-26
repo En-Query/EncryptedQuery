@@ -307,11 +307,19 @@ public class QueryUtils {
 		DataSchema dSchema = DataSchemaRegistry.get(qSchema.getDataSchemaName());
 		String fieldName = qSchema.getSelectorName();
 
-		if (dSchema.isArrayElement(fieldName)) {
-			List<String> elementArray = StringUtils.jsonArrayStringToArrayList(dataMap.get(fieldName).toString());
-			selector = elementArray.get(0);
-		} else {
-			selector = dataMap.get(fieldName).toString();
+		try {
+			if (dSchema.isArrayElement(fieldName)) {
+				List<String> elementArray = StringUtils.jsonArrayStringToArrayList(dataMap.get(fieldName).toString());
+				selector = elementArray.get(0);
+			} else {
+				selector = dataMap.get(fieldName).toString();
+			}
+		} catch (NullPointerException e) {
+			return null;
+		} catch (Exception e) {
+			logger.warn("Exception extracting selector value for selector {} / Exception: {}", fieldName, e.getMessage()); 
+			return null;
+			
 		}
 		return selector;
 	}
