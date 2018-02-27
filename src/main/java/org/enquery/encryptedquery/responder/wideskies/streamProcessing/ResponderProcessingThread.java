@@ -19,7 +19,7 @@
  * 
  * This file has been modified from its original source.
  */
-package org.enquery.encryptedquery.responder.wideskies.kafka;
+package org.enquery.encryptedquery.responder.wideskies.streamProcessing;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -41,9 +41,9 @@ import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class QueryProcessingThread implements Runnable {
+public class ResponderProcessingThread implements Runnable {
 
-	private static final Logger logger = LoggerFactory.getLogger(QueryProcessingThread.class);
+	private static final Logger logger = LoggerFactory.getLogger(ResponderProcessingThread.class);
 	private boolean stopProcessing = false;
 	private boolean isRunning = true;
 	private final Query query;
@@ -51,6 +51,7 @@ public class QueryProcessingThread implements Runnable {
 	private QuerySchema qSchema = null;
 	private int dataPartitionBitSize = 8;
 	private Response response = null;
+	private long threadId = 0; 
 	
 
 	private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
@@ -60,10 +61,10 @@ public class QueryProcessingThread implements Runnable {
 	private ConcurrentLinkedQueue<String> inputQueue;
 	private ConcurrentLinkedQueue<Response> responseQueue;
 
-	public QueryProcessingThread(ConcurrentLinkedQueue<String> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
+	public ResponderProcessingThread(ConcurrentLinkedQueue<String> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
 			Query queryInput) {
 
-		logger.info("Initializing Query Processing Thread");
+		logger.debug("Initializing Responder Processing Thread");
 		this.query = queryInput;
 		this.inputQueue = inputQueue;
 		this.responseQueue = responseQueue;
@@ -87,7 +88,7 @@ public class QueryProcessingThread implements Runnable {
 
 	public void stopProcessing() {
 		stopProcessing = true;
-		logger.info("Stop queue processing command received");
+		logger.info("Stop responder processing command received for thread {}", threadId);
 	}
 
 	public boolean isRunning() {
@@ -97,7 +98,8 @@ public class QueryProcessingThread implements Runnable {
 	@Override
 	public void run() {
 
-		logger.info("Running Query Processing Thread {}", Thread.currentThread().getId());
+		threadId = Thread.currentThread().getId();
+		logger.info("Starting Responder Processing Thread {}", threadId);
 		String nextRecord = null;
 		long recordCount = 0;
 		JSONParser jsonParser = new JSONParser();
@@ -116,10 +118,11 @@ public class QueryProcessingThread implements Runnable {
 					String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
 					if (selector != null) {
 					try {
+//						logger.info("Processing selector {}", selector);
 						addDataElement(selector, jsonData);
 						recordCount++;
 						if ( (recordCount % 1000) == 0) {
-							logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, Thread.currentThread().getId());
+							logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
 						}
 					} catch (Exception e) {
 						logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());

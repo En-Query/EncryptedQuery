@@ -117,7 +117,7 @@ public class StandaloneQuery
       logger.info("selector = " + selector + " numDataElements = " + jsonData.size());
       try
       {
-        pirResponder.addDataElement(selector, jsonData);
+//        pirResponder.addDataElement(selector, jsonData);
       } catch (Exception e)
       {
         fail(e.toString());
@@ -127,9 +127,9 @@ public class StandaloneQuery
 
     // Set the response object, extract, write to file
     logger.info("Forming response from response elements; writing to a file");
-    pirResponder.setResponseElements();
-    Response responseOut = pirResponder.getResponse();
-    storage.store(fileResponse, responseOut);
+//    pirResponder.setResponseElements();
+//    Response responseOut = pirResponder.getResponse();
+//    storage.store(fileResponse, responseOut);
     logger.info("Completed forming response from response elements and writing to a file");
 
     // Perform decryption

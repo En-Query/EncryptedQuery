@@ -43,6 +43,7 @@ import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
+import org.enquery.encryptedquery.responder.wideskies.streamProcessing.ResponderProcessingThread;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
@@ -73,7 +74,7 @@ public class KafkaStreamResponder
   private  ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
   private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
-  private List<QueryProcessingThread> queryProcessors;
+  private List<ResponderProcessingThread> queryProcessors;
   private List<Thread> queryProcessorThreads;
 
   private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "Encrypted-Query");
@@ -100,6 +101,7 @@ public class KafkaStreamResponder
 
 	private static Properties createConsumerConfig(String brokers, String groupId, String clientId, 
 			boolean forceFromStart) {
+
 		logger.info("Configuring Kafka Consumer");
 		Properties props = new Properties();
 		props.put("bootstrap.servers", brokers);
@@ -147,8 +149,8 @@ public class KafkaStreamResponder
 			  queryProcessors = new ArrayList<>();
 			  queryProcessorThreads = new ArrayList<>();
 			  for (int i = 0; i < numberOfProcessorThreads; i++) {
-				  QueryProcessingThread qpThread =
-						  new QueryProcessingThread(newRecordQueue, responseQueue, query); 
+				  ResponderProcessingThread qpThread =
+						  new ResponderProcessingThread(newRecordQueue, responseQueue, query); 
 				  queryProcessors.add(qpThread);
 				  Thread pt = new Thread(qpThread);
 				  pt.start();
@@ -179,7 +181,7 @@ public class KafkaStreamResponder
 				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 			  }
 
-			  for (QueryProcessingThread qpThread : queryProcessors) {
+			  for (ResponderProcessingThread qpThread : queryProcessors) {
 				  qpThread.stopProcessing();
 			  }
 

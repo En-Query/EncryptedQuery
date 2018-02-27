@@ -50,6 +50,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Objects;
 import java.util.Random;
+import java.util.TreeMap;
 
 @Ignore
 public class SerializationTest
@@ -149,10 +150,12 @@ public class SerializationTest
 
       // Create Response.
       Response response = new Response(querier.getQuery().getQueryInfo());
+      TreeMap<Integer, BigInteger> nextItem = new TreeMap<>();
       for (Integer i = 0; i < 10; i++ )
       {
-        response.addElement(i.intValue(), new BigInteger(i.toString()));
+    	  nextItem.put(i.intValue(), new BigInteger(i.toString()));
       }
+      response.addResponseElements(nextItem);
       // Test response.
       checkSerializeDeserialize(response, service);
     } catch (Exception e)
