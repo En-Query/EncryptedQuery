@@ -31,6 +31,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.timer.Timer;
+
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.responder.wideskies.streamProcessing.ResponderProcessingThread;
@@ -58,7 +60,7 @@ public class Responder
   private Query query = null;
   private QueryInfo queryInfo = null;
 
-  private  ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
+  private ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
   private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
   
   private List<ResponderProcessingThread> responderProcessors;
@@ -79,7 +81,6 @@ public class Responder
    */
   public void computeStandaloneResponse() throws IOException
   {
-	  // Read in data, perform query
 	  String inputData = SystemConfiguration.getProperty("pir.inputData");
 	  try
 	  {
@@ -95,8 +96,8 @@ public class Responder
 			  responderProcessingThreads.add(pt);
 		  }    
 
+          // Read data file and add records to the queue
 		  BufferedReader br = new BufferedReader(new FileReader(inputData));
-
 		  String line;
 		  logger.info("Reading and processing datafile...");
 		  int lineCounter = 0;
@@ -105,20 +106,22 @@ public class Responder
 			  newRecordQueue.add(line);
 
 			  lineCounter++;
-			  if ( (lineCounter % 1000) == 0) {
+			  if ( (lineCounter % 100000) == 0) {
 				  logger.info("{} records added to the Queue so far...", lineCounter);
 			  }
 		  }
 		  br.close();
 		  logger.info("Imported {} total records for processing", lineCounter);
 		  
-		  //Wait 10 seconds for the processing threads to do their work
+		  //Wait 10 seconds for the processing threads to start their work
 		  try {
 			  Thread.sleep(TimeUnit.SECONDS.toMillis(10));
 		  } catch (Exception e) {
 			  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 		  }
 		  
+          // All data has been submitted to the queue so issue a stop command to the threads so they will return 
+		  // results when the queue is empty
 		  for (ResponderProcessingThread qpThread : responderProcessors) {
 			  qpThread.stopProcessing();
 		  }
@@ -131,6 +134,7 @@ public class Responder
 			  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 		  }
 
+		  long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
 		  int responderProcessorsStopped = 0;
           int stoppedProcessorsReported = -1;
 		  int running = 0;
@@ -144,9 +148,11 @@ public class Responder
 					  responderProcessorsStopped++;
 				  }
 			  }
-              if ( ( stoppedProcessorsReported != responderProcessorsStopped ) || stoppedProcessorsReported == -1 ) {
-            	  logger.info( "There are {} query processes still running",running);
+              if ( ( stoppedProcessorsReported != responderProcessorsStopped ) || ( stoppedProcessorsReported == -1 ) ||
+            		  ( System.currentTimeMillis() > notificationTimer )) {
+            	  logger.info( "There are {} responder processes still running",running);
             	  stoppedProcessorsReported = responderProcessorsStopped;
+            	  notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
               }
 			  try {
 				  Thread.sleep(1000);
@@ -156,8 +162,7 @@ public class Responder
 
 		  } while ( running > 0 );
 
-		  logger.info("{} Query Processors of {} have stopped processing", responderProcessorsStopped, responderProcessors.size());
-
+		  logger.info("{} responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
 		  
 	  } catch (Exception e)
 	  {
@@ -168,7 +173,7 @@ public class Responder
 	  outputResponse( outputFile );
   }
   
-  // Sets the elements of the response object that will be passed back to the
+  // Compile the results from all the threads into one response file that will be passed back to the
   // querier for decryption
   public void outputResponse(String outputFile) 
   {

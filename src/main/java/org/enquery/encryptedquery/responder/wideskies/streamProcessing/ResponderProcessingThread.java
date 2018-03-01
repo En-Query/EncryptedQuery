@@ -88,7 +88,7 @@ public class ResponderProcessingThread implements Runnable {
 
 	public void stopProcessing() {
 		stopProcessing = true;
-		logger.info("Stop responder processing command received for thread {}", threadId);
+		logger.debug("Stop responder processing command received for thread {}", threadId);
 	}
 
 	public boolean isRunning() {
@@ -121,9 +121,9 @@ public class ResponderProcessingThread implements Runnable {
 //						logger.info("Processing selector {}", selector);
 						addDataElement(selector, jsonData);
 						recordCount++;
-						if ( (recordCount % 1000) == 0) {
-							logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
-						}
+//						if ( (recordCount % 1000) == 0) {
+//							logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
+//						}
 					} catch (Exception e) {
 						logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
 					}
@@ -148,7 +148,8 @@ public class ResponderProcessingThread implements Runnable {
 		//Process Response
 		setResponseElements();
 		responseQueue.add(response);
-		logger.info("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), Thread.currentThread().getId());
+		logger.info("Processed {} total records in Thread {}", recordCount, threadId);
+		logger.debug("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), threadId);
 		isRunning = false;
 
 	}
@@ -296,7 +297,7 @@ public class ResponderProcessingThread implements Runnable {
 		// {
 		// logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
-        logger.info("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
+        logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
 		response.addResponseElements(columns);
 	}
 }
