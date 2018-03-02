@@ -66,11 +66,12 @@ public class Responder
   private List<ResponderProcessingThread> responderProcessors;
   private List<Thread> responderProcessingThreads;
 
-  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("query.processing.threads", "1"));
+  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
 
   public Responder(Query queryInput)
   {
     query = queryInput;
+    queryInfo = query.getQueryInfo();
 
   }
 

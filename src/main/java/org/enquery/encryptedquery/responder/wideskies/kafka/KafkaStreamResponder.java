@@ -70,7 +70,7 @@ public class KafkaStreamResponder
   private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
   private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
   private static final Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
-  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("query.processing.threads", "1"));
+  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
 
   private Properties kafkaProperties;
 
@@ -212,7 +212,7 @@ public class KafkaStreamResponder
 			  logger.info("{} Responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
 
 			  String outputFile = SystemConfiguration.getProperty("pir.outputFile") + "-" +(iterationCounter + 1) ;
-			  logger.info("Iteration {} finished, storing result in file(s) {}", (iterationCounter + 1), outputFile );
+			  logger.info("Iteration {} finished, storing result in file: {}", (iterationCounter + 1), outputFile );
 			  outputResponse(outputFile, iterationCounter + 1);
 			  iterationCounter++;
 
