@@ -392,7 +392,10 @@
                             <exclude>docs/*</exclude> <!-- Exclude docs -->
                             <exclude>examples/*</exclude> <!-- Exclude Examples -->
                             <exclude>examples/simple/*</exclude> <!-- Exclude simple example -->
-                            <exclude>examples/phone/*</exclude> <!-- Exclude Phone example -->
+                            <exclude>examples/phone/*</exclude> <!-- Phone log example -->
+                            <exclude>examples/kafka-stream/*</exclude> <!-- kafka streaming example -->
+                            <exclude>examples/kafka-stream/config/*</exclude> <!-- kafka streaming example -->
+                            <exclude>examples/kafka-stream/kafka-producer/*</exclude> <!-- kafka streaming example -->
                             <exclude>logs/*</exclude> <!-- Exclude logs -->
                             <exclude>jni/*</exclude> <!-- Exclude jni -->
                             <exclude>**/m2.conf

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema>
+ 
+    <schemaName>Streaming Phone Query</schemaName>
+    <dataSchemaName>Streaming Phone Data</dataSchemaName>
+    <selectorName>Caller #</selectorName>
+    <elements>
+      <name>Caller #</name>
+	    <name>Date/Time</name>
+      <name>Callee #</name>
+    </elements>
+</schema>
