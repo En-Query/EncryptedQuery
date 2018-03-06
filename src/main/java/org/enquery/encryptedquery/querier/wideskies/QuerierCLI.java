@@ -274,7 +274,7 @@ public class QuerierCLI
     options.addOption(optionBITSET);
 
     // ENCQUERYMETHOD
-    Option optionENCQUERYMETHOD = new Option("m", QuerierProps.ENCQUERYMETHOD, true, "which method to use for query generation -- must be one of \"" + EncryptQuery.DEFAULT + "\", \"" + EncryptQuery.FAST + "\"");
+    Option optionENCQUERYMETHOD = new Option("m", QuerierProps.ENCQUERYMETHOD, true, "which method to use for query generation -- must be one of: " + String.join(", ", EncryptQuery.METHODS));
     optionENCQUERYMETHOD.setRequired(false);
     optionENCQUERYMETHOD.setArgName(QuerierProps.ENCQUERYMETHOD);
     optionENCQUERYMETHOD.setType(String.class);
