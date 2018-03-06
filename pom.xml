@@ -59,7 +59,7 @@
         <spark.version>2.0.0</spark.version>
         <elasticsearch.version>2.3.4</elasticsearch.version>
         <storm.version>1.0.1</storm.version>
-        <kafka.version>0.9.0.1</kafka.version>
+        <kafka.version>1.0.0</kafka.version>
         <spark-streaming.version>2.0.0</spark-streaming.version>
         <encryptedquery.forkCount>1C</encryptedquery.forkCount>
         <encryptedquery.reuseForks>true</encryptedquery.reuseForks>
@@ -265,7 +265,7 @@
 
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.10</artifactId>
+            <artifactId>kafka_2.12</artifactId>
             <version>${kafka.version}</version>
             <exclusions>
                 <exclusion>
@@ -392,7 +392,10 @@
                             <exclude>docs/*</exclude> <!-- Exclude docs -->
                             <exclude>examples/*</exclude> <!-- Exclude Examples -->
                             <exclude>examples/simple/*</exclude> <!-- Exclude simple example -->
-                            <exclude>examples/phone/*</exclude> <!-- Exclude Phone example -->
+                            <exclude>examples/phone/*</exclude> <!-- Phone log example -->
+                            <exclude>examples/kafka-stream/*</exclude> <!-- kafka streaming example -->
+                            <exclude>examples/kafka-stream/config/*</exclude> <!-- kafka streaming example -->
+                            <exclude>examples/kafka-stream/kafka-producer/*</exclude> <!-- kafka streaming example -->
                             <exclude>logs/*</exclude> <!-- Exclude logs -->
                             <exclude>jni/*</exclude> <!-- Exclude jni -->
                             <exclude>**/m2.conf

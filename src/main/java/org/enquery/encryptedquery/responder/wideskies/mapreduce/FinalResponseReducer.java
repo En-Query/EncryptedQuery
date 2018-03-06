@@ -23,6 +23,7 @@ package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.TreeMap;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.LongWritable;
@@ -47,6 +48,7 @@ public class FinalResponseReducer extends Reducer<LongWritable,Text,LongWritable
   private MultipleOutputs<LongWritable,Text> mos = null;
 
   private Response response = null;
+  private TreeMap<Integer, BigInteger> responseElements = new TreeMap<>();
   private String outputFile = null;
   private HadoopFileSystemStore storage = null;
 
@@ -80,13 +82,15 @@ public class FinalResponseReducer extends Reducer<LongWritable,Text,LongWritable
       column = new BigInteger(val.toString());
       logger.debug("colNum = " + (int) colNum.get() + " column = " + column.toString());
     }
-    response.addElement((int) colNum.get(), column);
+    responseElements.put((int) colNum.get(), column);
+//    response.addElement((int) colNum.get(), column);
   }
 
   @Override
   public void cleanup(Context ctx) throws IOException, InterruptedException
   {
-    storage.store(outputFile, response);
+    response.addToElementsList(responseElements);
+	storage.store(outputFile, response);
     mos.close();
   }
 }

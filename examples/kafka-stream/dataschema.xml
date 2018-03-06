@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema>
+
+    <schemaName>Streaming Phone Data</schemaName>
+    <element>
+        <name>Action</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+    <element>
+        <name>Duration</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+    <element>
+        <name>Date/Time</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+    <element>
+        <name>Caller #</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+    <element>
+        <name>Callee #</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+</schema>

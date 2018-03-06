@@ -29,6 +29,7 @@ import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.standalone.Responder;
+import org.enquery.encryptedquery.responder.wideskies.streamProcessing.ResponderProcessingThread;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.Assert.fail;
 
@@ -107,28 +109,49 @@ public class StandaloneQuery
     storage.store(fileQuery, querier.getQuery());
 
     // Perform the PIR query and build the response elements
-    logger.info("Performing the PIR Query and constructing the response elements:");
+    logger.info("Configuration for perrforming the Encrypted Query and constructing the response:");
     Query query = storage.recall(fileQuery, Query.class);
-    Responder pirResponder = new Responder(query);
-    logger.info("Query and Responder elements constructed");
+
+    logger.info("Creating the queues");
+    ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
+    ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
+
+    logger.info("Starting the responder processing thread");
+    ResponderProcessingThread qpThread =
+			  new ResponderProcessingThread(newRecordQueue, responseQueue, query); 
+    Thread pt = new Thread(qpThread);
+    pt.start();
+    
+    logger.info("Adding data records to queue");
+    
     for (JSONObject jsonData : dataElements)
     {
-      String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
-      logger.info("selector = " + selector + " numDataElements = " + jsonData.size());
       try
       {
-        pirResponder.addDataElement(selector, jsonData);
+          newRecordQueue.add(jsonData.toJSONString());
       } catch (Exception e)
       {
         fail(e.toString());
       }
     }
-    logger.info("Completed the PIR Query and construction of the response elements:");
+    
+    logger.info("Data added to the queue wait 2 seconds then stop the thread");
+    try {
+    	Thread.sleep(2000);
+    } catch (Exception e) {
+    	logger.error("Exception in wait call {}", e.getMessage());
+    }
+    qpThread.stopProcessing();
+    logger.info("Wait for the Thread to stop then look for the response");
+    try {
+    	Thread.sleep(2000);
+    } catch (Exception e) {
+    	logger.error("Exception in wait call {}", e.getMessage());
+    }
 
+    logger.info("Retrieve response from queue");
+    Response responseOut = responseQueue.poll();   
     // Set the response object, extract, write to file
-    logger.info("Forming response from response elements; writing to a file");
-    pirResponder.setResponseElements();
-    Response responseOut = pirResponder.getResponse();
     storage.store(fileResponse, responseOut);
     logger.info("Completed forming response from response elements and writing to a file");
 

@@ -64,7 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tool for computing the PIR response in MapReduce
+ * Tool for computing the EncryptedQuery response in MapReduce
  * <p>
  * Each query run consists of three MR jobs:
  * <p>
@@ -465,6 +465,8 @@ public class ComputeResponseTool extends Configured implements Tool
     columnMultJob.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
     columnMultJob.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
     columnMultJob.getConfiguration().set("numPartitionsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
+    columnMultJob.getConfiguration().set("computeThreadPoolSize",  SystemConfiguration.getProperty("mapreduce.reduce.compute.threadPoolSize", "10"));
+    columnMultJob.getConfiguration().set("computePartitionsPerThread",  SystemConfiguration.getProperty("mapreduce.reduce.compute.partitionsPerThread", "1000"));
 
     columnMultJob.setJobName(columnMultJobName);
     columnMultJob.setJarByClass(ColumnMultMapper.class);

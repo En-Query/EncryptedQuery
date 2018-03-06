@@ -23,6 +23,8 @@ package org.enquery.encryptedquery.response.wideskies;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
 
@@ -49,20 +51,24 @@ public class Response implements Serializable, Storable
   private QueryInfo queryInfo = null; // holds all query info
 
   @Expose
-  private TreeMap<Integer,BigInteger> responseElements = null; // encrypted response columns, colNum -> column
+  private List<TreeMap<Integer,BigInteger>> responseElements = null; // encrypted response columns, colNum -> column
 
   public Response(QueryInfo queryInfoInput)
   {
     queryInfo = queryInfoInput;
-    responseElements = new TreeMap<>();
+    responseElements = new ArrayList<TreeMap<Integer, BigInteger>>();
   }
 
-  public TreeMap<Integer,BigInteger> getResponseElements()
+  public List<TreeMap<Integer,BigInteger>> getResponseElements()
   {
     return responseElements;
   }
 
-  public void setResponseElements(TreeMap<Integer,BigInteger> elements)
+  public void addResponseElements(TreeMap<Integer, BigInteger> newItems) {
+	  responseElements.add(newItems);
+  }
+  
+  public void setResponseElements(List<TreeMap<Integer,BigInteger>> elements)
   {
     responseElements = elements;
   }
@@ -72,9 +78,14 @@ public class Response implements Serializable, Storable
     return queryInfo;
   }
 
-  public void addElement(int position, BigInteger element)
+//  public void addElement(int position, BigInteger element)
+//  {
+//    responseElements.put(position, element);
+//  }
+
+  public void addToElementsList(TreeMap<Integer, BigInteger> listElement)
   {
-    responseElements.put(position, element);
+    responseElements.add(listElement);
   }
 
   @Override public boolean equals(Object o)

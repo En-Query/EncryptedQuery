@@ -1,0 +1,79 @@
+/*
+ * Copyright 2017 EnQuery.
+ * This product includes software licensed to EnQuery under 
+ * one or more license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ * 
+ * This file has been modified from its original source.
+ */
+package org.enquery.encryptedquery.responder.wideskies.kafka;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class KafkaStreamConfig {
+
+	private static final Logger logger = LoggerFactory.getLogger(KafkaStreamConfig.class);
+
+    private final String brokers;
+	private final String topic;
+	private final String groupId;
+	private final Boolean forceFromStart;
+	private String offsetLocation;
+	
+	public KafkaStreamConfig(String brokers, String topic, String groupId, Boolean forceFromStart) {
+
+		if (brokers == null || topic == null || groupId == null ) {
+			logger.error("Kafka Configuration Parameters cannot be null! Brokers {} Topic {} GroupId {}", 
+					brokers, topic, groupId);
+		}
+		
+		this.brokers = brokers;
+		this.topic = topic;
+		this.groupId = groupId;
+		this.forceFromStart = forceFromStart;
+	
+        if (forceFromStart) {
+        	offsetLocation = "earliest";
+        } else {
+        	offsetLocation = "latest";
+        }
+        
+	}
+
+	public String getBrokers() {
+		return brokers;
+	}
+
+	public String getTopic() {
+		return topic;
+	}
+
+	public String getGroupId() {
+		return groupId;
+	}
+
+	public Boolean getForceFromStart() {
+		return forceFromStart;
+	}
+
+	public String getOffsetLocation() {
+		return offsetLocation;
+	}
+
+	
+	
+}

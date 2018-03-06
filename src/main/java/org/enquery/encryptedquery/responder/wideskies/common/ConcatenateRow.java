@@ -38,9 +38,19 @@ public class ConcatenateRow {
 	  private static final Logger logger = LoggerFactory.getLogger(ConcatenateRow.class);
 	  private static int dataPartitionBitSize = 8;
 	  private static int numPartitionsPerElement = 0;
-
+/**
+ * This static method strings together the list of data partition pieces (in BigInteger form) into a list of bytes.  It will continue to string 
+ * data together until the Hit limit has been reached for a selector.   Data is padded to the specific length needed for the element
+ * @param dataPartitionsIter
+ * @param query
+ * @param rowIndex
+ * @param limitHitsPerSelector
+ * @param maxHitsPerSelector
+ * @return List of Tuple2(long, Byte)
+ * @throws IOException
+ */
 	  public static List<Tuple2<Long,Byte>> concatenateRow(Iterable<BytesArrayWritable> dataPartitionsIter, Query query, int rowIndex,
-		      boolean limitHitsPerSelector, int maxHitsPerSelector, boolean useCache) throws IOException
+		      boolean limitHitsPerSelector, int maxHitsPerSelector) throws IOException
 		  {
 		    List<Tuple2<Long,Byte>> returnPairs = new ArrayList<>();
 
@@ -56,14 +66,14 @@ public class ConcatenateRow {
             
         	int totalElementBytesNeeded = bytesPerPartition * numPartitionsPerElement;
         	
-            logger.debug(" dataPartitionBitSize {} bytesPerPartition {} numPartitionsPerElement {} totalElementBytesNeeded {}",
-            		 dataPartitionBitSize, bytesPerPartition, numPartitionsPerElement, totalElementBytesNeeded);
+//            logger.debug(" dataPartitionBitSize {} bytesPerPartition {} numPartitionsPerElement {} totalElementBytesNeeded {}",
+//            		 dataPartitionBitSize, bytesPerPartition, numPartitionsPerElement, totalElementBytesNeeded);
         	
 		    long colCounter = 0;
 		    int elementCounter = 0;
 		    for (BytesArrayWritable dataPartitions : dataPartitionsIter)
 		    {
-		      logger.debug("rowIndex = {} elementCounter = {}", rowIndex, elementCounter);
+//		      logger.debug("rowIndex = {} elementCounter = {}", rowIndex, elementCounter);
 
 		      if (limitHitsPerSelector)
 		      {
@@ -74,7 +84,7 @@ public class ConcatenateRow {
 		        }
 		      }
 		      
-		      logger.debug("dataPartitions.size() = {} rowIndex = {} colCounter = {} elementCounter = {}", dataPartitions.size(), rowIndex, colCounter, elementCounter);
+//		      logger.debug("dataPartitions.size() = {} rowIndex = {} colCounter = {} elementCounter = {}", dataPartitions.size(), rowIndex, colCounter, elementCounter);
 
 		      int byteCount = 0;
 		      for (int i = 0; i < dataPartitions.size(); ++i)
@@ -82,17 +92,17 @@ public class ConcatenateRow {
 		        BigInteger part = dataPartitions.getBigInteger(i);
                 byte partAsByte = part.byteValue();
    		        returnPairs.add(new Tuple2<>(colCounter++, partAsByte));
-   		        logger.debug("Added part {}", String.format("%02x",  partAsByte));
+ //  		        logger.debug("Added part {}", String.format("%02x",  partAsByte));
                 byteCount++;
 		      }
  		      for (int i = byteCount; i < totalElementBytesNeeded; i++ ) {
  	                byte partAsByte = new Byte("0");
  	   		        returnPairs.add(new Tuple2<>(colCounter++, partAsByte));
- 	   		        logger.debug("Added part {}", String.format("%02x",  partAsByte));
+ //	   		        logger.debug("Added part {}", String.format("%02x",  partAsByte));
  		      }
 		      ++elementCounter;
 		    }
-		    logger.info("rowIndex = {} has {} hits", rowIndex, elementCounter);
+		    logger.debug("Hash = {} has {} hits", rowIndex, elementCounter);
 		    return returnPairs;
 		  }
 }

@@ -190,7 +190,7 @@ public class ResponderCLI
 
     // platform
     Option optionPlatform = new Option("p", ResponderProps.PLATFORM, true,
-        "required -- 'mapreduce', 'spark', 'sparkstreaming', 'storm', or 'standalone' : Processing platform technology for the responder");
+        "required -- 'mapreduce', 'kafka', 'kafkamultithreaded', or 'standalone' : Processing platform technology for the responder");
     optionPlatform.setRequired(false);
     optionPlatform.setArgName(ResponderProps.PLATFORM);
     optionPlatform.setType(String.class);
@@ -264,6 +264,41 @@ public class ResponderCLI
     optionEsPort.setArgName(ResponderProps.ESPORT);
     optionEsPort.setType(String.class);
     options.addOption(optionEsPort);
+
+    // kafkaTopic
+    Option optionKafkaTopic = new Option("kt", ResponderProps.KAFKATOPIC, true, "required if dataInputFormat = 'kafka' -- kafka Topic Name");
+    optionKafkaTopic.setRequired(false);
+    optionKafkaTopic.setArgName(ResponderProps.KAFKATOPIC);
+    optionKafkaTopic.setType(String.class);
+    options.addOption(optionKafkaTopic);
+
+    // kafkaBrokers
+    Option optionKafkaBrokers = new Option("kb", ResponderProps.KAFKABROKERS, true, "required if dataInputFormat = 'kafka' -- kafka Brokers");
+    optionKafkaBrokers.setRequired(false);
+    optionKafkaBrokers.setArgName(ResponderProps.KAFKABROKERS);
+    optionKafkaBrokers.setType(String.class);
+    options.addOption(optionKafkaBrokers);
+    
+    // kafkaGroupId
+    Option optionKafkaGroupId = new Option("kg", ResponderProps.KAFKAGROUPID, true, "required if dataInputFormat = 'kafka' -- kafka Group Id");
+    optionKafkaGroupId.setRequired(false);
+    optionKafkaGroupId.setArgName(ResponderProps.KAFKAGROUPID);
+    optionKafkaGroupId.setType(String.class);
+    options.addOption(optionKafkaGroupId);
+    
+    // kafkaStreamDuration
+    Option optionKafkaStreamDuration = new Option("ksd", ResponderProps.KAFKASTREAMDURATION, true, "required if dataInputFormat = 'kafka' -- kafka Stream Duration");
+    optionKafkaStreamDuration.setRequired(false);
+    optionKafkaStreamDuration.setArgName(ResponderProps.KAFKASTREAMDURATION);
+    optionKafkaStreamDuration.setType(String.class);
+    options.addOption(optionKafkaStreamDuration);
+
+    // kafkaStreamIterations
+    Option optionKafkaStreamIterations = new Option("ksi", ResponderProps.KAFKASTREAMITERATIONS, true, "required if dataInputFormat = 'kafka' -- kafka Stream Iterations");
+    optionKafkaStreamIterations.setRequired(false);
+    optionKafkaStreamIterations.setArgName(ResponderProps.KAFKASTREAMITERATIONS);
+    optionKafkaStreamIterations.setType(String.class);
+    options.addOption(optionKafkaStreamIterations);
 
     // outputFile
     Option optionOutputFile = new Option("o", ResponderProps.OUTPUTFILE, true, "required -- Fully qualified name of output file in hdfs");
