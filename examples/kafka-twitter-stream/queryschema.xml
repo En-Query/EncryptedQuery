@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema>
+ 
+    <schemaName>Twitter Query</schemaName>
+    <dataSchemaName>Twitter Data</dataSchemaName>
+    <selectorName>user_location</selectorName>
+    <elements>
+      <name>user_name</name>
+	    <name>user_id</name>
+      <name>tweet_id</name>
+      <name>tweet_text</name>
+      <name>user_screen_name</name>
+      <name>user_location</name>
+      <name>tweet_timestamp</name>
+    </elements>
+</schema>

@@ -396,6 +396,10 @@
                             <exclude>examples/kafka-stream/*</exclude> <!-- kafka streaming example -->
                             <exclude>examples/kafka-stream/config/*</exclude> <!-- kafka streaming example -->
                             <exclude>examples/kafka-stream/kafka-producer/*</exclude> <!-- kafka streaming example -->
+                            <exclude>examples/kafka-twitter-stream/*</exclude> <!-- kafka Twitter streaming example -->
+                            <exclude>examples/kafka-twitter-stream/config/*</exclude> <!-- kafka Twitter streaming example -->
+                            <exclude>examples/kafka-twitter-stream/kafka-producer/*</exclude> <!-- kafka Twitter streaming example -->
+                            <exclude>examples/kafka-twitter-stream/kafka-producer/src/*</exclude> <!-- kafka Twitter streaming example -->
                             <exclude>logs/*</exclude> <!-- Exclude logs -->
                             <exclude>jni/*</exclude> <!-- Exclude jni -->
                             <exclude>**/m2.conf
