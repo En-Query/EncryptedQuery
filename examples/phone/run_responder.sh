@@ -16,7 +16,7 @@ die () {
 NAME=$1
 METHOD=$2
 
-ENQUERY_HOME="/opt/enqueryexamples"
+ENQUERY_HOME="../../target"
 
 if [ "$METHOD" == "standalone" ]; then
    echo "Running Standalone"
