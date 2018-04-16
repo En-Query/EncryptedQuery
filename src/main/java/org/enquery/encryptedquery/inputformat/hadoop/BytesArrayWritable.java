@@ -96,7 +96,9 @@ public class BytesArrayWritable extends ArrayWritable
   {
     BytesWritable element = (BytesWritable) this.get()[i];
 
-    return new BigInteger(pad(element.getBytes()));
+    /* We must call copyBytes() rather than getBytes() to get
+       the exact number of bytes from a BytesWritable. */
+    return new BigInteger(pad(element.copyBytes()));
   }
 
   /**
