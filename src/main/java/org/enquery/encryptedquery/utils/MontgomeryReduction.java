@@ -73,6 +73,25 @@ public class MontgomeryReduction
     return REDC(xm.multiply(ym));
   }
 
+  // slow -- for testing only
+  public BigInteger montExp(BigInteger xm, BigInteger e)
+  {
+    BigInteger prod = montOne;
+    int elen = e.bitLength();
+    for (int i=0; i<elen; i++)
+    {
+      if (e.testBit(i))
+      {
+	prod = montMultiply(prod, xm);
+      }
+      if (i < elen-1)
+      {
+	xm = montMultiply(xm, xm);
+      }
+    }
+    return prod;
+  }
+
   public BigInteger getMontOne() {
     return montOne;
   }

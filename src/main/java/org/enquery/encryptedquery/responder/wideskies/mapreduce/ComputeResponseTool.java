@@ -35,20 +35,25 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.elasticsearch.hadoop.mr.EsInputFormat;
 import org.enquery.encryptedquery.inputformat.hadoop.BaseInputFormat;
 import org.enquery.encryptedquery.inputformat.hadoop.BytesArrayWritable;
 import org.enquery.encryptedquery.inputformat.hadoop.InputFormatConst;
+import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
+import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.schema.data.DataSchemaLoader;
@@ -64,23 +69,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tool for computing the EncryptedQuery response in MapReduce
+ * Tool for computing the PIR response in MapReduce
  * <p>
- * Each query run consists of three MR jobs:
+ * Each query run consists of two MR jobs:
  * <p>
- * (1) Map: Initialization mapper reads data using an extension of the BaseInputFormat or elasticsearch and, according to the QueryInfo object, extracts the
- * selector from each dataElement according to the QueryType, hashes selector, and outputs {@link <hash(selector), dataElement>}
+ * (1) Map: Reads data using an extension of the BaseInputFormat or
+ * Elasticsearch.  For each data element, extracts the selector
+ * according to the QueryType and compute the hash value.  The range
+ * of possible hash values is divided into subranges and the group ID
+ * of the hash value is determined.  Outputs {@code <groupId,
+ * (hash,dataElement)>}.
  * <p>
- * Reduce: Calculates the encrypted row values for each selector and corresponding data element, striping across columns,and outputs each row entry by column
- * position: {@link <colNum, colVal>}
+ * Reduce: Calculates the encrypted row values for each selector and
+ * corresponding data element, striping across columns.  Encrypted
+ * values corresponding to different hash values in the subrange are
+ * multiplied together.  Groups of encrypted columns (with as many
+ * columns as the number of parts in a partitioned data element) are
+ * output key-value pairs {@code <startingColNum, listOfColumns>}.
  * <p>
- * (2) Map: Pass through mapper to aggregate by column number
+ * (2) Map: Reads pairs {@code <startingColNum, listOfColumns>} from
+ * the previous job and passes them through unchanged.
  * <p>
- * Reduce: Input: {@link <colnum, <colVals>>}; multiplies all colVals according to the encryption algorithm and outputs {@link <colNum, colVal>} for each colNum
- * <p>
- * (3) Map: Pass through mapper to move all final columns to one reducer
- * <p>
- * Reduce: Creates the Response object
+ * Reduce: Multiply together column groups corresponding to the same
+ * starting column number.  Each reducer task returns a {@code
+ * Response} object.
  * <P>
  * NOTE: If useHDFSExpLookupTable in the QueryInfo object is true, then the expLookupTable for the watchlist must be generated if it does not already exist in
  * hdfs.
@@ -162,24 +174,27 @@ public class ComputeResponseTool extends Configured implements Tool
       success = computeExpTable();
     }
 
-    // Read the data, hash selectors, form encrypted rows
+    // Read and sort the data by row (selector hash)
     if (success)
     {
-      success = readDataEncRows(outPathInit);
+      success = sortDataIntoRows(outPathInit);
     }
 
-    // Multiply the column values
+    // Compute a partial response for each hash range
     if (success)
     {
-      success = multiplyColumns(outPathInit, outPathColumnMult);
+//      success = processHashRanges(outPathColumnMult);
+      success = processColumns(outPathColumnMult);
     }
 
     // Concatenate the output to one file
     if (success)
     {
-      success = computeFinalResponse(outPathFinal);
+//      success = combineHashRangeResults(outPathFinal);
+      success = combineColumnResults(outPathFinal);
     }
 
+    // XXX
     // Clean up
     fs.delete(outPathInit, true);
     fs.delete(outPathColumnMult, true);
@@ -350,8 +365,7 @@ public class ComputeResponseTool extends Configured implements Tool
     return success;
   }
 
-  @SuppressWarnings("unchecked")
-  private boolean readDataEncRows(Path outPathInit) throws Exception
+  private boolean sortDataIntoRows(Path outPathInit) throws Exception
   {
     boolean success;
 
@@ -364,10 +378,10 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("query.schemas", SystemConfiguration.getProperty("query.schemas"));
 
     // Set the memory and heap options
-    job.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb", "2000"));
-    job.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb", "2000"));
-    job.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts", "-Xmx1800m"));
-    job.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts", "-Xmx1800m"));
+    job.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
+    job.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
+    job.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts"));
+    job.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts"));
 
     // Set necessary files for Mapper setup
     job.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
@@ -379,6 +393,8 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
     job.getConfiguration().set("pirWL.limitHitsPerSelector", SystemConfiguration.getProperty("pir.limitHitsPerSelector", "false"));
     job.getConfiguration().set("pirWL.maxHitsPerSelector", SystemConfiguration.getProperty("pir.maxHitsPerSelector", "100"));
+    job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
+    job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
 
     if (dataInputFormat.equals(InputFormatConst.ES))
     {
@@ -416,27 +432,27 @@ public class ComputeResponseTool extends Configured implements Tool
       FileInputFormat.setInputPaths(job, inputFile);
     }
 
-    job.setJarByClass(HashSelectorsAndPartitionDataMapper.class);
-    job.setMapperClass(HashSelectorsAndPartitionDataMapper.class);
+    job.setJarByClass(SortDataIntoRowsMapper.class);
+    job.setMapperClass(SortDataIntoRowsMapper.class);
 
+    // mapper outputs (hash, dataElement)
     job.setMapOutputKeyClass(IntWritable.class);
-    job.setMapOutputValueClass(BytesArrayWritable.class);
+    job.setMapOutputValueClass(BytesWritable.class);
 
     // Set the reducer and output params
     job.setNumReduceTasks(numReduceTasks);
-    job.setReducerClass(RowCalcReducer.class);
+    job.setReducerClass(SortDataIntoRowsReducer.class);
+    // reducer outputs ((hash, col), dataBytes)
+    job.setOutputKeyClass(IntPairWritable.class);
+    job.setOutputValueClass(BytesWritable.class);
 
     // Delete the output directory if it exists
     if (fs.exists(outPathInit))
     {
       fs.delete(outPathInit, true);
     }
-    job.setOutputKeyClass(LongWritable.class);
-    job.setOutputValueClass(Text.class);
     FileOutputFormat.setOutputPath(job, outPathInit);
-    job.getConfiguration().set("mapreduce.output.textoutputformat.separator", ",");
-
-    MultipleOutputs.addNamedOutput(job, FileConst.PIR, TextOutputFormat.class, LongWritable.class, Text.class);
+    MultipleOutputs.addNamedOutput(job, FileConst.PIR, SequenceFileOutputFormat.class, IntPairWritable.class, BytesWritable.class);
 
     // Submit job, wait for completion
     success = job.waitForCompletion(true);
@@ -444,72 +460,81 @@ public class ComputeResponseTool extends Configured implements Tool
     return success;
   }
 
-  private boolean multiplyColumns(Path outPathInit, Path outPathColumnMult) throws IOException, ClassNotFoundException, InterruptedException
+  private boolean processHashRanges(Path outPathColumnMult) throws Exception
   {
     boolean success;
 
-    Job columnMultJob = Job.getInstance(conf, "pir_columnMult");
-    columnMultJob.setSpeculativeExecution(false);
+    Job job = Job.getInstance(conf, "pirMR");
+    job.setSpeculativeExecution(false);
 
-    String columnMultJobName = "pir_columnMult";
+    // Set the memory and heap options
+    job.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
+    job.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
+    job.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts"));
+    job.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts"));
 
-    // Set the same job configs as for the first iteration
-    columnMultJob.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb", "2000"));
-    columnMultJob.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb", "2000"));
-    columnMultJob.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts", "-Xmx1800m"));
-    columnMultJob.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts", "-Xmx1800m"));
+    // Set necessary files for Mapper setup
+    job.getConfiguration().set("mapreduce.map.speculative", "false");
+    job.getConfiguration().set("mapreduce.reduce.speculative", "false");
 
-    columnMultJob.getConfiguration().set("mapreduce.map.speculative", "false");
-    columnMultJob.getConfiguration().set("mapreduce.reduce.speculative", "false");
-    columnMultJob.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
-    columnMultJob.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
-    columnMultJob.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
-    columnMultJob.getConfiguration().set("numPartitionsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
-    columnMultJob.getConfiguration().set("computeThreadPoolSize",  SystemConfiguration.getProperty("mapreduce.reduce.compute.threadPoolSize", "10"));
-    columnMultJob.getConfiguration().set("computePartitionsPerThread",  SystemConfiguration.getProperty("mapreduce.reduce.compute.partitionsPerThread", "1000"));
+    job.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
+    job.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
+    job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
+    job.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
+    job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
 
-    columnMultJob.setJobName(columnMultJobName);
-    columnMultJob.setJarByClass(ColumnMultMapper.class);
-    columnMultJob.setNumReduceTasks(numReduceTasks);
+    int hashGroupSize;
+    String hashGroupSizeStr = SystemConfiguration.getProperty("pir.hashGroupSize");
+    if (null == hashGroupSizeStr)
+    {
+      // ceil(2^hb / nr)
+      hashGroupSize = ((1 << queryInfo.getHashBitSize()) + numReduceTasks - 1) / numReduceTasks;
+    }
+    else
+    {
+      hashGroupSize = Integer.valueOf(hashGroupSizeStr);
+    }
+    job.getConfiguration().set("hashGroupSize", Integer.toString(hashGroupSize));
 
-    // Set the Mapper, InputFormat, and input path
-    columnMultJob.setMapperClass(ColumnMultMapper.class);
-    columnMultJob.setInputFormatClass(TextInputFormat.class);
+    job.setJarByClass(ProcessHashRangesMapper.class);
+    job.setMapperClass(ProcessHashRangesMapper.class);
+    job.setInputFormatClass(SequenceFileInputFormat.class);
 
-    FileStatus[] status = fs.listStatus(outPathInit);
+    FileStatus[] status = fs.listStatus(new Path(outputDirInit));
     for (FileStatus fstat : status)
     {
       if (fstat.getPath().getName().startsWith(FileConst.PIR))
       {
         logger.info("fstat.getPath() = " + fstat.getPath().toString());
-        FileInputFormat.addInputPath(columnMultJob, fstat.getPath());
+        FileInputFormat.addInputPath(job, fstat.getPath());
       }
     }
-    columnMultJob.setMapOutputKeyClass(LongWritable.class);
-    columnMultJob.setMapOutputValueClass(Text.class);
 
-    // Set the reducer and output options
-    columnMultJob.setReducerClass(ColumnMultReducer.class);
-    columnMultJob.setOutputKeyClass(LongWritable.class);
-    columnMultJob.setOutputValueClass(Text.class);
-    columnMultJob.getConfiguration().set("mapreduce.output.textoutputformat.separator", ",");
+    job.setMapOutputKeyClass(LongWritable.class);
+    job.setMapOutputValueClass(IntBytesPairWritable.class);
 
-    // Delete the output file, if it exists
+    // Set the reducer and output params
+    job.setNumReduceTasks(numReduceTasks);
+    job.setReducerClass(ProcessHashRangesReducer.class);
+    job.setOutputKeyClass(LongWritable.class);
+    job.setOutputValueClass(BytesArrayWritable.class);
+
+    // Delete the output directory if it exists
     if (fs.exists(outPathColumnMult))
     {
       fs.delete(outPathColumnMult, true);
     }
-    FileOutputFormat.setOutputPath(columnMultJob, outPathColumnMult);
+    FileOutputFormat.setOutputPath(job, outPathColumnMult);
 
-    MultipleOutputs.addNamedOutput(columnMultJob, FileConst.PIR_COLS, TextOutputFormat.class, LongWritable.class, Text.class);
+    MultipleOutputs.addNamedOutput(job, FileConst.PIR_COLS, SequenceFileOutputFormat.class, LongWritable.class, BytesArrayWritable.class);
 
     // Submit job, wait for completion
-    success = columnMultJob.waitForCompletion(true);
+    success = job.waitForCompletion(true);
 
     return success;
   }
 
-  private boolean computeFinalResponse(Path outPathFinal) throws ClassNotFoundException, IOException, InterruptedException
+  private boolean combineHashRangeResults(Path outPathFinal) throws ClassNotFoundException, IOException, InterruptedException
   {
     boolean success;
 
@@ -519,24 +544,25 @@ public class ComputeResponseTool extends Configured implements Tool
     String finalResponseJobName = "pir_finalResponse";
 
     // Set the same job configs as for the first iteration
-    finalResponseJob.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb", "2000"));
-    finalResponseJob.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb", "2000"));
-    finalResponseJob.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts", "-Xmx1800m"));
-    finalResponseJob.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts", "-Xmx1800m"));
+    finalResponseJob.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
+    finalResponseJob.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
+    finalResponseJob.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts"));
+    finalResponseJob.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts"));
 
     finalResponseJob.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
     finalResponseJob.getConfiguration().set("pirMR.outputFile", outputFile);
+    finalResponseJob.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
 
     finalResponseJob.getConfiguration().set("mapreduce.map.speculative", "false");
     finalResponseJob.getConfiguration().set("mapreduce.reduce.speculative", "false");
 
     finalResponseJob.setJobName(finalResponseJobName);
-    finalResponseJob.setJarByClass(ColumnMultMapper.class);
-    finalResponseJob.setNumReduceTasks(1);
+    finalResponseJob.setJarByClass(CombineHashRangeResultsMapper.class);
+    finalResponseJob.setNumReduceTasks(numReduceTasks);
 
     // Set the Mapper, InputFormat, and input path
-    finalResponseJob.setMapperClass(FinalResponseMapper.class);
-    finalResponseJob.setInputFormatClass(TextInputFormat.class);
+    finalResponseJob.setMapperClass(CombineHashRangeResultsMapper.class);
+    finalResponseJob.setInputFormatClass(SequenceFileInputFormat.class);
 
     FileStatus[] status = fs.listStatus(new Path(outputDirColumnMult));
     for (FileStatus fstat : status)
@@ -548,10 +574,133 @@ public class ComputeResponseTool extends Configured implements Tool
       }
     }
     finalResponseJob.setMapOutputKeyClass(LongWritable.class);
-    finalResponseJob.setMapOutputValueClass(Text.class);
+    finalResponseJob.setMapOutputValueClass(BytesArrayWritable.class);
 
     // Set the reducer and output options
-    finalResponseJob.setReducerClass(FinalResponseReducer.class);
+    finalResponseJob.setReducerClass(CombineHashRangeResultsReducer.class);
+    finalResponseJob.setOutputKeyClass(LongWritable.class);
+    finalResponseJob.setOutputValueClass(Text.class);
+    finalResponseJob.getConfiguration().set("mapreduce.output.textoutputformat.separator", ",");
+
+    // Delete the output file, if it exists
+    if (fs.exists(outPathFinal))
+    {
+      fs.delete(outPathFinal, true);
+    }
+    FileOutputFormat.setOutputPath(finalResponseJob, outPathFinal);
+    MultipleOutputs.addNamedOutput(finalResponseJob, FileConst.PIR_FINAL, TextOutputFormat.class, LongWritable.class, Text.class);
+
+    // Submit job, wait for completion
+    success = finalResponseJob.waitForCompletion(true);
+
+    return success;
+  }
+
+  private boolean processColumns(Path outPathColumnMult) throws Exception
+  {
+    boolean success;
+
+    Job job = Job.getInstance(conf, "pirMR");
+    job.setSpeculativeExecution(false);
+
+    // Set the memory and heap options
+    job.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
+    job.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
+    job.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts"));
+    job.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts"));
+
+    // Set necessary files for Mapper setup
+    job.getConfiguration().set("mapreduce.map.speculative", "false");
+    job.getConfiguration().set("mapreduce.reduce.speculative", "false");
+
+    job.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
+    job.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
+    job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
+    job.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
+    job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
+
+    job.setJarByClass(ProcessColumnsMapper.class);
+    job.setMapperClass(ProcessColumnsMapper.class);
+    job.setInputFormatClass(SequenceFileInputFormat.class);
+
+    FileStatus[] status = fs.listStatus(new Path(outputDirInit));
+    for (FileStatus fstat : status)
+    {
+      if (fstat.getPath().getName().startsWith(FileConst.PIR))
+      {
+        logger.info("fstat.getPath() = " + fstat.getPath().toString());
+        FileInputFormat.addInputPath(job, fstat.getPath());
+      }
+    }
+
+    job.setMapOutputKeyClass(IntWritable.class);
+    job.setMapOutputValueClass(IntBytesPairWritable.class);
+
+    // Set the reducer and output params
+    job.setNumReduceTasks(numReduceTasks);
+    job.setReducerClass(ProcessColumnsReducer.class);
+    job.setOutputKeyClass(LongWritable.class);
+    job.setOutputValueClass(BytesWritable.class);
+
+    // Delete the output directory if it exists
+    if (fs.exists(outPathColumnMult))
+    {
+      fs.delete(outPathColumnMult, true);
+    }
+    FileOutputFormat.setOutputPath(job, outPathColumnMult);
+
+    MultipleOutputs.addNamedOutput(job, FileConst.PIR_COLS, SequenceFileOutputFormat.class, LongWritable.class, BytesWritable.class);
+
+    // Submit job, wait for completion
+    success = job.waitForCompletion(true);
+
+    return success;
+  }
+
+  private boolean combineColumnResults(Path outPathFinal) throws ClassNotFoundException, IOException, InterruptedException
+  {
+    boolean success;
+
+    Job finalResponseJob = Job.getInstance(conf, "pir_finalResponse");
+    finalResponseJob.setSpeculativeExecution(false);
+
+    String finalResponseJobName = "pir_finalResponse";
+
+    // Set the same job configs as for the first iteration
+    finalResponseJob.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
+    finalResponseJob.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
+    finalResponseJob.getConfiguration().set("mapreduce.map.java.opts", SystemConfiguration.getProperty("mapreduce.map.java.opts"));
+    finalResponseJob.getConfiguration().set("mapreduce.reduce.java.opts", SystemConfiguration.getProperty("mapreduce.reduce.java.opts"));
+
+    finalResponseJob.getConfiguration().set("pirMR.queryInputDir", SystemConfiguration.getProperty("pir.queryInput"));
+    finalResponseJob.getConfiguration().set("pirMR.outputFile", outputFile);
+    finalResponseJob.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
+
+    finalResponseJob.getConfiguration().set("mapreduce.map.speculative", "false");
+    finalResponseJob.getConfiguration().set("mapreduce.reduce.speculative", "false");
+
+    finalResponseJob.setJobName(finalResponseJobName);
+    finalResponseJob.setJarByClass(CombineHashRangeResultsMapper.class);
+    finalResponseJob.setNumReduceTasks(1);
+
+    // Set the Mapper, InputFormat, and input path
+    finalResponseJob.setMapperClass(CombineColumnResultsMapper.class);
+    finalResponseJob.setInputFormatClass(SequenceFileInputFormat.class);
+
+    FileStatus[] status = fs.listStatus(new Path(outputDirColumnMult));
+    for (FileStatus fstat : status)
+    {
+      if (fstat.getPath().getName().startsWith(FileConst.PIR_COLS))
+      {
+        logger.info("fstat.getPath() = " + fstat.getPath().toString());
+        FileInputFormat.addInputPath(finalResponseJob, fstat.getPath());
+      }
+    }
+    finalResponseJob.setMapOutputKeyClass(LongWritable.class);
+    finalResponseJob.setMapOutputValueClass(BytesWritable.class);
+
+    // Set the reducer and output options
+    finalResponseJob.setReducerClass(CombineColumnResultsReducer.class);
     finalResponseJob.setOutputKeyClass(LongWritable.class);
     finalResponseJob.setOutputValueClass(Text.class);
     finalResponseJob.getConfiguration().set("mapreduce.output.textoutputformat.separator", ",");
