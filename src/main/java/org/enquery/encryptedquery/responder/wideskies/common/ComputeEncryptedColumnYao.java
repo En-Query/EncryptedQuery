@@ -138,4 +138,8 @@ public class ComputeEncryptedColumnYao implements ComputeEncryptedColumn
   {
 	Arrays.fill(hs,  null);
   }
+  
+  public void free()
+  {
+  }
 }

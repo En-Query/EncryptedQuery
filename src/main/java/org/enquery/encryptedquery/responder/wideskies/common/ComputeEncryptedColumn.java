@@ -43,4 +43,6 @@ public interface ComputeEncryptedColumn
   public BigInteger computeColumnAndClearData();
   
   public void clearData();
+  
+  public void free();
 }

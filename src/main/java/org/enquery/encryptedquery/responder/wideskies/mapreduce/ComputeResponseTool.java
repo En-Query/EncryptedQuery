@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,7 @@ import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
+import org.enquery.encryptedquery.responder.wideskies.ResponderProps;
 import org.enquery.encryptedquery.schema.data.DataSchemaLoader;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaLoader;
@@ -120,6 +122,7 @@ public class ComputeResponseTool extends Configured implements Tool
   private String queryInputDir = null;
   private String stopListFile = null;
   private int numReduceTasks = 1;
+  private String jniLibFilePath = null;
 
   private boolean useHDFSLookupTable = false;
 
@@ -157,6 +160,24 @@ public class ComputeResponseTool extends Configured implements Tool
 
     logger.info("outputFile = " + outputFile + " outputDirInit = " + outputDirInit + " outputDirColumnMult = " + outputDirColumnMult + " queryInputDir = "
         + queryInputDir + " stopListFile = " + stopListFile + " numReduceTasks = " + numReduceTasks + " esQuery = " + esQuery + " esResource = " + esResource);
+
+    checkJniLibFilePath(jniLibFilePath);
+  }
+
+  /*
+   * If a JNI library file path was specified, check that the file exists
+   */
+  private void checkJniLibFilePath(String jniLibFilePath) throws IOException
+  {
+	if (jniLibFilePath != null && !jniLibFilePath.isEmpty())
+	{
+	  logger.info("jniLibFilePath = {}", jniLibFilePath);
+	  if (!fs.exists(new Path(jniLibFilePath)))
+	  {
+		logger.error("The specified JNI library file does not exist!");
+		throw new IllegalArgumentException("JNI library file not found: " + jniLibFilePath);
+	  }
+	}
   }
 
   @Override
@@ -194,7 +215,6 @@ public class ComputeResponseTool extends Configured implements Tool
       success = combineColumnResults(outPathFinal);
     }
 
-    // XXX
     // Clean up
     fs.delete(outPathInit, true);
     fs.delete(outPathColumnMult, true);
@@ -246,6 +266,8 @@ public class ComputeResponseTool extends Configured implements Tool
     useHDFSLookupTable = SystemConfiguration.isSetTrue("pir.useHDFSLookupTable");
 
     numReduceTasks = SystemConfiguration.getIntProperty("pir.numReduceTasks", 1);
+
+    jniLibFilePath = SystemConfiguration.getProperty(ResponderProps.RESPONDERJNILIBFILEPATH);
   }
 
   private boolean computeExpTable() throws IOException, ClassNotFoundException, InterruptedException
@@ -618,6 +640,7 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
     job.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
+    job.getConfiguration().set(ResponderProps.ENCRYPTCOLUMNMETHOD, SystemConfiguration.getProperty("responder.encryptColumnMethod", "true"));
 
     job.setJarByClass(ProcessColumnsMapper.class);
     job.setMapperClass(ProcessColumnsMapper.class);
@@ -650,6 +673,13 @@ public class ComputeResponseTool extends Configured implements Tool
     FileOutputFormat.setOutputPath(job, outPathColumnMult);
 
     MultipleOutputs.addNamedOutput(job, FileConst.PIR_COLS, SequenceFileOutputFormat.class, LongWritable.class, BytesWritable.class);
+
+    // handle optional JNI library
+    if (jniLibFilePath != null && !jniLibFilePath.isEmpty())
+    {
+      URI uri = new URI(jniLibFilePath);
+      job.addCacheFile(uri);
+    }
 
     // Submit job, wait for completion
     success = job.waitForCompletion(true);

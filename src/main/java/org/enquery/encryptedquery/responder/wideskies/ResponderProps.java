@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.enquery.encryptedquery.inputformat.hadoop.InputFormatConst;
+import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnFactory;
 import org.enquery.encryptedquery.schema.data.DataSchemaLoader;
 import org.enquery.encryptedquery.schema.query.QuerySchemaLoader;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
@@ -56,6 +57,9 @@ public class ResponderProps
   public static final String STOPLISTFILE = "pir.stopListFile";
   public static final String QUERYSCHEMAS = "responder.querySchemas";
   public static final String DATASCHEMAS = "responder.dataSchemas";
+  public static final String ENCRYPTCOLUMNMETHOD = "responder.encryptColumnMethod";
+  public static final String RESPONDERJNILIBFILEPATH = "responder.jniLibraryFilePath";
+  public static final String RESPONDERJNILIBBASENAME = "responder.jniLibraryBaseName";
   public static final String NUMEXPLOOKUPPARTS = "pir.numExpLookupPartitions";
   public static final String USELOCALCACHE = "pir.useLocalCache";
   public static final String LIMITHITSPERSELECTOR = "pir.limitHitsPerSelector";
@@ -124,7 +128,7 @@ public class ResponderProps
   public static final List<String> PROPSLIST = Arrays
       .asList((String[]) ArrayUtils.addAll(new String[] {PLATFORM, QUERYINPUT, DATAINPUTFORMAT, INPUTDATA, BASEQUERY, ESRESOURCE, ESQUERY, ESNODES, OUTPUTFILE,
           BASEINPUTFORMAT, STOPLISTFILE, NUMREDUCETASKS, USELOCALCACHE, LIMITHITSPERSELECTOR, MAXHITSPERSELECTOR, MAPMEMORY, REDUCEMEMORY, MAPJAVAOPTS,
-          REDUCEJAVAOPTS, QUERYSCHEMAS, DATASCHEMAS, NUMEXPLOOKUPPARTS, USEHDFSLOOKUPTABLE, NUMDATAPARTITIONS, NUMCOLMULTPARTITIONS, USEMODEXPJOIN,
+          REDUCEJAVAOPTS, QUERYSCHEMAS, DATASCHEMAS, ENCRYPTCOLUMNMETHOD, RESPONDERJNILIBFILEPATH, RESPONDERJNILIBBASENAME, NUMEXPLOOKUPPARTS, USEHDFSLOOKUPTABLE, NUMDATAPARTITIONS, NUMCOLMULTPARTITIONS, USEMODEXPJOIN,
           COLMULTREDUCEBYKEY, ALLOWEMBEDDEDQUERYSCHEMAS, BATCHSECONDS, WINDOWLENGTH, USEQUEUESTREAM, MAXBATCHES, STOPGRACEFULLY}, STORMPROPS));
 
   /**
@@ -152,6 +156,12 @@ public class ResponderProps
     if (!SystemConfiguration.hasProperty(OUTPUTFILE))
     {
       logger.info("Must have the option " + OUTPUTFILE);
+      valid = false;
+    }
+
+    if (!Arrays.asList(ComputeEncryptedColumnFactory.METHODS).contains(SystemConfiguration.getProperty(ENCRYPTCOLUMNMETHOD)))
+    {
+      logger.info("The option " + ENCRYPTCOLUMNMETHOD + " must be one of: " + String.join(", ", ComputeEncryptedColumnFactory.METHODS));
       valid = false;
     }
 

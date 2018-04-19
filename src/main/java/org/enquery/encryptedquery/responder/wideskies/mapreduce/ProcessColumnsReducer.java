@@ -21,32 +21,20 @@ package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Base64;
-import java.util.concurrent.ExecutionException;
-
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumn;
-import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnBasic;
-import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnDeRooij;
-import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnYao;
+import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnFactory;
 import org.enquery.encryptedquery.serialization.HadoopFileSystemStore;
 import org.enquery.encryptedquery.utils.FileConst;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import scala.Tuple2;
 
 /**
  * Process column reducer
@@ -75,16 +63,19 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   private Query query = null;
   private int hashBitSize = 0;
   private int dataPartitionBitSize = 8;
-  private int numPartsPerElement = 0;
   private int bytesPerPart = 0;
   private static BigInteger NSquared = null;
 
+  private String encryptColumnMethod = null;
   private ComputeEncryptedColumn cec = null;
+  private int cnt = 0; // XXX
 
   @Override
   public void setup(Context ctx) throws IOException, InterruptedException
   {
     super.setup(ctx);
+
+    logger.info("XXX setup()");
 
     outputKey = new LongWritable();
     outputValue = new BytesWritable();
@@ -96,7 +87,6 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     hashBitSize = query.getQueryInfo().getHashBitSize();
     NSquared = query.getNSquared();
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
-    numPartsPerElement = Integer.valueOf(ctx.getConfiguration().get("numPartsPerElement"));
     if ((dataPartitionBitSize % 8 ) != 0)
     {
       logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
@@ -104,19 +94,17 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     }
     bytesPerPart = dataPartitionBitSize / 8 ;
 
-    //cec = new ComputeEncryptedColumnBasic(query.getQueryElements(), NSquared);
-    cec = new ComputeEncryptedColumnDeRooij(query.getQueryElements(), NSquared);
-    //cec = new ComputeEncryptedColumnYao(query.getQueryElements(), NSquared, dataPartitionBitSize, false);
+    encryptColumnMethod = ctx.getConfiguration().get("responder.encryptColumnMethod");
+    cec = ComputeEncryptedColumnFactory.getComputeEncryptedColumnMethod(encryptColumnMethod, query.getQueryElements(), NSquared, (1<<hashBitSize), dataPartitionBitSize);
   }
 
   @Override
   public void reduce(IntWritable colIndex, Iterable<IntBytesPairWritable> rowIndexAndData, Context ctx) throws IOException, InterruptedException
   {
+    cnt++; // XXX
     ctx.getCounter(MRStats.NUM_COLUMNS).increment(1);
 
     // read in all the (row, data) pairs
-    int maxCols = 0;
-    int counter = 0;
     for (IntBytesPairWritable val : rowIndexAndData)
     {
       // extract row index
@@ -141,6 +129,8 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   @Override
   public void cleanup(Context ctx) throws IOException, InterruptedException
   {
+    logger.info("XXX cleanup(), cnt = {}", cnt);
     mos.close();
+    cec.free();
   }
 }

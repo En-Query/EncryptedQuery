@@ -76,4 +76,8 @@ public class ComputeEncryptedColumnBasic implements ComputeEncryptedColumn
   {
 	product = BigInteger.ONE;
   }
+  
+  public void free()
+  {
+  }
 }

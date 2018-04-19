@@ -32,6 +32,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnFactory;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -389,6 +390,20 @@ public class ResponderCLI
     optionQuerySchemas.setArgName(ResponderProps.QUERYSCHEMAS);
     optionQuerySchemas.setType(String.class);
     options.addOption(optionQuerySchemas);
+
+    // responder.encryptColumnMethod
+    Option optionEncryptColumnMethod = new Option("ra", ResponderProps.ENCRYPTCOLUMNMETHOD, true, "required -- Algorithm to use for response generation.  Must be one of: " + String.join(", ", ComputeEncryptedColumnFactory.METHODS));
+    optionEncryptColumnMethod.setRequired(false);
+    optionEncryptColumnMethod.setArgName(ResponderProps.ENCRYPTCOLUMNMETHOD);
+    optionEncryptColumnMethod.setType(String.class);
+    options.addOption(optionEncryptColumnMethod);
+
+    // responder.jniLibraryFilePath
+    Option optionJniLibrary = new Option("jlib", ResponderProps.RESPONDERJNILIBFILEPATH, true, "optional -- Path of native library for response generation with JNI");
+    optionJniLibrary.setRequired(false);
+    optionJniLibrary.setArgName(ResponderProps.RESPONDERJNILIBFILEPATH);
+    optionJniLibrary.setType(String.class);
+    options.addOption(optionJniLibrary);
 
     // pir.numExpLookupPartitions
     Option optionExpParts = new Option("expParts", ResponderProps.NUMEXPLOOKUPPARTS, true, "optional -- Number of partitions for the exp lookup table");

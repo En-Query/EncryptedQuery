@@ -161,6 +161,10 @@ public class ComputeEncryptedColumnDeRooij implements ComputeEncryptedColumn
     maxHeap.clear();
   }
 
+  public void free()
+  {	  
+  }
+  
   public void dumpAndClearHeap()
   {
     System.out.println("dumpAndClearHeap()");

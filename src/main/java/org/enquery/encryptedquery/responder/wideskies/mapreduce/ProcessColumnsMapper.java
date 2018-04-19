@@ -50,9 +50,7 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
 {
   private static final Logger logger = LoggerFactory.getLogger(ProcessColumnsMapper.class);
 
-//  private int numPartsPerElement = 0;
   private int dataPartitionBitSize = 0;
-//  private int numBytesPerElement = 0;
   private int bytesPerPart = 0;
   
   private IntWritable keyOut = null;
@@ -63,9 +61,7 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
   {
     super.setup(ctx);
 
-//    numPartsPerElement = Integer.valueOf(ctx.getConfiguration().get("numPartsPerElement"));
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
-//    numBytesPerElement = numPartsPerElement * dataPartitionBitSize / 8;
     bytesPerPart = dataPartitionBitSize / 8;  // XXX assume divisible by 8
 
     keyOut = new IntWritable();
@@ -83,10 +79,8 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     int numParts = entry.length / bytesPerPart;  // XXX assume divisible
     for (int i = 0; i < numParts; i++)
     {	
-//    keyOut.set(colIndex / numBytesPerElement);
   	  keyOut.set(colIndex / bytesPerPart + i);
   	  byte[] part = Arrays.copyOfRange(entry, i * bytesPerPart, (i+1) * bytesPerPart);
-//  	  logger.info("YYY row={}, col={}, part.length={}, part[0]={}, part[1]={}", rowIndex, colIndex, part.length, part[0], part[1]);
   	  valueOut.getSecond().set(part, 0, part.length);
   	  valueOut.getFirst().set(rowIndex);
   	  ctx.write(keyOut, valueOut);
