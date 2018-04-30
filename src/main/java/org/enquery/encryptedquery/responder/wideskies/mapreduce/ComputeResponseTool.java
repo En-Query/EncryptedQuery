@@ -121,6 +121,8 @@ public class ComputeResponseTool extends Configured implements Tool
   private String outputDirFinal = null;
   private String queryInputDir = null;
   private String stopListFile = null;
+  private Boolean limitHitsPerSelector = false;
+  private Integer maxHitsPerSelector = -1;
   private int numReduceTasks = 1;
   private String jniLibFilePath = null;
 
@@ -158,8 +160,9 @@ public class ComputeResponseTool extends Configured implements Tool
       qSchema = QuerySchemaRegistry.get(queryInfo.getQueryType());
     }
 
-    logger.info("outputFile = " + outputFile + " outputDirInit = " + outputDirInit + " outputDirColumnMult = " + outputDirColumnMult + " queryInputDir = "
-        + queryInputDir + " stopListFile = " + stopListFile + " numReduceTasks = " + numReduceTasks + " esQuery = " + esQuery + " esResource = " + esResource);
+    logger.info("outputFile = " + outputFile + " outputDirInit = " + outputDirInit + " outputDirColumnMult = " + outputDirColumnMult
+      + " queryInputDir = " + queryInputDir + " stopListFile = " + stopListFile + " limitHitsPerSelector = " + limitHitsPerSelector
+      + " maxHitsPerSelector = " + maxHitsPerSelector + " numReduceTasks = " + numReduceTasks + " esQuery = " + esQuery + " esResource = " + esResource);
 
     checkJniLibFilePath(jniLibFilePath);
   }
@@ -264,6 +267,9 @@ public class ComputeResponseTool extends Configured implements Tool
     stopListFile = SystemConfiguration.getProperty("pir.stopListFile");
 
     useHDFSLookupTable = SystemConfiguration.isSetTrue("pir.useHDFSLookupTable");
+
+    limitHitsPerSelector = SystemConfiguration.isSetTrue("pir.limitHitsPerSelector");
+    maxHitsPerSelector = Integer.parseInt(SystemConfiguration.getProperty("pir.maxHitsPerSelector"));
 
     numReduceTasks = SystemConfiguration.getIntProperty("pir.numReduceTasks", 1);
 
@@ -413,8 +419,8 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("mapreduce.reduce.speculative", "false");
 
     job.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
-    job.getConfiguration().set("pirWL.limitHitsPerSelector", SystemConfiguration.getProperty("pir.limitHitsPerSelector", "false"));
-    job.getConfiguration().set("pirWL.maxHitsPerSelector", SystemConfiguration.getProperty("pir.maxHitsPerSelector", "100"));
+    job.getConfiguration().set("pirWL.limitHitsPerSelector", limitHitsPerSelector.toString());
+    job.getConfiguration().set("pirWL.maxHitsPerSelector", maxHitsPerSelector.toString());
     job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
 

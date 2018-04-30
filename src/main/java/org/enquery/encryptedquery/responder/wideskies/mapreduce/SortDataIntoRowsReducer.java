@@ -64,6 +64,9 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
   private IntPairWritable outputKey = null;
   private MultipleOutputs<IntPairWritable,BytesWritable> mos = null;
   
+  private boolean limitHitsPerSelector = false;
+  private int maxHitsPerSelector = -1;
+
   @Override
   public void setup(Context ctx) throws IOException, InterruptedException
   {
@@ -73,20 +76,33 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
     _colW = new IntWritable();
     outputKey = new IntPairWritable(_rowW, _colW);
     mos = new MultipleOutputs<>(ctx);
+
+    if (ctx.getConfiguration().get("pirWL.limitHitsPerSelector").equals("true"))
+    {
+      limitHitsPerSelector = true;
+    }
+    maxHitsPerSelector = Integer.parseInt(ctx.getConfiguration().get("pirWL.maxHitsPerSelector"));
   }
 
   @Override
   public void reduce(IntWritable rowIndexW, Iterable<BytesWritable> dataElements, Context ctx) throws IOException, InterruptedException
   {
+	int hitCount = 0;
     int col = 0;
     int rowIndex = rowIndexW.get();
 
     outputKey.getFirst().set(rowIndex);
     for (BytesWritable dataElement : dataElements)
     {
+      if (limitHitsPerSelector && hitCount >= maxHitsPerSelector)
+      {
+        logger.info("maxHitsPerSelector limit ({}) reached for rowIndex = {}", maxHitsPerSelector, rowIndex);
+        break;
+      }
       outputKey.getSecond().set(col);
       mos.write(FileConst.PIR, outputKey, dataElement);
       col += dataElement.getLength();
+      hitCount += 1;
     }
   }
 
