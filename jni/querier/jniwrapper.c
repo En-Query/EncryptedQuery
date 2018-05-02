@@ -26,8 +26,6 @@
 
 #include <assert.h>
 
-// https://stackoverflow.com/questions/2093112/why-i-should-not-reuse-a-jclass-and-or-jmethodid-in-jni
-
 
 JNIEXPORT jlong JNICALL Java_org_enquery_encryptedquery_querier_wideskies_encrypt_EncryptQueryFixedBaseWithJNITaskFactory_newContext
 (JNIEnv *env, jobject thisObj, jbyteArray jPBytes, jbyteArray jGeneratorPSquaredBytes, jbyteArray jQBytes, jbyteArray jGeneratorQSquaredBytes, jint jPrimeBitLength, jint jWindowSize, jint jNumWindows)
@@ -74,6 +72,11 @@ JNIEXPORT jlong JNICALL Java_org_enquery_encryptedquery_querier_wideskies_encryp
   mpz_clear(gen_p2);
   mpz_clear(gen_q2);
 
+  (*env)->ReleaseByteArrayElements(env, jPBytes, jpbytes, JNI_ABORT);
+  (*env)->ReleaseByteArrayElements(env, jQBytes, jqbytes, JNI_ABORT);
+  (*env)->ReleaseByteArrayElements(env, jGeneratorPSquaredBytes, jgenp2bytes, JNI_ABORT);
+  (*env)->ReleaseByteArrayElements(env, jGeneratorQSquaredBytes, jgenq2bytes, JNI_ABORT);
+
   return (jlong) ctx;
 }
 
@@ -98,9 +101,7 @@ JNIEXPORT jbyteArray JNICALL Java_org_enquery_encryptedquery_querier_wideskies_e
   mpz_init(ans);
 
   encquery_encrypt(ctx, ans, (int)jBitIndex, (unsigned char*)jrpbytes, (int)jrpBytesLength, (unsigned char*)jrqbytes, (int)jrqBytesLength);
-
   //gmp_printf ("from C: ans = %Zd\n", ans);
-
   
   ansbyteslength = mpz_sizeinbase(ans, 256);
   //printf ("ansbyteslength: %d\n", (int)ansbyteslength);
@@ -111,21 +112,15 @@ JNIEXPORT jbyteArray JNICALL Java_org_enquery_encryptedquery_querier_wideskies_e
   assert (NULL != ansbytes);
 
   mpz_export(ansbytes, &tmpsize, 1, 1, -1, 0, ans);
-
   assert (tmpsize == ansbyteslength);
-  (*env)->ReleaseByteArrayElements(env, ansArray, ansbytes, JNI_COMMIT);
 
-//  (*env)->DeleteLocalRef(env, ansArray);
+  (*env)->ReleaseByteArrayElements(env, jrpBytes, jrpbytes, JNI_ABORT);
+  (*env)->ReleaseByteArrayElements(env, jrqBytes, jrqbytes, JNI_ABORT);
+  (*env)->ReleaseByteArrayElements(env, ansArray, ansbytes, 0);
   
   mpz_clear(ans);
 
   //printf ("from C: returning ansArray\n");
-  //printf ("from C: sleeping for 3 seconds...\n");
-  //fflush(stdout);
-  //sleep(3);
-  //printf ("from C: done sleeping\n");
-  //fflush(stdout);
-
   return ansArray;
 }
 
