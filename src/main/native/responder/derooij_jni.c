@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "derooij_javah.h"
+#include "org_enquery_encryptedquery_responder_wideskies_common_ComputeEncryptedColumnDeRooijJNI.h"
 #include "derooij_wrap.h"
 #include "derooij.h"
 

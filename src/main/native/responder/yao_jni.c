@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "yao_javah.h"
+#include "org_enquery_encryptedquery_responder_wideskies_common_ComputeEncryptedColumnYaoJNI.h"
 #include "yao_wrap.h"
 #include "yao.h"
 

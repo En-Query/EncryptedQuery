@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "jniwrapper.h"
+#include "org_enquery_encryptedquery_querier_wideskies_encrypt_EncryptQueryFixedBaseWithJNITask.h"
 #include "querygen.h"
 #include <gmp.h>
 #include <stdio.h>

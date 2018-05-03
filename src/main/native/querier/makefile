@@ -35,7 +35,7 @@ else
 endif
 
                        
-JDK_INCLUDES=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OS)
+JDK_INCLUDES=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OS) -I$(JNI_HEADERS_DIR)
 GMP_INSTALL_DIR?=
 BUILD_DIR?=build
 INSTALL_DIR?=install
@@ -49,13 +49,13 @@ all: $(LIBNAME)
 $(LIBNAME): $(BUILD_DIR)/querygen.o $(BUILD_DIR)/mont.o $(BUILD_DIR)/jniwrapper.o
 	gcc $(CFLAGS) $(LDFLAGS) -shared -o $@ $^
 
-$(BUILD_DIR)/querygen.o: querygen.c querygen.h mont.h
+$(BUILD_DIR)/querygen.o: querygen.c
 	gcc $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/mont.o: mont.c mont.h
+$(BUILD_DIR)/mont.o: mont.c
 	gcc $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/jniwrapper.o: jniwrapper.c jniwrapper.h
+$(BUILD_DIR)/jniwrapper.o: jniwrapper.c 
 	gcc $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 

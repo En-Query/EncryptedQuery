@@ -348,6 +348,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 			</plugin>
+			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -492,9 +493,8 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.5.1</version>
+					<version>3.7.0</version>
 					<configuration>
-						<compilerVersion>${javac.target}</compilerVersion>
 						<source>${javac.target}</source>
 						<target>${javac.target}</target>
 					</configuration>
@@ -766,9 +766,22 @@
 		</profile>
 		
 		<profile>
-      		<id>native-libs</id>
-		     <build>
+			<id>native-libs</id>
+			<properties>
+				<jni.headers.dir>${project.build.directory}/native-builds/generated-headers</jni.headers.dir>
+			</properties>
+		    <build>
 		     	<plugins>
+				     <plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<configuration>
+							<compilerArgs>
+					            <arg>-h</arg>
+					            <arg>${jni.headers.dir}</arg>
+							</compilerArgs>					
+						</configuration>
+					</plugin>
 					<plugin>
 						<!-- build native C code -->
 						<artifactId>maven-antrun-plugin</artifactId>
@@ -783,50 +796,46 @@
 									<target name="build-native"
 										description="compiles native code">
 										<property name="make.cmd" value="make" />
+										<property name="javac.cmd" value="${java.home}/../bin/javac"/>
 										<property name="gmp.src.dir" value="src/main/native/gmp" />
-										<property name="querier.src.dir"
-											value="src/main/native/querier" />
-										<property name="responder.src.dir"
-											value="src/main/native/responder" />
-										<property name="native.build.dir"
-											value="${project.build.directory}/native-builds" />
-										<property name="gmp.install.dir"
-											value="${project.build.directory}/gmp" />
-										<property name="native.install.dir"
-											value="${project.build.directory}/lib/native" />
-				
+										<property name="querier.src.dir" value="src/main/native/querier" />
+										<property name="responder.src.dir" value="src/main/native/responder" />
+										<property name="native.build.dir" value="${project.build.directory}/native-builds" />
+										<property name="gmp.install.dir" value="${project.build.directory}/gmp" />
+										<property name="native.install.dir" value="${project.build.directory}/lib/native" />
+										<property name="querier.build.dir" value="${native.build.dir}/querier"/>
+										
 										<mkdir dir="${native.build.dir}" />
 										<mkdir dir="${native.build.dir}/gmp" />
-										<mkdir dir="${native.build.dir}/querier" />
+										<mkdir dir="${querier.build.dir}" />
 										<mkdir dir="${native.build.dir}/responder" />
 										<mkdir dir="${native.install.dir}" />
 				
 										<!-- Build GMP -->
-										<exec dir="${gmp.src.dir}" executable="${make.cmd}"
-											failonerror="true">
+										<exec dir="${gmp.src.dir}" executable="${make.cmd}" failonerror="true">
 											<arg line="install" />
 											<arg line="BUILD_DIR=${native.build.dir}/gmp" />
 											<arg line="INSTALL_DIR=${gmp.install.dir}" />
 										</exec>
 				
 										<!-- Build Querier -->
-										<exec dir="${querier.src.dir}" executable="${make.cmd}"
-											failonerror="true">
+										<exec dir="${querier.src.dir}" executable="${make.cmd}" failonerror="true">
 											<arg line="install" />
 											<arg line="JAVA_HOME=${java.home}/.." />
 											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
-											<arg line="BUILD_DIR=${native.build.dir}/querier" />
+											<arg line="BUILD_DIR=${querier.build.dir}" />
 											<arg line="INSTALL_DIR=${native.install.dir}" />
+											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}"/>
 										</exec>
 				
 										<!-- Build Responder -->
-										<exec dir="${responder.src.dir}" executable="${make.cmd}"
-											failonerror="true">
+										<exec dir="${responder.src.dir}" executable="${make.cmd}" failonerror="true">
 											<arg line="install" />
 											<arg line="JAVA_HOME=${java.home}/.." />
 											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
 											<arg line="BUILD_DIR=${native.build.dir}/responder" />
 											<arg line="INSTALL_DIR=${native.install.dir}" />
+											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}"/>
 										</exec>
 				
 										<copy todir="${native.install.dir}">
