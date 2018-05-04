@@ -768,7 +768,9 @@
 		<profile>
 			<id>native-libs</id>
 			<properties>
-				<jni.headers.dir>${project.build.directory}/native-builds/generated-headers</jni.headers.dir>
+				<native.build.dir>${project.build.directory}/native-builds</native.build.dir>
+				<jni.headers.dir>${native.build.dir}/generated-headers</jni.headers.dir>
+				<gmp.build.dir>${native.build.dir}/gmp</gmp.build.dir>
 			</properties>
 		    <build>
 		     	<plugins>
@@ -793,14 +795,12 @@
 									<goal>run</goal>
 								</goals>
 								<configuration>
-									<target name="build-native"
-										description="compiles native code">
+									<target name="build-native" description="compiles native code">
 										<property name="make.cmd" value="make" />
 										<property name="javac.cmd" value="${java.home}/../bin/javac"/>
 										<property name="gmp.src.dir" value="src/main/native/gmp" />
 										<property name="querier.src.dir" value="src/main/native/querier" />
 										<property name="responder.src.dir" value="src/main/native/responder" />
-										<property name="native.build.dir" value="${project.build.directory}/native-builds" />
 										<property name="gmp.install.dir" value="${project.build.directory}/gmp" />
 										<property name="native.install.dir" value="${project.build.directory}/lib/native" />
 										<property name="querier.build.dir" value="${native.build.dir}/querier"/>
@@ -810,14 +810,35 @@
 										<mkdir dir="${querier.build.dir}" />
 										<mkdir dir="${native.build.dir}/responder" />
 										<mkdir dir="${native.install.dir}" />
-				
+										
 										<!-- Build GMP -->
-										<exec dir="${gmp.src.dir}" executable="${make.cmd}" failonerror="true">
-											<arg line="install" />
-											<arg line="BUILD_DIR=${native.build.dir}/gmp" />
-											<arg line="INSTALL_DIR=${gmp.install.dir}" />
+										<get src="https://ftp.gnu.org/gnu/gmp/gmp-${gmp.version}.tar.bz2" 
+											dest="${gmp.build.dir}"
+											skipexisting="true"/>
+										
+										<exec dir="${gmp.build.dir}" executable="tar" failonerror="true">
+											<arg line="-xjf"/>
+											<arg line="${gmp.build.dir}/gmp-${gmp.version}.tar.bz2"/>
 										</exec>
-				
+										
+										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
+											<arg line="--prefix=${gmp.install.dir}"/>
+											<arg line="--enable-fat"/>
+											<arg line="--disable-static" />
+										</exec>	 
+										
+										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
+											<arg line="--prefix=${gmp.install.dir}"/>
+											<arg line="--enable-fat"/>
+											<arg line="--disable-static" />
+										</exec>
+
+										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="${make.cmd}" failonerror="true">
+											<arg line="all" />
+											<arg line="check" />
+											<arg line="install" />
+										</exec>
+
 										<!-- Build Querier -->
 										<exec dir="${querier.src.dir}" executable="${make.cmd}" failonerror="true">
 											<arg line="install" />
@@ -849,7 +870,7 @@
 							<dependency>
 								<groupId>org.apache.ant</groupId>
 								<artifactId>ant</artifactId>
-								<version>1.9.0</version>
+								<version>1.10.3</version>
 							</dependency>
 						</dependencies>
 					</plugin>
