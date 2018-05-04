@@ -373,4 +373,50 @@ public class QueryUtils {
 	    }
 	    return new String(hexChars);
 	}
+	
+	public static List<BigInteger> createPartitions(List<BigInteger> inputData, int dataPartitionBitSize) {
+		List<BigInteger> partitionedData = new ArrayList<BigInteger>();
+
+		// determine how many bytes per partition based on the dataPartitionBitSize
+		// dataPartitionBitSize needs to be a multiple of 8 as we are using UTF-8 and we do not want to split a byte.
+		int bytesPerPartition = 1;
+		if (( dataPartitionBitSize % 8 ) == 0 ) {
+			bytesPerPartition = dataPartitionBitSize / 8 ;
+		}
+		else {
+			logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
+		}
+
+		//		logger.debug("bytesPerPartition {}", bytesPerPartition);
+		if (bytesPerPartition > 1) {
+			byte[] tempByteArray = new byte[bytesPerPartition];
+			int j = 0;
+			for (int i = 0; i < inputData.size(); i++) {
+				if (j < bytesPerPartition) {
+					tempByteArray[j] = inputData.get(i).byteValue();
+				} else {
+					BigInteger bi = new BigInteger(1, tempByteArray);
+					partitionedData.add(bi);
+					//	               logger.debug("Part added {}", bi.toString(16));
+					j = 0;
+					tempByteArray[j] = inputData.get(i).byteValue();
+				}
+				j++;
+			}
+			if (j <= bytesPerPartition ) {
+				while (j < bytesPerPartition) {
+					tempByteArray[j] = new Byte("0");
+					j++;
+				}
+				BigInteger bi = new BigInteger(1, tempByteArray);
+				partitionedData.add( bi );
+				//	         	logger.debug("Part added {}", bi.toString(16));
+			}
+		} else {  // Since there is only one byte per partition lets avoid the extra work
+			partitionedData = inputData;
+		}
+		
+        return partitionedData;
+        
+	}
 }

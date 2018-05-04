@@ -19,7 +19,7 @@
  * 
  * This file has been modified from its original source.
  */
-package org.enquery.encryptedquery.responder.wideskies.streamProcessing;
+package org.enquery.encryptedquery.responder.wideskies.common;
 
 import java.math.BigInteger;
 import java.util.ArrayList;

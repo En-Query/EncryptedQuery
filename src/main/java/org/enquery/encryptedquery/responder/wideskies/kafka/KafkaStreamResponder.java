@@ -34,7 +34,7 @@ import javax.management.timer.Timer;
 
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
-import org.enquery.encryptedquery.responder.wideskies.streamProcessing.ResponderProcessingThread;
+import org.enquery.encryptedquery.responder.wideskies.common.ResponderProcessingThread;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
 import org.enquery.encryptedquery.utils.SystemConfiguration;

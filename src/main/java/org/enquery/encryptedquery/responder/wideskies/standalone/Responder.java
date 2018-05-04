@@ -19,15 +19,17 @@
  *
  * This file has been modified from its original source.
  */
+
 package org.enquery.encryptedquery.responder.wideskies.standalone;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -35,10 +37,17 @@ import javax.management.timer.Timer;
 
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
-import org.enquery.encryptedquery.responder.wideskies.streamProcessing.ResponderProcessingThread;
+import org.enquery.encryptedquery.query.wideskies.QueryUtils;
+import org.enquery.encryptedquery.responder.wideskies.common.ConsolidateResponse;
+import org.enquery.encryptedquery.responder.wideskies.common.ProcessingUtils;
+import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
+import org.enquery.encryptedquery.responder.wideskies.common.ColumnBasedResponderProcessor;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
+import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,145 +64,203 @@ import org.slf4j.LoggerFactory;
  */
 public class Responder
 {
-  private static final Logger logger = LoggerFactory.getLogger(Responder.class);
+	private static final Logger logger = LoggerFactory.getLogger(Responder.class);
+	private DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
 
-  private Query query = null;
-  private QueryInfo queryInfo = null;
+	private Query query = null;
+	private QueryInfo queryInfo = null;
 
-  private ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
-  private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
+	private List<ConcurrentLinkedQueue<QueueRecord>> newRecordQueues = new ArrayList<ConcurrentLinkedQueue<QueueRecord>>();
+	private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
-  private List<ResponderProcessingThread> responderProcessors;
-  private List<Thread> responderProcessingThreads;
+	private long recordCounter = 0;
+	private List<ColumnBasedResponderProcessor> responderProcessors;
+	private List<Thread> responderProcessingThreads;
 
-  private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
+	private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
+	private long maxQueueSize = SystemConfiguration.getLongProperty("responder.maxQueueSize", 1000000);
+	private int pauseTimeForQueueCheck = SystemConfiguration.getIntProperty("responder.pauseTimeForQueueCheck", 10);
+	private int maxHitsPerSelector = SystemConfiguration.getIntProperty("pir.maxHitsPerSelector", 16000);
+	private HashMap<Integer, Integer> rowIndexCounter; // keeps track of how many hits a given selector has
+	private HashMap<Integer, Integer> rowIndexOverflowCounter;   // Log how many records exceeded the maxHitsPerSelector
+ 
+	public Responder(Query queryInput)
+	{
+		query = queryInput;
+		queryInfo = query.getQueryInfo();
+	}
 
-  public Responder(Query queryInput)
-  {
-    query = queryInput;
-    queryInfo = query.getQueryInfo();
+	public int getPercentComplete() {
+		return ProcessingUtils.getPercentComplete(recordCounter, responderProcessors);
+	}
 
-  }
+	/**
+	 * Method to compute the standalone response
+	 * <p>
+	 * Assumes that the input data is a single file in the local filesystem and is fully qualified
+	 */
+	public void computeStandaloneResponse() throws IOException
+	{
+		String inputData = SystemConfiguration.getProperty("pir.inputData");
+        long selectorNullCount = 0;
+        rowIndexCounter = new HashMap<Integer,Integer>();
+        rowIndexOverflowCounter = new HashMap<Integer,Integer>();
+        
+		// Based on the number of processor threads, calculate the number of hashes for each queue
+		int hashGroupSize = ((1 << queryInfo.getHashBitSize()) + numberOfProcessorThreads -1 ) / numberOfProcessorThreads;
+		logger.info("Based on {} Processor Thread(s) the hashGroupSize is {}", numberOfProcessorThreads, hashGroupSize);
 
-  /**
-   * Method to compute the standalone response
-   * <p>
-   * Assumes that the input data is a single file in the local filesystem and is fully qualified
-   */
-   public void computeStandaloneResponse() throws IOException
-   {
- 	  String inputData = SystemConfiguration.getProperty("pir.inputData");
- 	  try
- 	  {
- 		  // Initialize & Start Processing Threads
- 		  responderProcessors = new ArrayList<>();
- 		  responderProcessingThreads = new ArrayList<>();
- 		  for (int i = 0; i < numberOfProcessorThreads; i++) {
- 			  ResponderProcessingThread qpThread =
- 					  new ResponderProcessingThread(newRecordQueue, responseQueue, query);
- 			  responderProcessors.add(qpThread);
- 			  Thread pt = new Thread(qpThread);
- 			  pt.start();
- 			  responderProcessingThreads.add(pt);
- 		  }
+		for (int i = 0 ; i < numberOfProcessorThreads; i++) {
+			newRecordQueues.add(new ConcurrentLinkedQueue<QueueRecord>());
+		}
 
-           // Read data file and add records to the queue
- 		  BufferedReader br = new BufferedReader(new FileReader(inputData));
- 		  String line;
- 		  logger.info("Reading and processing datafile...");
- 		  int lineCounter = 0;
- 		  while ((line = br.readLine()) != null)
- 		  {
- 			  newRecordQueue.add(line);
+		logger.debug("Max Queue Size {} / Pause length between queue size checks ( {} ) in seconds", maxQueueSize, pauseTimeForQueueCheck);
 
- 			  lineCounter++;
- 			  if ( (lineCounter % 100000) == 0) {
- 				  logger.info("{} records added to the Queue so far...", lineCounter);
- 			  }
- 		  }
- 		  br.close();
- 		  logger.info("Imported {} total records for processing", lineCounter);
+		// Initialize & Start Processing Threads
+		responderProcessors = new ArrayList<>();
+		responderProcessingThreads = new ArrayList<>();
+		for (int i = 0; i < numberOfProcessorThreads; i++) {
+			ColumnBasedResponderProcessor qpThread =
+					new ColumnBasedResponderProcessor(newRecordQueues.get(i), responseQueue, query);
+			responderProcessors.add(qpThread);
+			Thread pt = new Thread(qpThread);
+			pt.start();
+			responderProcessingThreads.add(pt);
+		}
 
- 		  //Wait 10 seconds for the processing threads to start their work
- 		  try {
- 			  Thread.sleep(TimeUnit.SECONDS.toMillis(10));
- 		  } catch (Exception e) {
- 			  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
- 		  }
+		// Read data file and add records to the queue
+		BufferedReader br = new BufferedReader(new FileReader(inputData));
+		String line;
+		logger.info("Reading and processing input file...");
+		JSONParser jsonParser = new JSONParser();
 
-           // All data has been submitted to the queue so issue a stop command to the threads so they will return
- 		  // results when the queue is empty
- 		  for (ResponderProcessingThread qpThread : responderProcessors) {
- 			  qpThread.stopProcessing();
- 		  }
+		Boolean waitForProcessing = false;
+		while ((line = br.readLine()) != null )
+		{
+			JSONObject jsonData = null;
+			String selector = null;
+			try {
+				jsonData = (JSONObject) jsonParser.parse(line);
+				//					  logger.info("jsonData = " + jsonData.toJSONString());
+			} catch (Exception e) {
+				logger.error("Exception JSON parsing record {}", line);
+			}
+			if (jsonData != null) {
+				selector = QueryUtils.getSelectorByQueryTypeJSON(queryInfo.getQuerySchema(), jsonData).trim();
+//	            logger.info("Selector ({})", selector);			
+				if (selector != null && selector.length() > 0) {
+					try {
+						int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+						if ( rowIndexCounter.containsKey(rowIndex) ) {
+							rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
+						} else {
+							rowIndexCounter.put(rowIndex, 1);
+						}
+						if ( rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
+							List<BigInteger> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
+							QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
+							int whichQueue = rowIndex / hashGroupSize;
+							newRecordQueues.get(whichQueue).add(qr);
+							recordCounter++;
+						} else {
+							if ( rowIndexOverflowCounter.containsKey(rowIndex) ) {
+								rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
+							} else {
+								rowIndexOverflowCounter.put(rowIndex, 1);
+							}
+						}
+					} catch (Exception e) {
+						logger.error("Exception computing hash for selector {}, Exception: {}", selector, e.getMessage());
+					}
+				} else {
+					selectorNullCount++;
+				}
+			} else {
+				logger.error("Error JSON parsing line {}", line);
+			}
 
- 		  // Wait a few seconds for the stop order to be registered with all the threads then start
- 		  // polling for them to finish
- 		  try {
- 			  Thread.sleep(2000);
- 		  } catch (Exception e) {
- 			  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
- 		  }
+			if ( (recordCounter % 100000) == 0) {
+				logger.info("{} records added to the Queue so far...", numFormat.format(recordCounter));
+				long processed = ProcessingUtils.recordsProcessed(responderProcessors);
+				if (recordCounter - processed > maxQueueSize) {
+					waitForProcessing = true;
+					while (waitForProcessing) {
+						try {
+							Thread.sleep(TimeUnit.SECONDS.toMillis(pauseTimeForQueueCheck));
+							processed = ProcessingUtils.recordsProcessed(responderProcessors);
+							long queueSize = recordCounter - processed;
 
- 		  long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
- 		  int responderProcessorsStopped = 0;
-           int stoppedProcessorsReported = -1;
- 		  int running = 0;
- 		  do {
- 			  running = 0;
- 			  responderProcessorsStopped = 0;
- 			  for (Thread thread : responderProcessingThreads) {
- 				  if (thread.isAlive()) {
- 					  running++;
- 				  } else {
- 					  responderProcessorsStopped++;
- 				  }
- 			  }
-               if ( ( stoppedProcessorsReported != responderProcessorsStopped ) || ( stoppedProcessorsReported == -1 ) ||
-             		  ( System.currentTimeMillis() > notificationTimer )) {
-             	  logger.info( "There are {} responder processes still running",running);
-             	  stoppedProcessorsReported = responderProcessorsStopped;
-             	  notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
-               }
- 			  try {
- 				  Thread.sleep(1000);
- 			  } catch (Exception e) {
- 				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
- 			  }
+							if (queueSize < ( maxQueueSize * 0.01 )) {
+								waitForProcessing = false;
+							}
+							logger.info("Loading paused to catchup on processing, Queue Size {}", numFormat.format(queueSize));
+						} catch (InterruptedException e) {
+							logger.error("Interrupted Exception waiting on main thread {}", e.getMessage() );
+						}
+					}
+				}
+			}
 
- 		  } while ( running > 0 );
+		}
+		if (selectorNullCount > 0) {
+			logger.warn("{} Records had a null selector from source", selectorNullCount);
+		}
+		br.close();
+		logger.info("Imported {} records for processing", numFormat.format(recordCounter));
+        if (rowIndexOverflowCounter.size() > 0) {
+            for ( int i : rowIndexOverflowCounter.keySet() ) {
+            	logger.info("rowIndex {} exceeded max Hits {} by {}", i, maxHitsPerSelector, rowIndexOverflowCounter.get(i));
+            }
+        }
+		// All data has been submitted to the queue so issue a stop command to the threads so they will return
+		// results when the queue is empty
+		for (ColumnBasedResponderProcessor qpThread : responderProcessors) {
+			qpThread.stopProcessing();
+		}
 
- 		  logger.info("{} responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
+		long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
+		int responderProcessorsStopped = 0;
+		int running = 0;
+		do {
+			running = 0;
+			responderProcessorsStopped = 0;
+			for (Thread thread : responderProcessingThreads) {
+				if (thread.isAlive()) {
+					running++;
+				} else {
+					responderProcessorsStopped++;
+				}
+			}
+			if ( System.currentTimeMillis() > notificationTimer ) {
+				long recordsProcessed = ProcessingUtils.recordsProcessed(responderProcessors);
+				logger.info( "There are {} responder processes running, {} records processed / {} % complete", 
+						running, numFormat.format(recordsProcessed), numFormat.format(getPercentComplete()) );
+				notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
+			}
+			try {
+				Thread.sleep(1000);
+			} catch (Exception e) {
+				logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
+			}
 
- 	  } catch (Exception e)
- 	  {
- 		  e.printStackTrace();
- 	  }
+		} while ( running > 0 );
 
- 	  String outputFile = SystemConfiguration.getProperty("pir.outputFile");
- 	  outputResponse( outputFile );
-   }
+		logger.info("{} responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
 
-  // Compile the results from all the threads into one response file that will be passed back to the
-  // querier for decryption
-  public void outputResponse(String outputFile)
-  {
-	  Response outputResponse = new Response(queryInfo);
-	  Response nextResponse;
-	  int processorCounter = 0;
-	  while ((nextResponse = responseQueue.poll()) != null) {
-		  for (TreeMap<Integer, BigInteger> nextItem : nextResponse.getResponseElements()) {
-			  outputResponse.addResponseElements(nextItem);
-		  }
-		  processorCounter++;
-	  }
-	  logger.info("Combined {} response files into outputFile {}", processorCounter, outputFile);
-	  try {
-		  new LocalFileSystemStore().store(outputFile, outputResponse);
-		  processorCounter++;
-	  } catch (Exception e) {
-		  logger.error("Error writing Response File {} Exception: {}", outputFile, e.getMessage());
-	  }
-  }
+		String outputFile = SystemConfiguration.getProperty("pir.outputFile");
+		outputResponse( outputFile );
+	}
+
+	// Compile the results from all the threads into one response file.
+	public void outputResponse(String outputFile)
+	{
+		Response outputResponse = ConsolidateResponse.consolidateResponse(responseQueue, query);
+		try {
+			new LocalFileSystemStore().store(outputFile, outputResponse);
+		} catch (Exception e) {
+			logger.error("Error writing Response File {} Exception: {}", outputFile, e.getMessage());
+		}
+	}
 
 }
+
