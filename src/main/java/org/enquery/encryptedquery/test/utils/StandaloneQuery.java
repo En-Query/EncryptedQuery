@@ -28,6 +28,7 @@ import org.enquery.encryptedquery.querier.wideskies.QuerierFactory;
 import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
+import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
 import org.enquery.encryptedquery.responder.wideskies.common.ResponderProcessingThread;
 import org.enquery.encryptedquery.responder.wideskies.standalone.Responder;
 import org.enquery.encryptedquery.response.wideskies.Response;
@@ -35,14 +36,17 @@ import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
 import org.enquery.encryptedquery.schema.response.QueryResponseJSON;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
+import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.utils.QueryResultsWriter;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -113,7 +117,7 @@ public class StandaloneQuery
     Query query = storage.recall(fileQuery, Query.class);
 
     logger.info("Creating the queues");
-    ConcurrentLinkedQueue<String> newRecordQueue = new ConcurrentLinkedQueue<String>();
+    ConcurrentLinkedQueue<QueueRecord> newRecordQueue = new ConcurrentLinkedQueue<QueueRecord>();
     ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
     logger.info("Starting the responder processing thread");
@@ -126,15 +130,19 @@ public class StandaloneQuery
     
     for (JSONObject jsonData : dataElements)
     {
-      try
-      {
-          newRecordQueue.add(jsonData.toJSONString());
-      } catch (Exception e)
-      {
-        fail(e.toString());
-      }
+    	try
+    	{
+    		String selector = QueryUtils.getSelectorByQueryTypeJSON(query.getQueryInfo().getQuerySchema(), jsonData).trim();
+    		int rowIndex = KeyedHash.hash(query.getQueryInfo().getHashKey(), query.getQueryInfo().getHashBitSize(), selector);
+    		List<BigInteger> parts = QueryUtils.partitionDataElement(query.getQueryInfo().getQuerySchema(), jsonData, query.getQueryInfo().getEmbedSelector());
+    		QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
+    		newRecordQueue.add(qr);
+    	} catch (Exception e)
+    	{
+    		fail(e.toString());
+    	}
     }
-    
+
     logger.info("Data added to the queue wait 2 seconds then stop the thread");
     try {
     	Thread.sleep(2000);

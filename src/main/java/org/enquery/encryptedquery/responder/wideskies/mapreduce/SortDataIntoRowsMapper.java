@@ -146,8 +146,8 @@ public class SortDataIntoRowsMapper extends Mapper<Text,MapWritable,IntWritable,
       for (int i = 0; i < data.size(); i++) {
 	// XXX assuming the parts are byte-sized.  This needs to
 	// change when partitioners support different sizes.
-	BigInteger bi = data.getBigInteger(i);
-	dataBytes[i] = bi.byteValue();
+      	BigInteger bi = data.getBigInteger(i);
+     	dataBytes[i] = bi.byteValue();
       }
 
       keyOut.set(rowIndex);

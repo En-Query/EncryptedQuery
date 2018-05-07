@@ -51,4 +51,14 @@ public class QueueRecord {
 		return parts;
 	}
 	
+	@Override
+	public String toString() 
+	{
+		StringBuilder output = new StringBuilder();
+		output.append("\n  Selector: " + selector + "\n");
+		output.append("  Hash(rowIndex): " + rowIndex + "\n");
+		output.append("  Parts count: " + parts.size() + "\n");
+		return output.toString();
+	}
+	
 }

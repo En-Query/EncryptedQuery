@@ -26,62 +26,54 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
+import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class KafkaConsumerGroup {
 
-      private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerGroup.class);
+	private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerGroup.class);
 
-	  private final int numberOfConsumers;
-	  private final String topic;
-	  private final String hdfsuri;
-	  private final String hdfsUser;
-	  private final String hdfsFolder;
-	  private final UUID uuid;
-	  
-	  private List<KafkaConsumerThread> consumers;
+	private final int numberOfConsumers;
+	private final String topic;
 
-	  public KafkaConsumerGroup(Properties kafkaProperties, String topic, String hdfsURI, String hdfsUser,
-			  String hdfsFolder, UUID uuid, int numberOfConsumers) {
-	    this.topic = topic;
-	    this.hdfsuri = hdfsURI;
-	    this.hdfsUser = hdfsUser;
-	    this.hdfsFolder = hdfsFolder;
-	    this.uuid = uuid;
-	    this.numberOfConsumers = numberOfConsumers;
-	    consumers = new ArrayList<>();
-	    for (int i = 0; i < this.numberOfConsumers; i++) {
-	      KafkaConsumerThread ncThread =
-	          new KafkaConsumerThread(kafkaProperties, this.topic,
-	        		  this.hdfsuri, this.hdfsUser, this.hdfsFolder, this.uuid, null); 
-	      consumers.add(ncThread);
-	    }
-	  }
+	private List<KafkaConsumerThread> consumers;
 
-	  public void execute() {
-	    for (KafkaConsumerThread ncThread : consumers) {
-	      Thread t = new Thread(ncThread);
-	      t.start();
-	    }
-	  }
-
-	  /**
-	   * @return the numberOfConsumers
-	   */
-	  public int getNumberOfConsumers() {
-	    return numberOfConsumers;
-	  }
-
-  
-	  /**
-	   *  Stop the consumer threads
-	   */
-	  public void stopConsumers() {
-		  logger.info("Stopping Consumer Threads");
-		  for (KafkaConsumerThread ncThread : consumers) {
-			  ncThread.stopListening();
-		  }
-	  }
-	  
+	public KafkaConsumerGroup(Properties kafkaProperties, String topic, Properties hdfsProperties, int numberOfConsumers, QueryInfo queryInfo, int hashGroupSize) {
+		this.topic = topic;
+		this.numberOfConsumers = numberOfConsumers;
+		consumers = new ArrayList<>();
+		for (int i = 0; i < this.numberOfConsumers; i++) {
+			KafkaConsumerThread ncThread =
+					new KafkaConsumerThread(kafkaProperties, this.topic,
+							hdfsProperties, queryInfo, hashGroupSize, null); 
+			consumers.add(ncThread);
+		}
 	}
+
+	public void execute() {
+		for (KafkaConsumerThread ncThread : consumers) {
+			Thread t = new Thread(ncThread);
+			t.start();
+		}
+	}
+
+	/**
+	 * @return the numberOfConsumers
+	 */
+	public int getNumberOfConsumers() {
+		return numberOfConsumers;
+	}
+
+
+	/**
+	 *  Stop the consumer threads
+	 */
+	public void stopConsumers() {
+		logger.info("Stopping Consumer Threads");
+		for (KafkaConsumerThread ncThread : consumers) {
+			ncThread.stopListening();
+		}
+	}
+
+}

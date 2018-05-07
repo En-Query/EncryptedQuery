@@ -52,16 +52,15 @@ public class ResponderProcessingThread implements Runnable {
 	private int dataPartitionBitSize = 8;
 	private Response response = null;
 	private long threadId = 0; 
-	
+	private long recordCount = 0;
 
 	private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
-
 	private ArrayList<Integer> rowColumnCounters; // keeps track of how many hit partitions have been recorded for each row/selector
 
-	private ConcurrentLinkedQueue<String> inputQueue;
+	private ConcurrentLinkedQueue<QueueRecord> inputQueue;
 	private ConcurrentLinkedQueue<Response> responseQueue;
 
-	public ResponderProcessingThread(ConcurrentLinkedQueue<String> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
+	public ResponderProcessingThread(ConcurrentLinkedQueue<QueueRecord> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
 			Query queryInput) {
 
 		logger.debug("Initializing Responder Processing Thread");
@@ -94,61 +93,39 @@ public class ResponderProcessingThread implements Runnable {
 	public boolean isRunning() {
 		return isRunning;
 	}
+
+	public long getRecordsProcessed() {
+		return recordCount;
+	}
 	
 	@Override
 	public void run() {
 
 		threadId = Thread.currentThread().getId();
-		logger.info("Starting Responder Processing Thread {}", threadId);
-		String nextRecord = null;
-		long recordCount = 0;
-		JSONParser jsonParser = new JSONParser();
-        int selectorNullCount = 0;
+		logger.debug("Starting Responder Processing Thread {}", threadId);
+		QueueRecord nextRecord = null;
+
 		while (!stopProcessing) {
 			while ((nextRecord = inputQueue.poll()) != null) {
-//				logger.info("Retrieved record {} Data: {}", recordCount, nextRecord);
-				JSONObject jsonData = null;
-				try {
-					jsonData = (JSONObject) jsonParser.parse(nextRecord);
-					//					  logger.info("jsonData = " + jsonData.toJSONString());
-				} catch (Exception e) {
-					logger.error("Exception JSON parsing record {}", nextRecord);
-				}
-				if (jsonData != null) {
-					String selector = QueryUtils.getSelectorByQueryTypeJSON(qSchema, jsonData);
-					if (selector != null) {
-					try {
-//						logger.info("Processing selector {}", selector);
-						addDataElement(selector, jsonData);
-						recordCount++;
-//						if ( (recordCount % 1000) == 0) {
-//							logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
-//						}
-					} catch (Exception e) {
-						logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
-					}
-					} else {
-                        selectorNullCount++;
-//						logger.warn("No selector value found, record not added to queue for processing {}", nextRecord);
-					}
+//				logger.info("Retrieved rowIndex: {} selector: {}", nextRecord.getRowIndex(), nextRecord.getSelector());
+
+						try {
+							//logger.info("Processing selector {}", selector);
+							addDataElement(nextRecord);
+							recordCount++;
+							//if ( (recordCount % 1000) == 0) {
+							//	logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
+							//}
+						} catch (Exception e) {
+							logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
+						}
 				}
 			}
 
-			try {
-				Thread.currentThread();
-				Thread.sleep(100);
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-		}
-
-		if (selectorNullCount > 0) {
-			logger.warn("{} Records had a null selector from Query Processing thread {}", selectorNullCount, Thread.currentThread().getId());
-		}
 		//Process Response
 		setResponseElements();
 		responseQueue.add(response);
-		logger.info("Processed {} total records in Thread {}", recordCount, threadId);
+		logger.debug("Processed {} total records in Thread {}", recordCount, threadId);
 		logger.debug("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), threadId);
 		isRunning = false;
 
@@ -178,57 +155,18 @@ public class ResponderProcessingThread implements Runnable {
 	 * Y_{i+c_{H_k(T)}} = (Y_{i+c_{H_k(T)}} * ((E_T)^{D_i} mod N^2)) mod N^2 ++c_{H_k(T)}
 	 * 
 	 */
-	public void addDataElement(String selector, JSONObject jsonData) throws Exception
+	public void addDataElement(QueueRecord qr) throws Exception
 	{
-		// Extract the data from the input record into byte chunks based on the query type
-		List<BigInteger> inputData = QueryUtils.partitionDataElement(qSchema, jsonData, queryInfo.getEmbedSelector());
-		List<BigInteger> hitValPartitions = new ArrayList<BigInteger>();
+		List<BigInteger> inputData = qr.getParts();
+		List<BigInteger> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
 
-		// determine how many bytes per partition based on the dataPartitionBitSize
-		// dataPartitionBitSize needs to be a multiple of 8 as we are using UTF-8 and we do not want to split a byte.
-		int bytesPerPartition = 1;
-		if (( dataPartitionBitSize % 8 ) == 0 ) {
-			bytesPerPartition = dataPartitionBitSize / 8 ;
-		}
-		else {
-			logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
-		}
-		//		logger.debug("bytesPerPartition {}", bytesPerPartition);
-		if (bytesPerPartition > 1) {
-			byte[] tempByteArray = new byte[bytesPerPartition];
-			int j = 0;
-			for (int i = 0; i < inputData.size(); i++) {
-				if (j < bytesPerPartition) {
-					tempByteArray[j] = inputData.get(i).byteValue();
-				} else {
-					BigInteger bi = new BigInteger(1, tempByteArray);
-					hitValPartitions.add(bi);
-					//	               logger.debug("Part added {}", bi.toString(16));
-					j = 0;
-					tempByteArray[j] = inputData.get(i).byteValue();
-				}
-				j++;
-			}
-			if (j <= bytesPerPartition ) {
-				while (j < bytesPerPartition) {
-					tempByteArray[j] = new Byte("0");
-					j++;
-				}
-				BigInteger bi = new BigInteger(1, tempByteArray);
-				hitValPartitions.add( bi );
-				//	         	logger.debug("Part added {}", bi.toString(16));
-			}
-		} else {  // Since there is only one byte per partition lets avoid the extra work
-			hitValPartitions = inputData;
-		}
-		//	    int index = 1;
-		//	    for (BigInteger bi : hitValPartitions) {
-		//	    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-		//	    	index++;
-		//	    }
+			    int index = 1;
+			    for (BigInteger bi : hitValPartitions) {
+			    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
+			    	index++;
+			    }
 
-		// Pull the necessary elements
-		int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);
 		BigInteger rowQuery = query.getQueryElement(rowIndex);
 
@@ -292,12 +230,12 @@ public class ResponderProcessingThread implements Runnable {
 
 	public void setResponseElements()
 	{
-		//	    logger.debug("numResponseElements = " + columns.size());
+		// logger.debug("numResponseElements = " + columns.size());
 		// for(int key: columns.keySet())
 		// {
-		// logger.debug("key = " + key + " column = " + columns.get(key));
+		//      logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
-        logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
+		logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
 		response.addResponseElements(columns);
 	}
 }

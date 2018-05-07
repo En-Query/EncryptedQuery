@@ -47,6 +47,20 @@ public class ProcessingUtils {
 	}
 
 	/**
+	 * Returns the number of rows processed by the responder processing threads.
+	 * @param processors List of processing threads
+	 * @return long number of records processed
+	 */
+	public static long recordsProcessedRowBased(List<ResponderProcessingThread> processors) {
+		long recordsProcessed = 0;
+		for (ResponderProcessingThread processor : processors) {
+			recordsProcessed += ( processor).getRecordsProcessed();
+		}
+		logger.debug("Records Processed so far {}", numFormat.format(recordsProcessed));
+		return recordsProcessed;
+	}
+
+	/**
 	 * Returns the Percent of records processed based on how many have been loaded into the queues
 	 * @return int Percent Complete
 	 */
