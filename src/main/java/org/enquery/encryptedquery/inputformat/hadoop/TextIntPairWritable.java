@@ -16,32 +16,30 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ * 
+ * This file has been modified from its original source.
  */
 package org.enquery.encryptedquery.inputformat.hadoop;
 
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+
+public class TextIntPairWritable extends PairWritable<Text, IntWritable>{
 
 
-/**
- *  Represents a serializable pair of type {@code <IntWritable,
- *  IntWritable>}.
- */
-public class IntPairWritable extends PairWritable<IntWritable, IntWritable>
-{
+	  /**
+	   *  Creates a pair with newly initialized storage.
+	   */
+	  public TextIntPairWritable()
+	  {
+	    super(new Text(), new IntWritable());
+	  }
 
-  /**
-   *  Creates a pair with newly initialized storage.
-   */
-  public IntPairWritable()
-  {
-    super(new IntWritable(), new IntWritable());
-  }
-
-  /**
-   *  Creates a pair initialized with the given storage objects.
-   */
-  public IntPairWritable(IntWritable first, IntWritable second)
-  {
-    super(first, second);
-  }
+	  /**
+	   *  Creates a pair initialized with the given storage objects.
+	   */
+	  public TextIntPairWritable(Text first, IntWritable second)
+	  {
+	    super(first, second);
+	  }
 }

@@ -197,11 +197,13 @@ public class KafkaMapReduce extends Configured implements Tool {
 	    job.getConfiguration().set("pirWL.useLocalCache", SystemConfiguration.getProperty("pir.useLocalCache", "true"));
 	    job.getConfiguration().set("pirWL.limitHitsPerSelector", SystemConfiguration.getProperty("pir.limitHitsPerSelector", "false"));
 	    job.getConfiguration().set("pirWL.maxHitsPerSelector", SystemConfiguration.getProperty("pir.maxHitsPerSelector", "100"));
+	    job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
+	    job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
 
 	    if (dataInputFormat.equals(InputFormatConst.BASE_FORMAT))
 	    {
-	      String baseQuery = SystemConfiguration.getProperty("pir.baseQuery");
-	      String jobName = "pirMR_base_" + baseQuery + "_" + System.currentTimeMillis();
+          String baseQuery = SystemConfiguration.getProperty("pir.baseQuery");
+	      String jobName = "EQ-MR-Query_" + qSchema.getSchemaName() + "_" + System.currentTimeMillis();
 	      job.setJobName(jobName);
 
 	      job.getConfiguration().set("baseQuery", baseQuery);

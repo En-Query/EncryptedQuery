@@ -3,10 +3,10 @@
  
     <schemaName>Streaming Phone Query</schemaName>
     <dataSchemaName>Streaming Phone Data</dataSchemaName>
-    <selectorName>Caller #</selectorName>
+    <selectorName>caller</selectorName>
     <elements>
-      <name>Caller #</name>
-	    <name>Date/Time</name>
-      <name>Callee #</name>
+      <name>caller</name>
+	  <name>timestamp</name>
+      <name>callee</name>
     </elements>
 </schema>

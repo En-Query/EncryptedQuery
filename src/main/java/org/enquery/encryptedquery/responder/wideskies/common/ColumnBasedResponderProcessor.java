@@ -118,10 +118,10 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	public void run() {
 
 		threadId = Thread.currentThread().getId();
-		logger.info("Starting Responder Processing Thread {}", threadId);
+		logger.info("Starting Responder Processing Thread {} with encryptColumnMethod {}", threadId, encryptColumnMethod);
 		QueueRecord nextRecord = null;
 		while (!stopProcessing) {
-			dataStart = System.nanoTime();
+//			dataStart = System.nanoTime();
 			while ((nextRecord = inputQueue.poll()) != null) {
 //				logger.info("Retrieved rowIndex: {} selector: {}", nextRecord.getRowIndex(), nextRecord.getSelector());
 
@@ -137,7 +137,7 @@ public class ColumnBasedResponderProcessor implements Runnable {
 						}
 				}
 			}
-			dataTime += System.nanoTime() - dataStart;
+//			dataTime += System.nanoTime() - dataStart;
 
 		computeEncryptedColumns();
 
@@ -145,11 +145,11 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		responseQueue.add(response);
 		logger.info("Processed {} total records in Thread {}", recordCount, threadId);
 		logger.debug("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), threadId);
-		logger.info("XXX data ******* time: {} nanoseconds", dataTime);
-		logger.info("XXX   ade ****** time: {} nanoseconds", adeTime);
-		logger.info("XXX     array ** time: {} nanoseconds", arrayTime);
-		logger.info("XXX math ******* time: {} nanoseconds", mathTime);
-		logger.info("XXX resp ******* time: {} nanoseconds", respTime);
+//		logger.info("XXX data ******* time: {} nanoseconds", dataTime);
+//		logger.info("XXX   ade ****** time: {} nanoseconds", adeTime);
+//		logger.info("XXX     array ** time: {} nanoseconds", arrayTime);
+//		logger.info("XXX math ******* time: {} nanoseconds", mathTime);
+//		logger.info("XXX resp ******* time: {} nanoseconds", respTime);
 		isRunning = false;
 		cec.free();
 	}
@@ -194,7 +194,7 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		//	        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
 
 		// Update the associated column values
-		arrayStart = System.nanoTime();
+//		arrayStart = System.nanoTime();
 		for (int i = 0; i < hitValPartitions.size(); ++i)
 		{
 			if (dataColumns.size() <= i + rowCounter)
@@ -203,12 +203,12 @@ public class ColumnBasedResponderProcessor implements Runnable {
 			}
 			dataColumns.get(i + rowCounter)[rowIndex] = hitValPartitions.get(i);
 		}
-		arrayTime += System.nanoTime() - arrayStart;
+//		arrayTime += System.nanoTime() - arrayStart;
 
 		// Update the rowCounter (next free column position) for the selector
 		rowColumnCounters.set(rowIndex, rowCounter + hitValPartitions.size());
 		//	    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
-		adeTime += System.nanoTime() - adeStart;
+//		adeTime += System.nanoTime() - adeStart;
 	}
 
 
@@ -226,9 +226,9 @@ public class ColumnBasedResponderProcessor implements Runnable {
 					cec.insertDataPart(rowIndex, dataCol[rowIndex]);
 				}
 			}
-			mathStart = System.nanoTime();
+//			mathStart = System.nanoTime();
 			BigInteger column = cec.computeColumnAndClearData();
-			mathTime += System.nanoTime() - mathStart;
+//			mathTime += System.nanoTime() - mathStart;
 			columns.put(col, column);
 		}
 	}
@@ -259,8 +259,8 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		// logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
 		logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
-		respStart = System.nanoTime();
+//		respStart = System.nanoTime();
 		response.addResponseElements(columns);
-		respTime += System.nanoTime() - respStart;
+//		respTime += System.nanoTime() - respStart;
 	}
 }

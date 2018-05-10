@@ -9,7 +9,7 @@
 
 die () {
   echo >&2 "$@"
-  echo "Usage: run_encrypted_query.sh [name] [method (standalone or mapreduce)]"
+  echo "Usage: run_encrypted_query.sh [query name] [method (standalone or mapreduce)]"
   exit 1
 }
 

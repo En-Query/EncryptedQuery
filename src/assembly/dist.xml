@@ -26,6 +26,22 @@
 			<outputDirectory>examples</outputDirectory>
 		</fileSet>
 		<fileSet>
+			<directory>scripts</directory>
+			<outputDirectory>bin</outputDirectory>
+		</fileSet>
+	    <fileSet>
+			<directory>dataschemas</directory>
+			<outputDirectory>dataschemas</outputDirectory>
+		</fileSet>
+	    <fileSet>
+			<directory>queries</directory>
+			<outputDirectory>queries</outputDirectory>
+		</fileSet>
+        <fileSet>
+			<directory>config</directory>
+			<outputDirectory>config</outputDirectory>
+		</fileSet>
+		<fileSet>
 			<directory>${project.build.directory}/lib</directory>
 			<outputDirectory>lib</outputDirectory>
 		</fileSet>

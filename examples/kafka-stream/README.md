@@ -3,9 +3,7 @@ This is a streaming example to test the Encrypted Query in kafka streaming mode.
 Pre-Requisites:
 Install Kafka/zookeeper using the default ports
 create the kafka topic "stream-test"
-Generate the encrypted query jar file
-Update the encryptedquery.properties to point to the local configuration folder 
-Update the shell scripts to point to the jar file.
+Build the Encrypted Query Application
 
 Execution:
 Execute the run_streaming_example.sh script to perform a complete exercise (Update configuration, Generate Query, Start Streaming, Run Responder, & Decrypt Result)

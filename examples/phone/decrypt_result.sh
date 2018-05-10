@@ -7,7 +7,7 @@
 
 die () {
   echo >&2 "$@"
-  echo "Usage: decrypt_result.sh [name]"
+  echo "Usage: decrypt_result.sh [query name]"
   exit 1
 }
 
@@ -15,7 +15,7 @@ die () {
 
 NAME=$1
 
-ENQUERY_HOME="../../target"
+ENQUERY_HOME="../.."
 
 java -cp $ENQUERY_HOME/encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.querier.wideskies.QuerierDriver  -a decrypt \
 -qf $NAME-querier -i $NAME-query-result -nt 1 -o $NAME-plain-result -qs queryschema_$NAME.xml -ds dataschema_$NAME.xml

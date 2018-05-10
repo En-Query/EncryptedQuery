@@ -22,7 +22,10 @@
 */
 package org.enquery.encryptedquery.responder.wideskies.kafka;
 
+import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.responder.wideskies.spi.ResponderPlugin;
+import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
+import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,11 +49,11 @@ public class KafkaMultiThreadedResponder implements ResponderPlugin
  public void run()
  {
    logger.info("Launching Kafka Multi-Threaded Streaming Responder:");
-   //String queryInput = SystemConfiguration.getProperty("pir.queryInput");
+   String queryInput = SystemConfiguration.getProperty("pir.queryInput");
    try
    {
-	      // Query query = new LocalFileSystemStore().recall(queryInput, Query.class);
-	      MultiThreadedKafkaStreamResponder pirResponder = new MultiThreadedKafkaStreamResponder();
+	      Query query = new LocalFileSystemStore().recall(queryInput, Query.class);
+	      MultiThreadedKafkaStreamResponder pirResponder = new MultiThreadedKafkaStreamResponder(query);
 	  		      pirResponder.computeKafkaStreamResponse();
    } catch (IOException e)
    {

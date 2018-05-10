@@ -4,8 +4,7 @@ the responder is run.  The run_responder.sh script shows an example of that.
 This has been tested on Hadoop 2.7.x and 3.0.0
 
 Pre-Requisites:
-Generate the encrypted query jar file 
-Update the shell scripts to point to the jar file.
+Build the Encrypted Query Application 
 Install Hadoop and make sure the account running these scripts has read/write privilages to the hadoop instance.
 
 Execution:
@@ -16,7 +15,7 @@ This script requires 2 arguments [query name] and [method]
  
 You can also execute these steps individually by executing:
 generate_query.sh [query name]              <-- Generate the Query 
-run_responder.sh [query name] [method]      <-- Run the responder 
+run_responder.sh [query name] [method]      <-- Run the responder
 decrypt_result.sh [query name]              <-- Decrypt the result
 
 (i.e.   ./run_enqrypted_query.sh phone mapreduce     <-- This will execute using Hadoop MapReduce functionallity )

@@ -50,7 +50,7 @@ public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn
 
   public ComputeEncryptedColumnDeRooijJNI(Map<Integer,BigInteger> queryElements, BigInteger NSquared, int maxRowIndex)
   {
-    logger.info("XXX this = {} constructor", this);
+    logger.debug("XXX this = {} constructor", this);
     this.hContext = derooijNew(NSquared.toByteArray(), maxRowIndex);
     if (0 == this.hContext)
     {
@@ -85,14 +85,14 @@ public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn
 
   public void clearData()
   {
-    logger.info("XXX this = {} clearData()", this);
+    logger.debug("XXX this = {} clearData()", this);
     derooijClearData(hContext);
   }
 
   // TODO: how to have this done automatically on GC?
   public void free()
   {
-    logger.info("XXX this = {} free()", this);
+    logger.debug("XXX this = {} free()", this);
     derooijDelete(hContext);
     hContext = 0;
   }

@@ -3,27 +3,27 @@
 
     <schemaName>Streaming Phone Data</schemaName>
     <element>
-        <name>Action</name>
+        <name>action</name>
         <type>string</type>
         <isArray>false</isArray>
     </element>
     <element>
-        <name>Duration</name>
+        <name>duration</name>
+        <type>double</type>
+        <isArray>false</isArray>
+    </element>
+    <element>
+        <name>timestamp</name>
         <type>string</type>
         <isArray>false</isArray>
     </element>
     <element>
-        <name>Date/Time</name>
+        <name>caller</name>
         <type>string</type>
         <isArray>false</isArray>
     </element>
     <element>
-        <name>Caller #</name>
-        <type>string</type>
-        <isArray>false</isArray>
-    </element>
-    <element>
-        <name>Callee #</name>
+        <name>callee</name>
         <type>string</type>
         <isArray>false</isArray>
     </element>

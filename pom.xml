@@ -415,6 +415,7 @@
 							<exclude>examples/*</exclude> <!-- Exclude Examples -->
 							<exclude>examples/simple/*</exclude> <!-- Exclude simple example -->
 							<exclude>examples/phone/*</exclude> <!-- Phone log example -->
+							<exclude>examples/phone/config/*</exclude> <!-- Phone log example -->
 							<exclude>examples/kafka-stream/*</exclude> <!-- kafka streaming example -->
 							<exclude>examples/kafka-stream/config/*</exclude> <!-- kafka streaming example -->
 							<exclude>examples/kafka-stream/kafka-producer/*</exclude> <!-- kafka streaming example -->
@@ -424,6 +425,7 @@
 							<exclude>examples/kafka-twitter-stream/kafka-producer/src/*</exclude> <!-- kafka Twitter streaming example -->
 							<exclude>logs/*</exclude> <!-- Exclude logs -->
 							<exclude>jni/*</exclude> <!-- Exclude jni -->
+							<exclude>scripts/*</exclude> <!-- Exclude jni -->
 							<exclude>src/assembly/*</exclude>
 							<exclude>**/m2.conf
 							</exclude> <!-- Exclude Maven conf which gets installed on travis and fails RAT check -->

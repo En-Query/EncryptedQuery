@@ -59,9 +59,11 @@ public class MultiThreadedKafkaStreamResponder {
 	private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
 	private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
 
-	public MultiThreadedKafkaStreamResponder()
+	public MultiThreadedKafkaStreamResponder(Query query)
 	{
+		this.query = query;
 		logger.info("MultiThreaded Kafka Stream Responder....");
+		logger.info("hdfsfilecount {}", hdfsFileCount);
 	}
 
 	public static void setWorkingFolder(String workingFolder) {

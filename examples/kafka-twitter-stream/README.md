@@ -3,11 +3,9 @@ This is a streaming example to test the Encrypted Query in kafka streaming mode.
 Pre-Requisites:
 Install Kafka/zookeeper using the default ports
 create the kafka topic "twitter-feed"
-Generate the encrypted query jar file
-Update the encryptedquery.properties to point to the local configuration folder 
-Update the shell scripts to point to the jar file.
+Build the Encrypted Query Application
 
-(Note:  The twitter feed will requre a set of keys for access to the twitter api.  These are: consumer key, consumer secret, Access Token, and Access Token Secret )
+(Note:  The twitter feed will require a set of keys for access to the twitter api.  These are: consumer key, consumer secret, Access Token, and Access Token Secret )
 !! Once you have these values, update the /examples/kafka-twitter-stream/kafka-producer/twitter-kafka-producer.properties file with your values !!
 
 Setup:
@@ -15,7 +13,6 @@ This demo will stream tweets from twitter that have been posted under the hashta
 into stream-demo-result-1 and stream-demo-result-2 files.  
 
 Depending on when you run this demo, you may need to change the Hashtag to pull from as #Brexit may no longer be popular.
-
 
 Execution:
 Execute the run_twitter_streaming_example.sh script to perform a complete exercise (Update configuration, Generate Query, Start Streaming, Run Responder, & Decrypt Result)

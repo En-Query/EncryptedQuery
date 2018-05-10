@@ -61,10 +61,10 @@ public class KafkaConsumerThread implements Runnable {
     private String hdfsURI;
     private String hdfsUser;
     private String hdfsFolder;
-    private int hdfsFileCount;
+    private String hdfsFileCount;
     private String uuidString;
     private Properties kafkaProperties;
-    private Properties hdfsProperties;
+//    private Properties hdfsProperties;
     private final String topic;
     private List<ConcurrentLinkedQueue<QueueRecord>> inputQueues;
     private final QueryInfo queryInfo;
@@ -85,13 +85,18 @@ public class KafkaConsumerThread implements Runnable {
         this.kafkaProperties = kafkaProperties;
         this.inputQueues = inputQueues;
         if (hdfsProperties != null) {
+        	logger.info("hdfsProperties {}", hdfsProperties.toString());
             this.hdfsURI = hdfsProperties.getProperty("hdfsUri");
     		this.hdfsUser = hdfsProperties.getProperty("hdfsUser");
     		this.hdfsFolder = hdfsProperties.getProperty("hdfsFolder");
-    		this.hdfsFileCount = Integer.valueOf(hdfsProperties.getProperty("hdfsFileCount"));
+    		this.hdfsFileCount = hdfsProperties.getProperty("hdfsFileCount");
             this.uuidString = hdfsProperties.getProperty("uuid", "none");
             hdfsOutput = true;        	
 	    	logger.info("Kafka Consumer output to HDFS");
+        } else if (inputQueues != null) {
+	    	logger.info("Kafka Consumer output to Queue");
+        } else {
+	    	logger.error("Cannot determine output path for data: Hdfs & Queue info are null");
         }
         
  		this.topic = topic;
@@ -100,12 +105,6 @@ public class KafkaConsumerThread implements Runnable {
 
  		this.consumer = new KafkaConsumer<>(kafkaProperties);
 		this.consumer.subscribe(Arrays.asList(topic));
-
-        if (!hdfsOutput && inputQueues != null) {
-	    	logger.info("Kafka Consumer output to Queue");
-	    } else {
-	    	logger.error("Cannot determine output path for data: Hdfs & Queue info are null");
-	    }
 	    	
 	}
 	
@@ -154,86 +153,87 @@ public class KafkaConsumerThread implements Runnable {
         rowIndexCounter = new HashMap<Integer,Integer>();
         rowIndexOverflowCounter = new HashMap<Integer,Integer>();
 
-		while (!stopConsumer) {
-			ConsumerRecords<String, String> records = consumer.poll(100);
-			for (ConsumerRecord<String, String> record : records) {
-				//								logger.info("Receive message: " + record.value() + ", Partition: "
-				//										+ record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
-				//										+ Thread.currentThread().getId());
+        while (!stopConsumer) {
+        	ConsumerRecords<String, String> records = consumer.poll(100);
+        	for (ConsumerRecord<String, String> record : records) {
+        		//								logger.info("Receive message: " + record.value() + ", Partition: "
+        		//										+ record.partition() + ", Offset: " + record.offset() + ", by ThreadID: "
+        		//										+ Thread.currentThread().getId());
 
-				JSONObject jsonData = null;
-				String selector = null;
-				int whichQueue = 0;
-				try {
-					jsonData = (JSONObject) jsonParser.parse(record.value());
-					//					  logger.info("jsonData = " + jsonData.toJSONString());
-				} catch (Exception e) {
-					logger.error("Exception JSON parsing record {}", record.value());
-				}
-				if (jsonData != null) {
-					selector = QueryUtils.getSelectorByQueryTypeJSON(queryInfo.getQuerySchema(), jsonData);
-					if (selector != null && selector.length() > 0) {
-						try {
-							int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
-							whichQueue = rowIndex / hashGroupSize;
-							if ( rowIndexCounter.containsKey(rowIndex) ) {
-								rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
-							} else {
-								rowIndexCounter.put(rowIndex, 1);
-							}
-							if ( rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-								List<BigInteger> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
-								QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
-								if (hdfsOutput) {
-									outputStream.writeBytes( record.value() + "\n");
-								} else {
-//                                    logger.debug("Adding Queue Record: {}",qr.toString());
-									inputQueues.get(whichQueue).add(qr);
-								}
-								processedCounter++;			  
-							} else {
-								if ( rowIndexOverflowCounter.containsKey(rowIndex) ) {
-									rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
-								} else {
-									rowIndexOverflowCounter.put(rowIndex, 1);
-								}
-							}
-						} catch (Exception e) {
-							logger.error("Exception parsing Record {}", e.getMessage());
-						}
-					} else {
-						selectorNullCount++;
-					}
-				} else {
-					logger.error("Error JSON parsing line {}", record.value());
-				}
-				recordCounter++;
-			}
-			//			logger.info("Read {} new records from Kafka in consumer thread {}", processedCounter, Thread.currentThread().getId());
-			//			processedCounter = 0;
-			while (pauseLoading && !stopConsumer) {
-					try {
-						logger.info("Kafka Consumer Thread {} has been paused", Thread.currentThread().getId());
-						Thread.sleep(Timer.ONE_SECOND);
-					} catch (InterruptedException e) {
-						logger.error("Interrupt Exception waiting for pause {}", e.getMessage());
-					}
-			}
-		}
-		logger.info("Consumed {} records from Kafka Topic {} in thread {}",recordCounter, topic, Thread.currentThread().getId());	
-		long notProcessed = recordCounter - processedCounter;
-		if (notProcessed > 0) {
-			logger.warn("{} Records not processed.  {} had no selector the rest failed processing in Thread {}", 
-					notProcessed, selectorNullCount, Thread.currentThread().getId());
-		}
-		try {
-			if (outputStream != null ) {
-				outputStream.close();
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        		JSONObject jsonData = null;
+        		String selector = null;
+        		int whichQueue = 0;
+        		try {
+        			jsonData = (JSONObject) jsonParser.parse(record.value());
+        			//					  logger.info("jsonData = " + jsonData.toJSONString());
+        		} catch (Exception e) {
+        			logger.error("Exception JSON parsing record {}", record.value());
+        		}
+        		if (jsonData != null) {
+        			selector = QueryUtils.getSelectorByQueryTypeJSON(queryInfo.getQuerySchema(), jsonData);
+        			if (selector != null && selector.length() > 0) {
+        				try {
+        					if (hdfsOutput) {
+        						outputStream.writeBytes( record.value() + "\n");
+        					} else {
+        						int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+        						whichQueue = rowIndex / hashGroupSize;
+        						if ( rowIndexCounter.containsKey(rowIndex) ) {
+        							rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
+        						} else {
+        							rowIndexCounter.put(rowIndex, 1);
+        						}
+        						if ( rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
+        							List<BigInteger> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
+        							QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
+        							//                                    logger.debug("Adding Queue Record: {}",qr.toString());
+        							inputQueues.get(whichQueue).add(qr);
+        							processedCounter++;			  
+        						} else {
+        							if ( rowIndexOverflowCounter.containsKey(rowIndex) ) {
+        								rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
+        							} else {
+        								rowIndexOverflowCounter.put(rowIndex, 1);
+        							}
+        						}
+
+        					}
+        				} catch (Exception e) {
+        					logger.error("Exception parsing Record {}", e.getMessage());
+        				}
+        			} else {
+        				selectorNullCount++;
+        			}
+        		} else {
+        			logger.error("Error JSON parsing line {}", record.value());
+        		}
+        		recordCounter++;
+        	}
+        	//			logger.info("Read {} new records from Kafka in consumer thread {}", processedCounter, Thread.currentThread().getId());
+        	//			processedCounter = 0;
+        	while (pauseLoading && !stopConsumer) {
+        		try {
+        			logger.info("Kafka Consumer Thread {} has been paused", Thread.currentThread().getId());
+        			Thread.sleep(Timer.ONE_SECOND);
+        		} catch (InterruptedException e) {
+        			logger.error("Interrupt Exception waiting for pause {}", e.getMessage());
+        		}
+        	}
+        }
+        logger.info("Consumed {} records from Kafka Topic {} in thread {}",recordCounter, topic, Thread.currentThread().getId());	
+        long notProcessed = recordCounter - processedCounter;
+        if (notProcessed > 0) {
+        	logger.warn("{} Records not processed.  {} had no selector the rest failed processing in Thread {}", 
+        			notProcessed, selectorNullCount, Thread.currentThread().getId());
+        }
+        try {
+        	if (outputStream != null ) {
+        		outputStream.close();
+        	}
+        } catch (IOException e) {
+        	// TODO Auto-generated catch block
+        	e.printStackTrace();
+        }
 	}
 	
 	private FSDataOutputStream setupHdfs() {
