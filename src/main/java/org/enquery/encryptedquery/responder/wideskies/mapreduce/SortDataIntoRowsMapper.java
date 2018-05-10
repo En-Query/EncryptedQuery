@@ -21,6 +21,7 @@ package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -127,10 +128,10 @@ public class SortDataIntoRowsMapper extends Mapper<Text,MapWritable,IntWritable,
     if (passFilter)
     {
       // Extract the selector, compute the hash, and partition the data element according to query type
-      Tuple2<Integer,BytesArrayWritable> returnTuple;
+      Tuple2<Integer,Byte[]> returnTuple;
       try
       {
-        returnTuple = HashSelectorAndPartitionData.hashSelectorAndFormPartitions(value, qSchema, dSchema, queryInfo);
+        returnTuple = HashSelectorAndPartitionData.hashSelectorAndFormPartitions2(value, qSchema, dSchema, queryInfo);
       } catch (Exception e)
       {
         logger.error("Error in partitioning data element value = " + StringUtils.mapWritableToString(value));
@@ -139,16 +140,8 @@ public class SortDataIntoRowsMapper extends Mapper<Text,MapWritable,IntWritable,
       }
 
       Integer rowIndex = returnTuple._1;
-      BytesArrayWritable data = returnTuple._2;
-
-      // XXX need to refactor this
-      byte[] dataBytes = new byte[data.size()];
-      for (int i = 0; i < data.size(); i++) {
-	// XXX assuming the parts are byte-sized.  This needs to
-	// change when partitioners support different sizes.
-      	BigInteger bi = data.getBigInteger(i);
-     	dataBytes[i] = bi.byteValue();
-      }
+      Byte[] data = returnTuple._2;
+      byte[] dataBytes = ArrayUtils.toPrimitive(data);
 
       keyOut.set(rowIndex);
       valueOut.set(dataBytes, 0, dataBytes.length);

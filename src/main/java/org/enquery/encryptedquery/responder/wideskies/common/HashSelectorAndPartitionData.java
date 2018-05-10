@@ -22,6 +22,7 @@
 package org.enquery.encryptedquery.responder.wideskies.common;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.io.MapWritable;
@@ -76,6 +77,20 @@ public class HashSelectorAndPartitionData
     return new Tuple2<>(hash, bAW);
   }
 
+  public static Tuple2<Integer,Byte[]> hashSelectorAndFormPartitions2(MapWritable dataElement, QuerySchema qSchema, DataSchema dSchema,
+	      QueryInfo queryInfo) throws Exception
+	  {
+	    // Pull the selector based on the query type
+	    String selector = QueryUtils.getSelectorByQueryType(dataElement, qSchema, dSchema);
+	    int hash = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+	    logger.debug("selector = " + selector + " hash = " + hash);
+
+	    // Extract the data bits based on the query type
+	    // Partition by the given partitionSize
+	    Byte[] packedBytes = QueryUtils.partitionDataElementAsBytes(dataElement, qSchema, dSchema, queryInfo.getEmbedSelector());
+	    return new Tuple2<>(hash, packedBytes);
+	  }
+
   public static Tuple2<Integer,List<BigInteger>> hashSelectorAndFormPartitions(JSONObject json, QueryInfo queryInfo, QuerySchema qSchema) throws Exception
   {
     // Pull the selector based on the query type
@@ -88,5 +103,14 @@ public class HashSelectorAndPartitionData
     List<BigInteger> hitValPartitions = QueryUtils.partitionDataElement(qSchema, json, queryInfo.getEmbedSelector());
 
     return new Tuple2<>(hash, hitValPartitions);
+  }
+
+  public static int numPartsInPackedBytes(byte[] packedBytes, int bytesPerPart) {
+	  return (packedBytes.length + bytesPerPart - 1) / bytesPerPart;
+  }
+
+  public static byte[] packedBytesToPartAsBytes(byte[] packedBytes, int bytesPerPart, int i) {
+	  byte[] partAsBytes = Arrays.copyOfRange(packedBytes, i*bytesPerPart, (i+1)*bytesPerPart);
+	  return partAsBytes;
   }
 }

@@ -152,6 +152,21 @@ public class QueryUtils {
 	}
 
 	/**
+	 * Method to convert the given data element given by the JSONObject data element into a Byte array
+	 * based upon the given queryType
+	 */
+	public static Byte[] partitionDataElementAsBytes(QuerySchema qSchema, JSONObject jsonData, boolean embedSelector) throws PIRException {
+		// XXX we assume each BigInteger returned by partitionDataElement only contains one byte of data
+		List<BigInteger> bytesAsBI = partitionDataElement(qSchema, jsonData, embedSelector);
+		Byte[] packedBytes = new Byte[bytesAsBI.size()];
+		for (int i = 0; i < bytesAsBI.size(); i++) {
+			BigInteger byteAsBI = bytesAsBI.get(i);
+			packedBytes[i] = byteAsBI.byteValue();
+		}
+		return packedBytes;
+	}
+	
+	/**
 	 * Method to convert the given data element given by the MapWritable data element into the
 	 * extracted BigInteger partitions based upon the given queryType
 	 */
@@ -202,6 +217,21 @@ public class QueryUtils {
 	//	logger.debug("parts.size() = " + parts.size());
 
 		return parts;
+	}
+
+	/**
+	 * Method to convert the given data element given by the MapWritable data element into the
+	 * extracted packed byte array based upon the given queryType
+	 */
+	public static Byte[] partitionDataElementAsBytes(MapWritable dataMap, QuerySchema qSchema, DataSchema dSchema, boolean embedSelector) throws PIRException {
+		// XXX we assume each BigInteger returned by partitionDataElement only contains one byte of data
+		List<BigInteger> bytesAsBI = partitionDataElement(dataMap, qSchema, dSchema, embedSelector);
+		Byte[] packedBytes = new Byte[bytesAsBI.size()];
+		for (int i = 0; i < bytesAsBI.size(); i++) {
+			BigInteger byteAsBI = bytesAsBI.get(i);
+			packedBytes[i] = byteAsBI.byteValue();
+		}
+		return packedBytes;
 	}
 
 	/**

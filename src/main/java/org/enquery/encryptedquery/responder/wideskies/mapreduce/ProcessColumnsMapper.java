@@ -31,6 +31,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
+import org.enquery.encryptedquery.responder.wideskies.common.HashSelectorAndPartitionData;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     super.setup(ctx);
 
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
-    bytesPerPart = dataPartitionBitSize / 8;  // XXX assume divisible by 8
+    bytesPerPart = (dataPartitionBitSize + 7) / 8;
 
     keyOut = new IntWritable();
     valueOut = new IntBytesPairWritable(new IntWritable(), new BytesWritable());
@@ -74,17 +75,18 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     Integer rowIndex = rowAndCol.getFirst().get();
     Integer colIndex = rowAndCol.getSecond().get();
 
-    // combine adjacent bytes into parts
+    // extract parts from the packed bytes representation of the data element,
+    // and emit ((row,col), part) pairs
     byte[] entry = dataBytes.copyBytes();
-    int numParts = entry.length / bytesPerPart;  // XXX assume divisible
+    int numParts = HashSelectorAndPartitionData.numPartsInPackedBytes(entry, bytesPerPart);
     for (int i = 0; i < numParts; i++)
     {	
-  	  keyOut.set(colIndex / bytesPerPart + i);
-  	  byte[] part = Arrays.copyOfRange(entry, i * bytesPerPart, (i+1) * bytesPerPart);
-  	  valueOut.getSecond().set(part, 0, part.length);
-  	  valueOut.getFirst().set(rowIndex);
-  	  ctx.write(keyOut, valueOut);
-    }    
+      keyOut.set(colIndex / bytesPerPart + i);
+      byte[] part = HashSelectorAndPartitionData.packedBytesToPartAsBytes(entry, bytesPerPart, i);
+      valueOut.getSecond().set(part, 0, part.length);
+      valueOut.getFirst().set(rowIndex);
+      ctx.write(keyOut, valueOut);
+    }
   }
 
   @Override
