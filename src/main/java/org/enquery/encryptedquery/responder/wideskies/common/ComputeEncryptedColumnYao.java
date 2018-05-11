@@ -43,8 +43,22 @@ public class ComputeEncryptedColumnYao implements ComputeEncryptedColumn
   private final BigInteger[] hs;
   private final MontgomeryReduction mont;
 
+  public static void validateParameters(int maxRowIndex, int dataPartitionBitSize)
+  {
+	if (dataPartitionBitSize <= 0)
+	{
+		throw new IllegalArgumentException("Yao responder method requires dataPartitionBitSize > 0, " + dataPartitionBitSize + " given");
+	}
+	if (dataPartitionBitSize > 16)
+	{
+		throw new IllegalArgumentException("Yao responder method currently requires dataPartitionBitSize <= 16 to limit memory usage, " + dataPartitionBitSize + " given");
+	}
+  }
+
   public ComputeEncryptedColumnYao(Map<Integer,BigInteger> queryElements, BigInteger NSquared, int dataPartitionBitSize, boolean useMontgomery)
   {
+    // validateParameters(...)?
+
     this.queryElements = queryElements;
     this.NSquared = NSquared;
     this.b = dataPartitionBitSize;

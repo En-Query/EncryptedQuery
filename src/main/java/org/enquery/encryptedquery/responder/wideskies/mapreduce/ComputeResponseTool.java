@@ -57,6 +57,7 @@ import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
+import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnFactory;
 import org.enquery.encryptedquery.responder.wideskies.ResponderProps;
 import org.enquery.encryptedquery.schema.data.DataSchemaLoader;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
@@ -121,6 +122,7 @@ public class ComputeResponseTool extends Configured implements Tool
   private String outputDirFinal = null;
   private String queryInputDir = null;
   private String stopListFile = null;
+
   private Boolean limitHitsPerSelector = false;
   private Integer maxHitsPerSelector = -1;
   private int numReduceTasks = 1;
@@ -160,11 +162,21 @@ public class ComputeResponseTool extends Configured implements Tool
       qSchema = QuerySchemaRegistry.get(queryInfo.getQueryType());
     }
 
+    validateProcessColumnsParameters();
+
     logger.info("outputFile = " + outputFile + " outputDirInit = " + outputDirInit + " outputDirColumnMult = " + outputDirColumnMult
       + " queryInputDir = " + queryInputDir + " stopListFile = " + stopListFile + " limitHitsPerSelector = " + limitHitsPerSelector
       + " maxHitsPerSelector = " + maxHitsPerSelector + " numReduceTasks = " + numReduceTasks + " esQuery = " + esQuery + " esResource = " + esResource);
 
     checkJniLibFilePath(jniLibFilePath);
+  }
+
+  private void validateProcessColumnsParameters()
+  {
+    int dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+	int hashBitSize = queryInfo.getHashBitSize();
+	String method = SystemConfiguration.getProperty("responder.encryptColumnMethod", "true");
+	ComputeEncryptedColumnFactory.validateParameters(method, hashBitSize, dataPartitionBitSize);
   }
 
   /*

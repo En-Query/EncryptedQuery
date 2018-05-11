@@ -30,11 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn
 {
-  static
-  {
-    String libraryBaseName = SystemConfiguration.getProperty(ResponderProps.RESPONDERJNILIBBASENAME);
-    System.loadLibrary(libraryBaseName);
-  }
+  private static boolean libraryLoaded = false;
   private long hContext;
 
   private static final Logger logger = LoggerFactory.getLogger(ComputeEncryptedColumnDeRooijJNI.class);
@@ -48,9 +44,27 @@ public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn
   private native void derooijClearData(long hContext);
   private native void derooijDelete(long hContext);
 
+  public static void validateParameters(int maxRowIndex, int dataPartitionBitSize)
+  {
+	if (dataPartitionBitSize <= 0 || 24 < dataPartitionBitSize || (dataPartitionBitSize % 8) != 0)
+	{
+		throw new IllegalArgumentException("DeRooiJNI responder method requires dataPartitionBitSize to be 8, 16, or 24; " + dataPartitionBitSize + " given");
+	}
+  }
+
   public ComputeEncryptedColumnDeRooijJNI(Map<Integer,BigInteger> queryElements, BigInteger NSquared, int maxRowIndex)
   {
     logger.debug("XXX this = {} constructor", this);
+
+    // validateParameters(...) ?
+
+    if (!libraryLoaded)
+    {
+      String libraryBaseName = SystemConfiguration.getProperty(ResponderProps.RESPONDERJNILIBBASENAME);
+      System.loadLibrary(libraryBaseName);
+      libraryLoaded = true;
+    }
+
     this.hContext = derooijNew(NSquared.toByteArray(), maxRowIndex);
     if (0 == this.hContext)
     {
