@@ -85,9 +85,11 @@ public class HashSelectorAndPartitionData
 	    int hash = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
 	    logger.debug("selector = " + selector + " hash = " + hash);
 
+	    int bytesPerPartition = QueryUtils.getBytesPerPartition(queryInfo.getDataPartitionBitSize());
+    
 	    // Extract the data bits based on the query type
 	    // Partition by the given partitionSize
-	    Byte[] packedBytes = QueryUtils.partitionDataElementAsBytes(dataElement, qSchema, dSchema, queryInfo.getEmbedSelector());
+	    Byte[] packedBytes = QueryUtils.partitionDataElementAsBytes(dataElement, qSchema, dSchema, queryInfo.getEmbedSelector(), bytesPerPartition );
 	    return new Tuple2<>(hash, packedBytes);
 	  }
 

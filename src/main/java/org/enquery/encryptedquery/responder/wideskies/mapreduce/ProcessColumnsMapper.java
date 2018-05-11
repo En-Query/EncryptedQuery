@@ -30,6 +30,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
+import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.responder.wideskies.common.HashSelectorAndPartitionData;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
@@ -52,7 +53,7 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
   private static final Logger logger = LoggerFactory.getLogger(ProcessColumnsMapper.class);
 
   private int dataPartitionBitSize = 0;
-  private int bytesPerPart = 0;
+  private int bytesPerPartition = 0;
   
   private IntWritable keyOut = null;
   private IntBytesPairWritable valueOut = null;
@@ -63,8 +64,9 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     super.setup(ctx);
 
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
-    bytesPerPart = (dataPartitionBitSize + 7) / 8;
-
+    
+    bytesPerPartition = QueryUtils.getBytesPerPartition(dataPartitionBitSize);
+    
     keyOut = new IntWritable();
     valueOut = new IntBytesPairWritable(new IntWritable(), new BytesWritable());
   }
@@ -78,11 +80,11 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     // extract parts from the packed bytes representation of the data element,
     // and emit ((row,col), part) pairs
     byte[] entry = dataBytes.copyBytes();
-    int numParts = HashSelectorAndPartitionData.numPartsInPackedBytes(entry, bytesPerPart);
+    int numParts = HashSelectorAndPartitionData.numPartsInPackedBytes(entry, bytesPerPartition);
     for (int i = 0; i < numParts; i++)
     {	
-      keyOut.set(colIndex / bytesPerPart + i);
-      byte[] part = HashSelectorAndPartitionData.packedBytesToPartAsBytes(entry, bytesPerPart, i);
+      keyOut.set(colIndex / bytesPerPartition + i);
+      byte[] part = HashSelectorAndPartitionData.packedBytesToPartAsBytes(entry, bytesPerPartition, i);
       valueOut.getSecond().set(part, 0, part.length);
       valueOut.getFirst().set(rowIndex);
       ctx.write(keyOut, valueOut);

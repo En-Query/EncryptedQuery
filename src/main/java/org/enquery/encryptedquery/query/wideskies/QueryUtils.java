@@ -223,14 +223,28 @@ public class QueryUtils {
 	 * Method to convert the given data element given by the MapWritable data element into the
 	 * extracted packed byte array based upon the given queryType
 	 */
-	public static Byte[] partitionDataElementAsBytes(MapWritable dataMap, QuerySchema qSchema, DataSchema dSchema, boolean embedSelector) throws PIRException {
+	public static Byte[] partitionDataElementAsBytes(MapWritable dataMap, QuerySchema qSchema, DataSchema dSchema, boolean embedSelector, int bytesPerPartition) throws PIRException {
 		// XXX we assume each BigInteger returned by partitionDataElement only contains one byte of data
 		List<BigInteger> bytesAsBI = partitionDataElement(dataMap, qSchema, dSchema, embedSelector);
-		Byte[] packedBytes = new Byte[bytesAsBI.size()];
+
+		//Calculate how much padding to add to record to accommodate different dps sizes.
+		int remainder = bytesAsBI.size() % bytesPerPartition;
+		int addPadding = 0;
+		if (remainder > 0) {
+			addPadding = bytesPerPartition - remainder;
+		}
+		int overallSize = bytesAsBI.size() + addPadding;
+		Byte[] packedBytes = new Byte[overallSize];
 		for (int i = 0; i < bytesAsBI.size(); i++) {
 			BigInteger byteAsBI = bytesAsBI.get(i);
 			packedBytes[i] = byteAsBI.byteValue();
 		}
+		
+		//If needed pack with "0" bytes until full
+		for (int i = bytesAsBI.size(); i < overallSize; i++ ) {
+			packedBytes[i] = new Byte("0");
+		}
+		
 		return packedBytes;
 	}
 
@@ -404,9 +418,7 @@ public class QueryUtils {
 	    return new String(hexChars);
 	}
 	
-	public static List<BigInteger> createPartitions(List<BigInteger> inputData, int dataPartitionBitSize) {
-		List<BigInteger> partitionedData = new ArrayList<BigInteger>();
-
+	public static int getBytesPerPartition(int dataPartitionBitSize) {
 		// determine how many bytes per partition based on the dataPartitionBitSize
 		// dataPartitionBitSize needs to be a multiple of 8 as we are using UTF-8 and we do not want to split a byte.
 		int bytesPerPartition = 1;
@@ -416,7 +428,15 @@ public class QueryUtils {
 		else {
 			logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
 		}
+        return bytesPerPartition;
 
+	}
+	
+	public static List<BigInteger> createPartitions(List<BigInteger> inputData, int dataPartitionBitSize) {
+		List<BigInteger> partitionedData = new ArrayList<BigInteger>();
+
+	    int bytesPerPartition = getBytesPerPartition(dataPartitionBitSize);
+	    
 		//		logger.debug("bytesPerPartition {}", bytesPerPartition);
 		if (bytesPerPartition > 1) {
 			byte[] tempByteArray = new byte[bytesPerPartition];
