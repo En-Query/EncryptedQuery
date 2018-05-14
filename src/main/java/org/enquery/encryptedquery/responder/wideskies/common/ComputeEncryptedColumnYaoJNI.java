@@ -36,11 +36,7 @@ import scala.Tuple2;
 
 public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn
 {
-  static
-  {
-    String libraryBaseName = SystemConfiguration.getProperty(ResponderProps.RESPONDERJNILIBBASENAME);
-    System.loadLibrary(libraryBaseName);
-  }
+  private static boolean libraryLoaded = false;
   private long hContext;
 
   private static final Logger logger = LoggerFactory.getLogger(ComputeEncryptedColumnYaoJNI.class);
@@ -54,9 +50,31 @@ public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn
   private native void yaoClearData(long hContext);
   private native void yaoDelete(long hContext);
 
+  public static void validateParameters(int maxRowIndex, int dataPartitionBitSize)
+  {
+	if (dataPartitionBitSize <= 0 || 24 < dataPartitionBitSize || (dataPartitionBitSize % 8) != 0)
+	{
+		throw new IllegalArgumentException("YaoJNI responder method requires dataPartitionBitSize to be 8, 16, or 24; " + dataPartitionBitSize + " given");
+	}
+	if (dataPartitionBitSize > 16)
+	{
+		throw new IllegalArgumentException("YaoJNI responder method currently requires dataPartitionBitSize <= 16 to limit memory usage, " + dataPartitionBitSize + " given");
+	}
+  }
+
   public ComputeEncryptedColumnYaoJNI(Map<Integer,BigInteger> queryElements, BigInteger NSquared, int maxRowIndex, int dataPartitionBitSize)
   {
     logger.debug("XXX this = {} constructor", this);
+
+    validateParameters(maxRowIndex, dataPartitionBitSize);
+
+    if (! libraryLoaded)
+    {
+      String libraryBaseName = SystemConfiguration.getProperty(ResponderProps.RESPONDERJNILIBBASENAME);
+      System.loadLibrary(libraryBaseName);
+      libraryLoaded = true;
+    }
+
     this.hContext = yaoNew(NSquared.toByteArray(), maxRowIndex, dataPartitionBitSize);  // TODO: when to clean up?
     if (0 == this.hContext)
     {

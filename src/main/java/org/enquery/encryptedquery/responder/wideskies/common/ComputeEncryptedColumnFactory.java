@@ -20,6 +20,7 @@
 package org.enquery.encryptedquery.responder.wideskies.common;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ public class ComputeEncryptedColumnFactory
 
   public static ComputeEncryptedColumn getComputeEncryptedColumnMethod(String method, Map<Integer,BigInteger> queryElements, BigInteger NSquared, int maxRowIndex, int dataPartitionBitSize)
   {
+	validateParameters(method, maxRowIndex, dataPartitionBitSize);
 	if (method.equals(M_BASIC))
 	{
 	  return new ComputeEncryptedColumnBasic(queryElements, NSquared);
@@ -61,5 +63,24 @@ public class ComputeEncryptedColumnFactory
 	{
 	  throw new IllegalArgumentException("unrecognized ComputeEncryptedColumn method specified: \"" + method + "\"");
 	}
+  }
+
+  public static void validateParameters(String method, int maxRowIndex, int dataPartitionBitSize)
+  {
+    if (-1 == Arrays.asList(METHODS).indexOf(method))
+    {
+      throw new IllegalArgumentException("unrecognized ComputeEncryptedColumn method specified: \"" + method + "\"");
+    }
+
+    if (method.equals(M_YAO)) {
+      ComputeEncryptedColumnYao.validateParameters(maxRowIndex, dataPartitionBitSize);
+	}
+    else if (method.equals(M_YAOJNI)) {
+      ComputeEncryptedColumnYaoJNI.validateParameters(maxRowIndex, dataPartitionBitSize);
+    }
+    else if (method.equals(M_DEROOIJJNI))
+    {
+      ComputeEncryptedColumnDeRooijJNI.validateParameters(maxRowIndex, dataPartitionBitSize);
+    }
   }
 }
