@@ -28,10 +28,10 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * Combine column results mapper
- * <p>
- * This is a pass-through mapper that reads in pairs {@code (startCol,
- * [encryptedColumns])} and emits the same key-value pair unchanged.
+ * Mapper class for the CombineColumnResults job
+ *
+ * <p> This is a pass-through mapper that reads in pairs {@code
+ * (startCol, encvalue)} and emits the same key-value pair unchanged.
  */
 public class CombineColumnResultsMapper extends Mapper<LongWritable,BytesWritable,LongWritable,BytesWritable>
 {
