@@ -29,7 +29,7 @@ import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
-import org.enquery.encryptedquery.responder.wideskies.common.ResponderProcessingThread;
+import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
 import org.enquery.encryptedquery.responder.wideskies.standalone.Responder;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
@@ -121,8 +121,8 @@ public class StandaloneQuery
     ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
     logger.info("Starting the responder processing thread");
-    ResponderProcessingThread qpThread =
-			  new ResponderProcessingThread(newRecordQueue, responseQueue, query); 
+    RowBasedResponderProcessor qpThread =
+			  new RowBasedResponderProcessor(newRecordQueue, responseQueue, query); 
     Thread pt = new Thread(qpThread);
     pt.start();
     

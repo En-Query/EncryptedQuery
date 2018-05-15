@@ -41,9 +41,11 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.ConsolidateResponse;
 import org.enquery.encryptedquery.responder.wideskies.common.ProcessingUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
+import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
 import org.enquery.encryptedquery.responder.wideskies.common.ColumnBasedResponderProcessor;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
+import org.enquery.encryptedquery.utils.JavaUtilities;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.json.simple.JSONObject;
@@ -134,6 +136,7 @@ public class Responder
 		logger.info("Reading and processing input file...");
 		JSONParser jsonParser = new JSONParser();
 
+		logger.info("Memory Usage before starting {}",JavaUtilities.memoryUsage());
 		Boolean waitForProcessing = false;
 		while ((line = br.readLine()) != null )
 		{
@@ -192,6 +195,7 @@ public class Responder
 
 							if (queueSize < ( maxQueueSize * 0.01 )) {
 								waitForProcessing = false;
+								logger.info("Memory Usage at the end of wait {}",JavaUtilities.memoryUsage());
 							}
 							logger.info("Loading paused to catchup on processing, Queue Size {}", numFormat.format(queueSize));
 						} catch (InterruptedException e) {
@@ -246,9 +250,11 @@ public class Responder
 		} while ( running > 0 );
 
 		logger.info("{} responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
+		logger.info("Memory Usage after processors stopped {}",JavaUtilities.memoryUsage());
 
 		String outputFile = SystemConfiguration.getProperty("pir.outputFile");
 		outputResponse( outputFile );
+		logger.info("Memory Usage at the end {}",JavaUtilities.memoryUsage());
 	}
 
 	// Compile the results from all the threads into one response file.

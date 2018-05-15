@@ -20,24 +20,16 @@
 package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.List;
 
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.inputformat.hadoop.IntPairWritable;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
-import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.responder.wideskies.common.HashSelectorAndPartitionData;
-import org.enquery.encryptedquery.utils.SystemConfiguration;
+import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import scala.Tuple2;
 
 /**
  * Process column mapper

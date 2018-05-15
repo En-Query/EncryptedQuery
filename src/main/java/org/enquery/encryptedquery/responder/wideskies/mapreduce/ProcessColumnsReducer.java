@@ -63,7 +63,6 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   private Query query = null;
   private int hashBitSize = 0;
   private int dataPartitionBitSize = 8;
-  private int bytesPerPart = 0;
   private static BigInteger NSquared = null;
 
   private String encryptColumnMethod = null;
@@ -87,12 +86,6 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     hashBitSize = query.getQueryInfo().getHashBitSize();
     NSquared = query.getNSquared();
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
-    if ((dataPartitionBitSize % 8 ) != 0)
-    {
-      logger.error("dataPartitionBitSize must be a multiple of 8 !! {}", dataPartitionBitSize);
-      throw new RuntimeException("dataPartitionBitSize (" + dataPartitionBitSize + ") must be a multiple of 8");
-    }
-    bytesPerPart = dataPartitionBitSize / 8 ;
 
     encryptColumnMethod = ctx.getConfiguration().get("responder.encryptColumnMethod");
     cec = ComputeEncryptedColumnFactory.getComputeEncryptedColumnMethod(encryptColumnMethod, query.getQueryElements(), NSquared, (1<<hashBitSize), dataPartitionBitSize);

@@ -51,9 +51,9 @@ public class ProcessingUtils {
 	 * @param processors List of processing threads
 	 * @return long number of records processed
 	 */
-	public static long recordsProcessedRowBased(List<ResponderProcessingThread> processors) {
+	public static long recordsProcessedRowBased(List<RowBasedResponderProcessor> processors) {
 		long recordsProcessed = 0;
-		for (ResponderProcessingThread processor : processors) {
+		for (RowBasedResponderProcessor processor : processors) {
 			recordsProcessed += ( processor).getRecordsProcessed();
 		}
 		logger.debug("Records Processed so far {}", numFormat.format(recordsProcessed));
@@ -76,4 +76,19 @@ public class ProcessingUtils {
 		}
 	}
 
+	/**
+	 * Returns the Percent of records processed based on how many have been loaded into the queues
+	 * @return int Percent Complete
+	 */
+	public static int getPercentCompleteRowBased(long recordsLoaded, List<RowBasedResponderProcessor> processors)
+	{
+		long counter = ProcessingUtils.recordsProcessedRowBased(processors);
+		if (recordsLoaded != 0) {
+			double pct =  Math.round( ( (double)counter / (double)recordsLoaded ) * 100.0 ) ;
+			logger.debug("RL {} / RP {} / % {}", recordsLoaded, counter, pct);
+			return (int)pct;
+		} else {
+			return 0;
+		}
+	}
 }

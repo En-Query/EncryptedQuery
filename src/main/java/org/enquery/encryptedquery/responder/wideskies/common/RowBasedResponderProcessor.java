@@ -34,16 +34,13 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
-import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ResponderProcessingThread implements Runnable {
+public class RowBasedResponderProcessor implements Runnable {
 
-	private static final Logger logger = LoggerFactory.getLogger(ResponderProcessingThread.class);
+	private static final Logger logger = LoggerFactory.getLogger(RowBasedResponderProcessor.class);
 	private boolean stopProcessing = false;
 	private boolean isRunning = true;
 	private final Query query;
@@ -60,7 +57,7 @@ public class ResponderProcessingThread implements Runnable {
 	private ConcurrentLinkedQueue<QueueRecord> inputQueue;
 	private ConcurrentLinkedQueue<Response> responseQueue;
 
-	public ResponderProcessingThread(ConcurrentLinkedQueue<QueueRecord> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
+	public RowBasedResponderProcessor(ConcurrentLinkedQueue<QueueRecord> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
 			Query queryInput) {
 
 		logger.debug("Initializing Responder Processing Thread");
@@ -160,11 +157,11 @@ public class ResponderProcessingThread implements Runnable {
 		List<BigInteger> inputData = qr.getParts();
 		List<BigInteger> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
 
-			    int index = 1;
-			    for (BigInteger bi : hitValPartitions) {
-			    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-			    	index++;
-			    }
+//		int index = 1;
+//		for (BigInteger bi : hitValPartitions) {
+//			logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
+//			index++;
+//		}
 
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);

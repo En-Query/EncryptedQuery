@@ -36,7 +36,7 @@ import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.responder.wideskies.common.ConsolidateResponse;
 import org.enquery.encryptedquery.responder.wideskies.common.ProcessingUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
-import org.enquery.encryptedquery.responder.wideskies.common.ResponderProcessingThread;
+import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
@@ -63,7 +63,7 @@ public class KafkaStreamResponder
   private List<ConcurrentLinkedQueue<QueueRecord>> newRecordQueues = new ArrayList<ConcurrentLinkedQueue<QueueRecord>>();
   private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<Response>();
 
-  private List<ResponderProcessingThread> responderProcessors;
+  private List<RowBasedResponderProcessor> responderProcessors;
   private List<Thread> responderProcessingThreads;
 
   private static final String kafkaClientId = SystemConfiguration.getProperty("kafka.clientId", "Encrypted-Query");
@@ -150,8 +150,8 @@ public class KafkaStreamResponder
 			  responderProcessors = new ArrayList<>();
 			  responderProcessingThreads = new ArrayList<>();
 			  for (int i = 0; i < numberOfProcessorThreads; i++) {
-				  ResponderProcessingThread qpThread =
-						  new ResponderProcessingThread(newRecordQueues.get(i), responseQueue, query); 
+				  RowBasedResponderProcessor qpThread =
+						  new RowBasedResponderProcessor(newRecordQueues.get(i), responseQueue, query); 
 				  responderProcessors.add(qpThread);
 				  Thread pt = new Thread(qpThread);
 				  pt.start();
@@ -201,7 +201,7 @@ public class KafkaStreamResponder
 				  logger.error("Error exception sleeping in main Streaming Thread {}", e.getMessage());
 			  }
 
-			  for (ResponderProcessingThread qpThread : responderProcessors) {
+			  for (RowBasedResponderProcessor qpThread : responderProcessors) {
 				  qpThread.stopProcessing();
 			  }
 

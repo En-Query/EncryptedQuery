@@ -20,7 +20,6 @@
 package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.BytesWritable;
@@ -28,7 +27,6 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.enquery.encryptedquery.inputformat.hadoop.BytesArrayWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.responder.wideskies.common.HashSelectorAndPartitionData;

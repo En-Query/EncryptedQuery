@@ -20,8 +20,14 @@
 package org.enquery.encryptedquery.responder.wideskies.common;
 
 import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -31,14 +37,16 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
+import org.enquery.encryptedquery.utils.JavaUtilities;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
-import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ColumnBasedResponderProcessor implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(ColumnBasedResponderProcessor.class);
+	private DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
+	
 	private boolean stopProcessing = false;
 	private boolean isRunning = true;
 	private final Query query;
@@ -48,13 +56,14 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	private Response response = null;
 	private long threadId = 0; 
 	private long recordCount = 0;
-	private static BigInteger NSquared = null;
+	private BigInteger NSquared = null;
 	private int hashBitSize = 0;
 	private String encryptColumnMethod = null;
 	private ComputeEncryptedColumn cec = null;
+    private int columnPosition = 0;
 
 	// dataColumns[column number][row index] = data part (i.e. exponent)
-	private final ArrayList<BigInteger[]> dataColumns;
+	private HashMap<Integer, BigInteger[]> dataColumns;
 
 	private long dataStart, dataTime = 0;
 	private long mathStart, mathTime = 0;
@@ -94,7 +103,7 @@ public class ColumnBasedResponderProcessor implements Runnable {
 
 		resetResponse();
 
-		dataColumns = new ArrayList<BigInteger[]>();
+		dataColumns = new HashMap<Integer, BigInteger[]>();
 
 		encryptColumnMethod = SystemConfiguration.getProperty("responder.encryptColumnMethod");
 		cec = ComputeEncryptedColumnFactory.getComputeEncryptedColumnMethod(encryptColumnMethod, query.getQueryElements(), NSquared, (1<<hashBitSize), dataPartitionBitSize);
@@ -121,23 +130,23 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		logger.info("Starting Responder Processing Thread {} with encryptColumnMethod {}", threadId, encryptColumnMethod);
 		QueueRecord nextRecord = null;
 		while (!stopProcessing) {
-//			dataStart = System.nanoTime();
+			//			dataStart = System.nanoTime();
 			while ((nextRecord = inputQueue.poll()) != null) {
-//				logger.info("Retrieved rowIndex: {} selector: {}", nextRecord.getRowIndex(), nextRecord.getSelector());
-
-						try {
-							//logger.info("Processing selector {}", selector);
-							addDataElement(nextRecord);
-							recordCount++;
-							//if ( (recordCount % 1000) == 0) {
-							//	logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
-							//}
-						} catch (Exception e) {
-							logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
-						}
+				try {
+					//logger.info("Processing selector {}", selector);
+					addDataElement(nextRecord);
+					recordCount++;
+					if ( (recordCount % 50000) == 0) {
+						logger.info("Retrieved {} records so far in Queue Processing Thread {} will compute now", recordCount, threadId);
+						processColumns();
+						logger.info("Chunk processed, resuming data processing in Thread {}", threadId);
+					}
+				} catch (Exception e) {
+					logger.error("Exception processing record {} in Queue Processing Thread {}; Exception: {}", nextRecord, threadId, e.getMessage());
 				}
 			}
-//			dataTime += System.nanoTime() - dataStart;
+		}
+		//			dataTime += System.nanoTime() - dataStart;
 
 		computeEncryptedColumns();
 
@@ -145,11 +154,11 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		responseQueue.add(response);
 		logger.info("Processed {} total records in Thread {}", recordCount, threadId);
 		logger.debug("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), threadId);
-//		logger.info("XXX data ******* time: {} nanoseconds", dataTime);
-//		logger.info("XXX   ade ****** time: {} nanoseconds", adeTime);
-//		logger.info("XXX     array ** time: {} nanoseconds", arrayTime);
-//		logger.info("XXX math ******* time: {} nanoseconds", mathTime);
-//		logger.info("XXX resp ******* time: {} nanoseconds", respTime);
+		//		logger.info("XXX data ******* time: {} nanoseconds", dataTime);
+				logger.info("XXX   ade ****** time: {} nanoseconds", numFormat.format(adeTime));
+				logger.info("XXX     array ** time: {} nanoseconds", numFormat.format(arrayTime));
+				logger.info("XXX math ******* time: {} nanoseconds", numFormat.format(mathTime));
+				logger.info("XXX resp ******* time: {} nanoseconds", numFormat.format(respTime));
 		isRunning = false;
 		cec.free();
 	}
@@ -194,41 +203,56 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		//	        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
 
 		// Update the associated column values
-//		arrayStart = System.nanoTime();
+		arrayStart = System.nanoTime();
 		for (int i = 0; i < hitValPartitions.size(); ++i)
 		{
-			if (dataColumns.size() <= i + rowCounter)
+			if (!dataColumns.containsKey(i + rowCounter))
 			{
-				dataColumns.add(new BigInteger[1 << queryInfo.getHashBitSize()]);
+				dataColumns.put(i + rowCounter, new BigInteger[1 << queryInfo.getHashBitSize()]);
 			}
 			dataColumns.get(i + rowCounter)[rowIndex] = hitValPartitions.get(i);
 		}
-//		arrayTime += System.nanoTime() - arrayStart;
+		arrayTime += System.nanoTime() - arrayStart;
 
 		// Update the rowCounter (next free column position) for the selector
 		rowColumnCounters.set(rowIndex, rowCounter + hitValPartitions.size());
 		//	    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
-//		adeTime += System.nanoTime() - adeStart;
+		adeTime += System.nanoTime() - adeStart;
 	}
 
-
+	/**
+	 * Since we do not have an endless supply of memory to process unlimited data
+	 * process the data in chunks.
+	 */
+    private void processColumns() {
+    	computeEncryptedColumns();
+        dataColumns.clear();
+    }
+    
+    
 	public void computeEncryptedColumns()
 	{
 		//logger.info("XXX computeEncryptedColumns()");
 		//logger.info("XXX dataColumns.size() = {}", dataColumns.size());
-		for (int col=0; col < dataColumns.size(); ++col)
-		{
-			BigInteger[] dataCol = dataColumns.get(col);
-			for (int rowIndex=0; rowIndex<dataCol.length; ++rowIndex)
+		for(Map.Entry<Integer, BigInteger[]> entry : dataColumns.entrySet()) {
+            int col = entry.getKey();
+			BigInteger[] dataCol = entry.getValue();
+			for (int rowIndex=0; rowIndex < dataCol.length; ++rowIndex)
 			{
 				if (null != dataCol[rowIndex])
 				{
 					cec.insertDataPart(rowIndex, dataCol[rowIndex]);
 				}
 			}
-//			mathStart = System.nanoTime();
-			BigInteger column = cec.computeColumnAndClearData();
-//			mathTime += System.nanoTime() - mathStart;
+			mathStart = System.nanoTime();
+			BigInteger newColumn = cec.computeColumnAndClearData();
+			mathTime += System.nanoTime() - mathStart;
+			if (!columns.containsKey(col))
+					{
+						columns.put(col, BigInteger.valueOf(1));
+					}
+			BigInteger column = columns.get(col);
+			column = (column.multiply(newColumn)).mod(query.getNSquared());
 			columns.put(col, column);
 		}
 	}
@@ -259,8 +283,8 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		// logger.debug("key = " + key + " column = " + columns.get(key));
 		// }
 		logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
-//		respStart = System.nanoTime();
+		respStart = System.nanoTime();
 		response.addResponseElements(columns);
-//		respTime += System.nanoTime() - respStart;
+		respTime += System.nanoTime() - respStart;
 	}
 }

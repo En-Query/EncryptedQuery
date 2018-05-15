@@ -99,7 +99,7 @@ public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn
 
   public void clearData()
   {
-    logger.debug("XXX this = {} clearData()", this);
+    logger.info("XXX this = {} clearData()", this);
     derooijClearData(hContext);
   }
 
