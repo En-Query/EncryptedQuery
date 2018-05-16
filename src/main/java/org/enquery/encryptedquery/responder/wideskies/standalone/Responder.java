@@ -41,11 +41,9 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.ConsolidateResponse;
 import org.enquery.encryptedquery.responder.wideskies.common.ProcessingUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
-import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
 import org.enquery.encryptedquery.responder.wideskies.common.ColumnBasedResponderProcessor;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.serialization.LocalFileSystemStore;
-import org.enquery.encryptedquery.utils.JavaUtilities;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.json.simple.JSONObject;
@@ -55,13 +53,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Class to perform stand alone responder functionalities
- * <p>
  * Used primarily for testing, although it can be used anywhere in standalone mode
- * <p>
- * Does not bound the number of hits that can be returned per selector
- * <p>
  * Does not use the DataFilter class -- assumes all filtering happens before calling addDataElement()
- * <p>
  * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs as this is a standalone responder
  */
 public class Responder
@@ -98,7 +91,6 @@ public class Responder
 
 	/**
 	 * Method to compute the standalone response
-	 * <p>
 	 * Assumes that the input data is a single file in the local filesystem and is fully qualified
 	 */
 	public void computeStandaloneResponse() throws IOException
@@ -112,6 +104,7 @@ public class Responder
 		int hashGroupSize = ((1 << queryInfo.getHashBitSize()) + numberOfProcessorThreads -1 ) / numberOfProcessorThreads;
 		logger.info("Based on {} Processor Thread(s) the hashGroupSize is {}", numberOfProcessorThreads, hashGroupSize);
 
+        // Create a Queue for each thread
 		for (int i = 0 ; i < numberOfProcessorThreads; i++) {
 			newRecordQueues.add(new ConcurrentLinkedQueue<QueueRecord>());
 		}
@@ -136,7 +129,6 @@ public class Responder
 		logger.info("Reading and processing input file...");
 		JSONParser jsonParser = new JSONParser();
 
-		logger.info("Memory Usage before starting {}",JavaUtilities.memoryUsage());
 		Boolean waitForProcessing = false;
 		while ((line = br.readLine()) != null )
 		{
@@ -146,7 +138,7 @@ public class Responder
 				jsonData = (JSONObject) jsonParser.parse(line);
 				//					  logger.info("jsonData = " + jsonData.toJSONString());
 			} catch (Exception e) {
-				logger.error("Exception JSON parsing record {}", line);
+				logger.error("Exception ( {} ) JSON parsing input record {}", e.getMessage(), line);
 			}
 			if (jsonData != null) {
 				selector = QueryUtils.getSelectorByQueryTypeJSON(queryInfo.getQuerySchema(), jsonData).trim();
@@ -184,6 +176,9 @@ public class Responder
 
 			if ( (recordCounter % 100000) == 0) {
 				logger.info("{} records added to the Queue so far...", numFormat.format(recordCounter));
+
+				// Adding records to the queue is faster than removing them.  Pause loading if there are
+				// too many records on the queue so we do not blow through memory.
 				long processed = ProcessingUtils.recordsProcessed(responderProcessors);
 				if (recordCounter - processed > maxQueueSize) {
 					waitForProcessing = true;
@@ -195,7 +190,6 @@ public class Responder
 
 							if (queueSize < ( maxQueueSize * 0.01 )) {
 								waitForProcessing = false;
-								logger.info("Memory Usage at the end of wait {}",JavaUtilities.memoryUsage());
 							}
 							logger.info("Loading paused to catchup on processing, Queue Size {}", numFormat.format(queueSize));
 						} catch (InterruptedException e) {
@@ -222,6 +216,7 @@ public class Responder
 			qpThread.stopProcessing();
 		}
 
+        // Loop through processing threads until they are finished processing.  Report how many are still running every minute.
 		long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
 		int responderProcessorsStopped = 0;
 		int running = 0;
@@ -250,11 +245,9 @@ public class Responder
 		} while ( running > 0 );
 
 		logger.info("{} responder threads of {} have finished processing", responderProcessorsStopped, responderProcessors.size());
-		logger.info("Memory Usage after processors stopped {}",JavaUtilities.memoryUsage());
 
 		String outputFile = SystemConfiguration.getProperty("pir.outputFile");
 		outputResponse( outputFile );
-		logger.info("Memory Usage at the end {}",JavaUtilities.memoryUsage());
 	}
 
 	// Compile the results from all the threads into one response file.

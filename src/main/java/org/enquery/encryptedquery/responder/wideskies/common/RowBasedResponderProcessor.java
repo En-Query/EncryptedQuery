@@ -38,6 +38,10 @@ import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class will process data from queue one row at a time.  This is memory efficient, but performance poor.
+ *
+ */
 public class RowBasedResponderProcessor implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(RowBasedResponderProcessor.class);
@@ -99,56 +103,39 @@ public class RowBasedResponderProcessor implements Runnable {
 	public void run() {
 
 		threadId = Thread.currentThread().getId();
-		logger.debug("Starting Responder Processing Thread {}", threadId);
+		logger.info("Starting Responder Processing Thread {}", threadId);
 		QueueRecord nextRecord = null;
 
 		while (!stopProcessing) {
 			while ((nextRecord = inputQueue.poll()) != null) {
-//				logger.info("Retrieved rowIndex: {} selector: {}", nextRecord.getRowIndex(), nextRecord.getSelector());
-
-						try {
-							//logger.info("Processing selector {}", selector);
-							addDataElement(nextRecord);
-							recordCount++;
-							//if ( (recordCount % 1000) == 0) {
-							//	logger.info("Processed {} records so far in Queue Processing Thread {}", recordCount, threadId);
-							//}
-						} catch (Exception e) {
-							logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
-						}
+				try {
+					addDataElement(nextRecord);
+					recordCount++;
+				} catch (Exception e) {
+					logger.error("Exception processing record {} Exception: {}", nextRecord, e.getMessage());
 				}
 			}
+		}
 
 		//Process Response
 		setResponseElements();
 		responseQueue.add(response);
-		logger.debug("Processed {} total records in Thread {}", recordCount, threadId);
-		logger.debug("Added to responseQueue size ( {} ) from Thread {}", responseQueue.size(), threadId);
+		logger.info("Thread {} processed {} records", threadId, recordCount);
 		isRunning = false;
 
 	}
 
 	/**
 	 * Method to add a data element associated with the given selector to the Response
-	 * <p>
 	 * Assumes that the dataMap contains the data in the schema specified
-	 * <p>
 	 * Initialize Paillier ciphertext values Y_i to 1 (as needed -- column values as the # of hits grows)
-	 * <p>
 	 * Initialize 2^hashBitSize counters: c_t = 0, 0 <= t <= (2^hashBitSize - 1)
-	 * <p>
 	 * For selector T:
-	 * <p>
 	 * For data element D, split D into partitions of size partitionSize-many bits:
-	 * <p>
 	 * D = D_0 || ... ||D_{\ceil{bitLength(D)/partitionSize} - 1)}
-	 * <p>
 	 * Compute H_k(T); let E_T = query.getQueryElement(H_k(T)).
-	 * <p>
 	 * For each data partition D_i:
-	 * <p>
 	 * Compute/Update:
-	 * <p>
 	 * Y_{i+c_{H_k(T)}} = (Y_{i+c_{H_k(T)}} * ((E_T)^{D_i} mod N^2)) mod N^2 ++c_{H_k(T)}
 	 * 
 	 */
@@ -157,20 +144,10 @@ public class RowBasedResponderProcessor implements Runnable {
 		List<BigInteger> inputData = qr.getParts();
 		List<BigInteger> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
 
-//		int index = 1;
-//		for (BigInteger bi : hitValPartitions) {
-//			logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
-//			index++;
-//		}
-
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);
 		BigInteger rowQuery = query.getQueryElement(rowIndex);
 
-		//	    logger.debug("hitValPartitions.size() = " + hitValPartitions.size() + " rowIndex = " + rowIndex + " rowCounter = " + rowCounter + " rowQuery = "
-		//	        + rowQuery.toString() + " pirWLQuery.getNSquared() = " + query.getNSquared().toString());
-
-		// Update the associated column values
 		for (int i = 0; i < hitValPartitions.size(); ++i)
 		{
 			if (!columns.containsKey(i + rowCounter))
@@ -178,8 +155,6 @@ public class RowBasedResponderProcessor implements Runnable {
 				columns.put(i + rowCounter, BigInteger.valueOf(1));
 			}
 			BigInteger column = columns.get(i + rowCounter); // the next 'free' column relative to the selector
-			//	      logger.debug("Before: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
-
 			BigInteger exp;
 			if (query.getQueryInfo().useExpLookupTable() && !query.getQueryInfo().useHDFSExpLookupTable()) // using the standalone
 				// lookup table
@@ -195,15 +170,10 @@ public class RowBasedResponderProcessor implements Runnable {
 			column = (column.multiply(exp)).mod(query.getNSquared());
 
 			columns.put(i + rowCounter, column);
-
-			//	      logger.debug(
-			//	          "exp = " + exp + " i = " + i + " partition = " + hitValPartitions.get(i) + " = " + hitValPartitions.get(i).toString(2) + " column = " + column);
-			//	      logger.debug("After: columns.get(" + (i + rowCounter) + ") = " + columns.get(i + rowCounter));
 		}
 
 		// Update the rowCounter (next free column position) for the selector
 		rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
-		//	    logger.debug("rowIndex {} next column is {}", rowIndex, rowColumnCounters.get(rowIndex));
 	}
 
 
@@ -227,11 +197,6 @@ public class RowBasedResponderProcessor implements Runnable {
 
 	public void setResponseElements()
 	{
-		// logger.debug("numResponseElements = " + columns.size());
-		// for(int key: columns.keySet())
-		// {
-		//      logger.debug("key = " + key + " column = " + columns.get(key));
-		// }
 		logger.debug("There are {} columns in the response from QPT {}", columns.size(), Thread.currentThread().getId());
 		response.addResponseElements(columns);
 	}

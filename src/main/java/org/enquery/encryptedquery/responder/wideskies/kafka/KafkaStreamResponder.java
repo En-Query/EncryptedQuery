@@ -45,12 +45,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Class to perform kafka responder functionalities
- * <p>
- * Does not bound the number of hits that can be returned per selector
- * <p>
  * Does not use the DataFilter class -- assumes all filtering happens before calling addDataElement()
- * <p>
- * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs
  */
 public class KafkaStreamResponder
 {
@@ -70,58 +65,53 @@ public class KafkaStreamResponder
   private static final String kafkaBrokers = SystemConfiguration.getProperty("kafka.brokers", "localhost:9092");
   private static final String kafkaGroupId = SystemConfiguration.getProperty("kafka.groupId", "enquery");
   private static final String kafkaTopic = SystemConfiguration.getProperty("kafka.topic", "kafkaTopic");
-  private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
-  private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "0"));
   private static Boolean forceFromStart = Boolean.parseBoolean(SystemConfiguration.getProperty("kafka.forceFromStart", "false"));
+  
+  private static final Integer streamDuration = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamDuration", "60"));
+  private static final Integer streamIterations = Integer.valueOf(SystemConfiguration.getProperty("kafka.streamIterations", "1"));
   private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
+  
   private int pauseTimeForQueueCheck = SystemConfiguration.getIntProperty("responder.pauseTimeForQueueCheck", 5);
   private long maxQueueSize = SystemConfiguration.getLongProperty("responder.maxQueueSize", 1000000);
-
   private Properties kafkaProperties;
-
   private Response response = null;
 
   public KafkaStreamResponder(Query queryInput)
   {
-    this.query = queryInput;
-    this.queryInfo = queryInput.getQueryInfo();
-    
-    kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId, forceFromStart);
-
+	  this.query = queryInput;
+	  this.queryInfo = queryInput.getQueryInfo();
+	  kafkaProperties = createConsumerConfig(kafkaBrokers, kafkaGroupId, kafkaClientId, forceFromStart);
   }
 
-	private static Properties createConsumerConfig(String brokers, String groupId, String clientId, 
-			boolean forceFromStart) {
+  private static Properties createConsumerConfig(String brokers, String groupId, String clientId, 
+		  boolean forceFromStart) {
 
-		logger.info("Configuring Kafka Consumer");
-		Properties props = new Properties();
-		props.put("bootstrap.servers", brokers);
-		props.put("group.id", groupId);
-//		props.put("client.id", clientId);
-		props.put("enable.auto.commit", "true");
-		props.put("auto.commit.interval.ms", "1000");
-		props.put("session.timeout.ms", "30000");
+	  logger.info("Configuring Kafka Consumer");
+	  Properties props = new Properties();
+	  props.put("bootstrap.servers", brokers);
+	  props.put("group.id", groupId);
+	  props.put("enable.auto.commit", "true");
+	  props.put("auto.commit.interval.ms", "1000");
+	  props.put("session.timeout.ms", "30000");
 
-        if (forceFromStart) {
-        	props.put("auto.offset.reset", "earliest");
-        	
-        } else {
-        	props.put("auto.offset.reset", "latest");
-        }
-		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-		return props;
-	}
- 
+	  if (forceFromStart) {
+		  props.put("auto.offset.reset", "earliest");
+
+	  } else {
+		  props.put("auto.offset.reset", "latest");
+	  }
+	  props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	  props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	  return props;
+  }
+
   public Response getResponse()
   {
-    return response;
+	  return response;
   }
 
   /**
-   * Method to compute the response
-   * <p>
-   * Assumes that the input data is from a kafka topic and is fully qualified
+   * Method to compute the response with data from a kafka stream
    */
   public void computeKafkaStreamResponse() throws IOException
   {
@@ -186,7 +176,6 @@ public class KafkaStreamResponder
 				  try {
 					  Thread.sleep(Timer.ONE_SECOND);
 				  } catch (InterruptedException e) {
-					  // TODO Auto-generated catch block
 					  logger.error("Interrupted Exception waiting on main thread {}", e.getMessage() );
 				  }
 			  }
@@ -245,6 +234,7 @@ public class KafkaStreamResponder
 			  logger.info("Iteration {} finished, storing result in file: {}", (iterationCounter + 1), outputFile );
 			  outputResponse(outputFile);
 			  iterationCounter++;
+
 			  // We do not want to re-process records already done in the 1st iteration if forceFromStart was set.  
 			  // This will set the remainder of the iterations to start from the last record processed in the stream.
 			  if (forceFromStart) {
@@ -260,8 +250,7 @@ public class KafkaStreamResponder
 
   }
 
-  // Compile the results from all the threads into one response file that will be passed back to the
-  // querier for decryption
+  // Compile the results from all the threads into one response file
   public void outputResponse(String outputFile) 
   {
       Response outputResponse = ConsolidateResponse.consolidateResponse(responseQueue, query);

@@ -126,6 +126,7 @@ public class ComputeResponseTool extends Configured implements Tool
   private Query query = null;
   private QueryInfo queryInfo = null;
   private QuerySchema qSchema = null;
+  private String queryName;
 
   public ComputeResponseTool() throws IOException, PIRException
   {
@@ -140,6 +141,7 @@ public class ComputeResponseTool extends Configured implements Tool
 
     query = new HadoopFileSystemStore(fs).recall(queryInputDir, Query.class);
     queryInfo = query.getQueryInfo();
+    
     if (SystemConfiguration.getBooleanProperty("pir.allowAdHocQuerySchemas", false))
     {
       qSchema = queryInfo.getQuerySchema();
@@ -148,6 +150,8 @@ public class ComputeResponseTool extends Configured implements Tool
     {
       qSchema = QuerySchemaRegistry.get(queryInfo.getQueryType());
     }
+
+    queryName = qSchema.getSchemaName();
 
     validateProcessColumnsParameters();
 
@@ -426,7 +430,7 @@ public class ComputeResponseTool extends Configured implements Tool
 
     if (dataInputFormat.equals(InputFormatConst.ES))
     {
-      String jobName = "pirMR_es_" + esResource + "_" + esQuery + "_" + System.currentTimeMillis();
+      String jobName = "EQ_es_" + esResource + "_" + esQuery + "_" + System.currentTimeMillis();
       job.setJobName(jobName);
 
       job.getConfiguration().set("es.nodes", SystemConfiguration.getProperty("es.nodes"));
@@ -439,7 +443,7 @@ public class ComputeResponseTool extends Configured implements Tool
     else if (dataInputFormat.equals(InputFormatConst.BASE_FORMAT))
     {
       String baseQuery = SystemConfiguration.getProperty("pir.baseQuery");
-      String jobName = "pirMR_base_" + baseQuery + "_" + System.currentTimeMillis();
+      String jobName = "EQ-" + queryName + "_Phase-1";
       job.setJobName(jobName);
 
       job.getConfiguration().set("baseQuery", baseQuery);
@@ -631,6 +635,9 @@ public class ComputeResponseTool extends Configured implements Tool
     Job job = Job.getInstance(conf, "pirMR");
     job.setSpeculativeExecution(false);
 
+    String jobName = "EQ-" + queryName + "_Phase-2";
+    job.setJobName(jobName);
+
     // Set timeout option
     job.getConfiguration().set("mapreduce.task.timeout", SystemConfiguration.getProperty("mapreduce.task.timeout"));
 
@@ -704,7 +711,8 @@ public class ComputeResponseTool extends Configured implements Tool
     Job finalResponseJob = Job.getInstance(conf, "pir_finalResponse");
     finalResponseJob.setSpeculativeExecution(false);
 
-    String finalResponseJobName = "pir_finalResponse";
+    String jobName = "EQ-" + queryName + "_Phase-3";
+
 
     // Set the same job configs as for the first iteration
     finalResponseJob.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
@@ -719,7 +727,7 @@ public class ComputeResponseTool extends Configured implements Tool
     finalResponseJob.getConfiguration().set("mapreduce.map.speculative", "false");
     finalResponseJob.getConfiguration().set("mapreduce.reduce.speculative", "false");
 
-    finalResponseJob.setJobName(finalResponseJobName);
+    finalResponseJob.setJobName(jobName);
     finalResponseJob.setJarByClass(CombineHashRangeResultsMapper.class);
     finalResponseJob.setNumReduceTasks(1);
 
