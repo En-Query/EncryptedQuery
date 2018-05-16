@@ -64,8 +64,6 @@ public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn
 
   public ComputeEncryptedColumnYaoJNI(Map<Integer,BigInteger> queryElements, BigInteger NSquared, int maxRowIndex, int dataPartitionBitSize)
   {
-    logger.debug("XXX this = {} constructor", this);
-
     validateParameters(maxRowIndex, dataPartitionBitSize);
 
     if (! libraryLoaded)
@@ -99,7 +97,6 @@ public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn
   public void insertDataPart(BigInteger queryElement, BigInteger part)
   {
     yaoInsertDataPart2(hContext, queryElement.toByteArray(), part.intValue());
-    //yaoInsertDataPart2(hContext, null, part.intValue()); // XXX
   }
 
   public BigInteger computeColumnAndClearData()
@@ -110,14 +107,12 @@ public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn
 
   public void clearData()
   {
-    logger.debug("XXX this = {} clearData()", this);
     yaoClearData(hContext);
   }
 
   // TODO: how to have this done automatically on GC?
   public void free()
   {
-    logger.debug("XXX this = {} free()", this);
     yaoDelete(hContext);
     hContext = 0;
   }

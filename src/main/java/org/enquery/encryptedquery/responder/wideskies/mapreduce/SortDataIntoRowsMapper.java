@@ -45,11 +45,13 @@ import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 /**
- * Initialization mapper
- * <p>
- * For each dataElement, extracts and hashes selector to compute the
- * rowIndex, and concatenates the requested data fields into a byte
- * array, and emits key-value pairs <rowIndex, dataBytes>.
+ * Mapper class for the SortDataIntoRows job
+ *
+ * <p> This mapper breaks each input data element into parts and
+ * computes its selector hash ("row number").  It emits key-value
+ * pairs {@code (row, parts)} where each value {@code parts} is a byte
+ * array representing the concatenation of all the parts in the data
+ * element.
  */
 public class SortDataIntoRowsMapper extends Mapper<Text,MapWritable,IntWritable,BytesWritable>
 {

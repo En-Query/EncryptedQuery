@@ -73,41 +73,28 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Tool for computing the PIR response in MapReduce
- * <p>
- * Each query run consists of two MR jobs:
- * <p>
- * (1) Map: Reads data using an extension of the BaseInputFormat or
- * Elasticsearch.  For each data element, extracts the selector
- * according to the QueryType and compute the hash value.  The range
- * of possible hash values is divided into subranges and the group ID
- * of the hash value is determined.  Outputs {@code <groupId,
- * (hash,dataElement)>}.
- * <p>
- * Reduce: Calculates the encrypted row values for each selector and
- * corresponding data element, striping across columns.  Encrypted
- * values corresponding to different hash values in the subrange are
- * multiplied together.  Groups of encrypted columns (with as many
- * columns as the number of parts in a partitioned data element) are
- * output key-value pairs {@code <startingColNum, listOfColumns>}.
- * <p>
- * (2) Map: Reads pairs {@code <startingColNum, listOfColumns>} from
- * the previous job and passes them through unchanged.
- * <p>
- * Reduce: Multiply together column groups corresponding to the same
- * starting column number.  Each reducer task returns a {@code
- * Response} object.
- * <P>
- * NOTE: If useHDFSExpLookupTable in the QueryInfo object is true, then the expLookupTable for the watchlist must be generated if it does not already exist in
- * hdfs.
- * <p>
- * TODO:
- * <p>
- * -Currently processes one query at time - can change to process multiple queries at the same time (under the same time interval and with same query
- * parameters) - using MultipleOutputs for extensibility to multiple queries per job later...
- * <p>
- * - Could place Query objects in DistributedCache (instead of a direct file based pull in task setup)
- * <p>
- * - Redesign exp lookup table to be smart and fully distributed/partitioned
+ *
+ * <p> Each run consists of three successive Hadoop map-reduce jobs,
+ * {@code SortDataIntoRows}, {@code ProcessColumn}, and {@code
+ * FinalResponse}.
+ *
+ * <p> The first job {@code SortDataIntoRows} breaks each input data
+ * element into parts and computes its selector hash ("row number").
+ * Within each row, the stream of parts for all the data elements are
+ * grouped into successive fixed-size "windows" that are assigned
+ * successive column numbers.  This job emits key-value pairs {@code
+ * ((row,col), window)}.
+ *
+ * <p> The second job {@code ProcessColumn} groups the result from the
+ * preceding job by column number, then computes encrypted column
+ * values using one of the classes implementing the {@code
+ * ComputeEncryptedColumn} interface.  This job emits key-value pairs
+ * {@code (col, enccolumn)} where {@code col} now refers to the column
+ * number for the encrypted column..
+ *
+ * <p> The final job {@code CombineColumnResults} runs with a single
+ * reducer task, which gathers the results of the preceding job into
+ * the final response file.
  */
 public class ComputeResponseTool extends Configured implements Tool
 {
@@ -435,6 +422,7 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("pirWL.maxHitsPerSelector", maxHitsPerSelector.toString());
     job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
+    job.getConfiguration().set("pirMR.windowMaxByteSize", SystemConfiguration.getProperty("pir.mapreduceWindowMaxByteSize"));
 
     if (dataInputFormat.equals(InputFormatConst.ES))
     {
@@ -643,6 +631,9 @@ public class ComputeResponseTool extends Configured implements Tool
     Job job = Job.getInstance(conf, "pirMR");
     job.setSpeculativeExecution(false);
 
+    // Set timeout option
+    job.getConfiguration().set("mapreduce.task.timeout", SystemConfiguration.getProperty("mapreduce.task.timeout"));
+
     // Set the memory and heap options
     job.getConfiguration().set("mapreduce.map.memory.mb", SystemConfiguration.getProperty("mapreduce.map.memory.mb"));
     job.getConfiguration().set("mapreduce.reduce.memory.mb", SystemConfiguration.getProperty("mapreduce.reduce.memory.mb"));
@@ -659,7 +650,8 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
     job.getConfiguration().set(ResponderProps.ENCRYPTCOLUMNMETHOD, SystemConfiguration.getProperty("responder.encryptColumnMethod", "true"));
-
+    job.getConfiguration().set("pirMR.windowMaxByteSize", SystemConfiguration.getProperty("pir.mapreduceWindowMaxByteSize"));
+    
     job.setJarByClass(ProcessColumnsMapper.class);
     job.setMapperClass(ProcessColumnsMapper.class);
     job.setInputFormatClass(SequenceFileInputFormat.class);

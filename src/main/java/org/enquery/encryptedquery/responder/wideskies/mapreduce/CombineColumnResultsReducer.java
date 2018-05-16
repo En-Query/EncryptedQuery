@@ -37,16 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Combine column results reducer (constructs a single final Response
- * object)
- * <p>
- * The reducer task setup creates an empty {@code Response} object.
- * Each call to {@code reducer()} receives a stream consisting of a
- * single array of completed encrypted columns {@code
- * [encryptedColumns]} starting at a given column index.  The
- * encrypted columns are inserted into the {@code Response} object at
- * the given column index.  After all the {@code reducer()} calls have
- * been completed, the {@code Response} object is written into a file.
+ * Reducer class for the CombineColumnResults job
+ *
+ * <p> It is assumed that this job is run with a single reducer task.
+ * The encrypted values from the previous job are inserted into a new
+ * {@code Response}, which is written to a file.
  */
 public class CombineColumnResultsReducer extends Reducer<LongWritable,BytesWritable,LongWritable,Text>
 {
@@ -95,7 +90,7 @@ public class CombineColumnResultsReducer extends Reducer<LongWritable,BytesWrita
       }
       else
       {
-	logger.info("XXX column index {} unexpectedly seen a second time!", colIndex);
+        logger.warn("column index {} unexpectedly seen a second time!", colIndex);
       }
     }
   }

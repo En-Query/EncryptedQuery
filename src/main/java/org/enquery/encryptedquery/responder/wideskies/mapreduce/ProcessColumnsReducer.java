@@ -21,6 +21,8 @@ package org.enquery.encryptedquery.responder.wideskies.mapreduce;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Arrays;
+
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -29,6 +31,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.enquery.encryptedquery.inputformat.hadoop.IntBytesPairWritable;
 import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumn;
 import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnFactory;
 import org.enquery.encryptedquery.serialization.HadoopFileSystemStore;
@@ -37,19 +40,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Process column reducer
- * <p>
- * Each call to {@code reducer()} receives a stream {@code {
- * (rowIndex, [dataBytes] }} corresponding to a unique column index
- * (divided by some fixed width {@code V}).  The function then
- * computes a list of encrypted columns using a column-based
- * algorithm, and then pairs {@code (startCol, encryptedColumn0)},
- * {@code (startCol+1, encryptedColumn1)}, ....
- * <p>
- * NOTE: We assume that the arrays of data bytes are all <= {@code W}
- * parts in length, equal except at the very end of rows.  We also
- * assume that {@code W} is small enough that the reducer can read all
- * the data into memory before processing it.
+ * Reducer class for the ProcessColumn job
+
+ * <p> Each call to {@code reducer()} receives a stream of values
+ * {@code (row,window)} at a given column position.  These values are
+ * all read in (there will be a limited number of them) and used to
+ * compute the encrypted column value for each successive column
+ * within the window, using one of the classes implementing the {@code
+ * ComputeEncryptedColumn} interface.  As each encrypted column value
+ * is computed, a key-value pair {@code (col, encvalue)} is emitted.
  */
 public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWritable,LongWritable,BytesWritable>
 {
@@ -63,18 +62,22 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   private Query query = null;
   private int hashBitSize = 0;
   private int dataPartitionBitSize = 8;
+  private int bytesPerPart = 0;
+  private int windowMaxByteSize;
+  private int partsPerWindow;
+  private int bytesPerWindow;
+  private byte[][] dataWindows;
+  private int rowIndices[];
+  private int numParts[];
   private static BigInteger NSquared = null;
 
   private String encryptColumnMethod = null;
   private ComputeEncryptedColumn cec = null;
-  private int cnt = 0; // XXX
 
   @Override
   public void setup(Context ctx) throws IOException, InterruptedException
   {
     super.setup(ctx);
-
-    logger.info("XXX setup()");
 
     outputKey = new LongWritable();
     outputValue = new BytesWritable();
@@ -86,43 +89,72 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     hashBitSize = query.getQueryInfo().getHashBitSize();
     NSquared = query.getNSquared();
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
+    bytesPerPart = QueryUtils.getBytesPerPartition(dataPartitionBitSize);
+    windowMaxByteSize = Integer.valueOf(ctx.getConfiguration().get("pirMR.windowMaxByteSize"));
+    partsPerWindow = windowMaxByteSize / bytesPerPart;
+    bytesPerWindow = partsPerWindow * bytesPerPart;
+    dataWindows = new byte[1 << hashBitSize][];
+    rowIndices = new int[1 << hashBitSize];
+    numParts = new int[1 << hashBitSize];
 
     encryptColumnMethod = ctx.getConfiguration().get("responder.encryptColumnMethod");
     cec = ComputeEncryptedColumnFactory.getComputeEncryptedColumnMethod(encryptColumnMethod, query.getQueryElements(), NSquared, (1<<hashBitSize), dataPartitionBitSize);
   }
 
   @Override
-  public void reduce(IntWritable colIndex, Iterable<IntBytesPairWritable> rowIndexAndData, Context ctx) throws IOException, InterruptedException
+  public void reduce(IntWritable colIndexW, Iterable<IntBytesPairWritable> rowIndexAndData, Context ctx) throws IOException, InterruptedException
   {
-    cnt++; // XXX
     ctx.getCounter(MRStats.NUM_COLUMNS).increment(1);
+
+    int numWindows = 0;
+    int colIndex = colIndexW.get();
 
     // read in all the (row, data) pairs
     for (IntBytesPairWritable val : rowIndexAndData)
     {
       // extract row index
       int rowIndex = val.getFirst().get();
+      byte[] dataWindow = val.getSecond().copyBytes();
 
-      byte[] partBytes = val.getSecond().copyBytes();
-      BigInteger part = new BigInteger(1, partBytes);
-      
-//      logger.info("XXX row={}, col={}, part={}", rowIndex, colIndex.get(), part);
-    		  
-      cec.insertDataPart(rowIndex, part);
+      rowIndices[numWindows] = rowIndex;
+      dataWindows[numWindows] = dataWindow;
+      numParts[numWindows] = dataWindow.length / bytesPerPart;
+      numWindows++;
     }
-    BigInteger encryptedColumn = cec.computeColumnAndClearData();
+    
+    /* process each column of the buffered data */
+    for (int col = 0; col < partsPerWindow; col++)
+    {
+      boolean emptyColumn = true;
+    	  for (int i = 0; i < numWindows; i++)
+    	  {
+    		if (numParts[i] <= col) continue;
+        emptyColumn = false;
+        int rowIndex = rowIndices[i];        
+        byte[] partBytes = Arrays.copyOfRange(dataWindows[i], col*bytesPerPart, (col+1)*bytesPerPart);
+        BigInteger part = new BigInteger(1, partBytes);
+        cec.insertDataPart(rowIndex, part);
+    	  }
+    	  if (emptyColumn)
+    	  {
+        /* once we have encountered an empty column, we are done */
+        break;
+    	  }
 
-    // write column to file
-    outputKey.set((long)colIndex.get());
-    byte[] columnBytes = encryptedColumn.toByteArray(); 
-    outputValue.set(columnBytes, 0, columnBytes.length);
-    mos.write(FileConst.PIR_COLS, outputKey, outputValue);
-  }
+    	  BigInteger encryptedColumn = cec.computeColumnAndClearData();
+
+    	  /* write encrypted column to file */
+      long partColIndex = (long) colIndex * partsPerWindow + col;
+      outputKey.set(partColIndex);
+      byte[] columnBytes = encryptedColumn.toByteArray(); 
+      outputValue.set(columnBytes, 0, columnBytes.length);
+      mos.write(FileConst.PIR_COLS, outputKey, outputValue);
+    }
+}
 
   @Override
   public void cleanup(Context ctx) throws IOException, InterruptedException
   {
-    logger.info("XXX cleanup(), cnt = {}", cnt);
     mos.close();
     cec.free();
   }
