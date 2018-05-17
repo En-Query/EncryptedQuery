@@ -1,6 +1,8 @@
 # *******************
-# This script will deploy the SCMS tar file for given component for Karaf.
-# It assumes that the tar file has been copied to the home folder
+# This script will execute the responder.
+# @Args
+#    query name
+#    method
 #
 #*************************************
 #!/bin/bash
