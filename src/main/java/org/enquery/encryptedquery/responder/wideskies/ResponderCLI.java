@@ -399,7 +399,7 @@ public class ResponderCLI
     options.addOption(optionEncryptColumnMethod);
 
     // responder.jniLibraryFilePath
-    Option optionJniLibrary = new Option("jlib", ResponderProps.RESPONDERJNILIBFILEPATH, true, "optional -- Path of native library for response generation with JNI");
+    Option optionJniLibrary = new Option("rnlib", ResponderProps.RESPONDERJNILIBFILEPATH, true, "optional -- Path of native library for response generation with JNI");
     optionJniLibrary.setRequired(false);
     optionJniLibrary.setArgName(ResponderProps.RESPONDERJNILIBFILEPATH);
     optionJniLibrary.setType(String.class);
