@@ -48,7 +48,7 @@ public class KafkaResponder implements ResponderPlugin
 	  @Override
   public void run()
   {
-    logger.info("Launching Kafka Simple Responder:");
+    logger.info("Launching Kafka Streaming Responder:");
     String queryInput = SystemConfiguration.getProperty("pir.queryInput");
     try
     {

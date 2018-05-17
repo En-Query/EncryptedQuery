@@ -57,7 +57,3 @@ else
 
 fi
 
-# java -cp $ENQUERY_HOME/encryptedquery-1.0.0-SNAPSHOT-exe.jar org.enquery.encryptedquery.responder.wideskies.ResponderDriver \
-#  -d base -ds ./dataschema_$NAME.xml -i ./datafile_$NAME.json -p $METHOD -qs ./queryschema_$NAME.xml -q ./$NAME-query -o ./$NAME-query-result
-
-

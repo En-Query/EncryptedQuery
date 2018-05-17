@@ -16,7 +16,7 @@ Encrypted Query is a Java project with a Maven build system. The pom.xml resides
 To build:
 
     Navigate to the root of the project
-    Execute the command -   mvn clean install
+    Execute the command -   mvn clean install -P native-libs
 
 
 ## Export Control
