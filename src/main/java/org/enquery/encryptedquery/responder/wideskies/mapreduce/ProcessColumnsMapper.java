@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Mapper class for the ProcessColumn job
  *
- * <p> Each input key-value pairs {@code ((row,col),window)} is
- * re-emitted as {@code (col, (row,window)}.
+ * <p> Each input key-value pairs {@code ((row,col),chunk)} is
+ * re-emitted as {@code (col, (row,chunk)}.
  */
 public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,IntWritable,IntBytesPairWritable>
 {
@@ -56,9 +56,9 @@ public class ProcessColumnsMapper extends Mapper<IntPairWritable,BytesWritable,I
     Integer rowIndex = rowAndCol.getFirst().get();
     Integer colIndex = rowAndCol.getSecond().get();
 
-    byte[] windowBytes = dataBytes.copyBytes();
+    byte[] chunkBytes = dataBytes.copyBytes();
     keyOut.set(colIndex);
-    valueOut.getSecond().set(windowBytes, 0, windowBytes.length);
+    valueOut.getSecond().set(chunkBytes, 0, chunkBytes.length);
     valueOut.getFirst().set(rowIndex);
     ctx.write(keyOut, valueOut);
   }

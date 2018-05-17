@@ -399,11 +399,18 @@ public class ResponderCLI
     options.addOption(optionEncryptColumnMethod);
 
     // responder.jniLibraryFilePath
-    Option optionJniLibrary = new Option("jlib", ResponderProps.RESPONDERJNILIBFILEPATH, true, "optional -- Path of native library for response generation with JNI");
+    Option optionJniLibrary = new Option("rnlib", ResponderProps.RESPONDERJNILIBFILEPATH, true, "optional -- Path of native library for response generation with JNI");
     optionJniLibrary.setRequired(false);
     optionJniLibrary.setArgName(ResponderProps.RESPONDERJNILIBFILEPATH);
     optionJniLibrary.setType(String.class);
     options.addOption(optionJniLibrary);
+
+    // responder.jniLibraryFilePath
+    Option optionChunkingByteSize = new Option("cbs", ResponderProps.MAPREDUCECHUNKINGBYTESIZE, true, "optional -- Chunking size for mapreduce processing.  Increase to reduce Hadoop serialization overhead.");
+    optionChunkingByteSize.setRequired(false);
+    optionChunkingByteSize.setArgName(ResponderProps.MAPREDUCECHUNKINGBYTESIZE);
+    optionChunkingByteSize.setType(String.class);
+    options.addOption(optionChunkingByteSize);
 
     // pir.numExpLookupPartitions
     Option optionExpParts = new Option("expParts", ResponderProps.NUMEXPLOOKUPPARTS, true, "optional -- Number of partitions for the exp lookup table");
@@ -412,7 +419,7 @@ public class ResponderCLI
     optionExpParts.setType(String.class);
     options.addOption(optionExpParts);
 
-    // pir.numExpLookupPartitions
+    // pir.useHDFSLookupTable
     Option optionHdfsExp = new Option("hdfsExp", ResponderProps.USEHDFSLOOKUPTABLE, true,
         "optional -- 'true' or 'false' - Whether or not to generate and use the hdfs lookup table" + " for modular exponentiation");
     optionHdfsExp.setRequired(false);

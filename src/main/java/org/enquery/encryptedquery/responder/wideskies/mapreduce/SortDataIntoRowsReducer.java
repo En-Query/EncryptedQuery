@@ -56,9 +56,9 @@ import scala.Tuple2;
  *
  * <p> Each call to {@code reducer()} receives the data parts
  * corresponding to the data elements belonging to a single row.  The
- * stream of parts are grouped and re-emited in fixed-size windows,
+ * stream of parts are grouped and re-emited in fixed-size chunks,
  * which are assigned successively increasing column numbers.  The
- * reducer emits key-value pairs {@code ((row,col), window)}.
+ * reducer emits key-value pairs {@code ((row,col), chunk)}.
  */
 public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,IntPairWritable,BytesWritable>
 {
@@ -66,9 +66,9 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
 
   private int dataPartitionBitSize;
   private int bytesPerPart;
-  private int windowMaxByteSize;
-  private int partsPerWindow;
-  private int bytesPerWindow;
+  private int chunkingByteSize;
+  private int partsPerChunk;
+  private int bytesPerChunk;
   private byte[] buffer;
   private int partsInBuffer;
   
@@ -88,10 +88,10 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
 
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
     bytesPerPart = QueryUtils.getBytesPerPartition(dataPartitionBitSize);
-    windowMaxByteSize = Integer.valueOf(ctx.getConfiguration().get("pirMR.windowMaxByteSize"));
-    partsPerWindow = windowMaxByteSize / bytesPerPart;
-    bytesPerWindow = partsPerWindow * bytesPerPart;
-    buffer = new byte[bytesPerWindow];
+    chunkingByteSize = Integer.valueOf(ctx.getConfiguration().get("pirMR.chunkingByteSize"));
+    partsPerChunk = Math.max(chunkingByteSize / bytesPerPart, 1);
+    bytesPerChunk = partsPerChunk * bytesPerPart;
+    buffer = new byte[bytesPerChunk];
     partsInBuffer = 0;
 
     _rowW = new IntWritable();
@@ -112,7 +112,7 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
   {
 	int hitCount = 0;
     int rowIndex = rowIndexW.get();
-    int windowCol = 0;
+    int chunkCol = 0;
 
     outputKey.getFirst().set(rowIndex);
     for (BytesWritable dataElement : dataElements)
@@ -133,7 +133,7 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
       while (partsRemaining > 0)
       {
         /* If copy data as much additional data into buffer as possible */
-    	    int partsToCopy = partsPerWindow - partsInBuffer;
+    	    int partsToCopy = partsPerChunk - partsInBuffer;
     	    if (partsToCopy > partsRemaining)
     	    {
     	    	  partsToCopy = partsRemaining;
@@ -144,12 +144,12 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
     	    partsRemaining -= partsToCopy;
     	    
         /* if buffer is full, write it out */
-        if (partsInBuffer == partsPerWindow)
+        if (partsInBuffer == partsPerChunk)
         {
-          outputKey.getSecond().set(windowCol);
-          outputValue.set(buffer, 0, bytesPerWindow);
+          outputKey.getSecond().set(chunkCol);
+          outputValue.set(buffer, 0, bytesPerChunk);
           mos.write(FileConst.PIR, outputKey, outputValue);
-          windowCol += 1;
+          chunkCol += 1;
           partsInBuffer = 0;
         	}
       }
@@ -160,10 +160,10 @@ public class SortDataIntoRowsReducer extends Reducer<IntWritable,BytesWritable,I
     /* write out any remaining data */
     if (partsInBuffer > 0)
     {
-      outputKey.getSecond().set(windowCol);
+      outputKey.getSecond().set(chunkCol);
       outputValue.set(buffer, 0, partsInBuffer * bytesPerPart);
       mos.write(FileConst.PIR, outputKey, outputValue);
-      windowCol += 1;
+      chunkCol += 1;
       partsInBuffer = 0;
     }
   }

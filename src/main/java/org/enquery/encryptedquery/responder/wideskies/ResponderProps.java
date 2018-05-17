@@ -58,7 +58,7 @@ public class ResponderProps
   public static final String QUERYSCHEMAS = "responder.querySchemas";
   public static final String DATASCHEMAS = "responder.dataSchemas";
   public static final String ENCRYPTCOLUMNMETHOD = "responder.encryptColumnMethod";
-  public static final String RESPONDERJNILIBFILEPATH = "responder.jniLibraryFilePath";
+  public static final String RESPONDERJNILIBFILEPATH = "mapreduce.jniLibraryFilePath";
   public static final String RESPONDERJNILIBBASENAME = "responder.jniLibraryBaseName";
   public static final String NUMEXPLOOKUPPARTS = "pir.numExpLookupPartitions";
   public static final String USELOCALCACHE = "pir.useLocalCache";
@@ -72,6 +72,7 @@ public class ResponderProps
   public static final String REDUCEMEMORY = "mapreduce.reduce.memory.mb";
   public static final String MAPJAVAOPTS = "mapreduce.map.java.opts";
   public static final String REDUCEJAVAOPTS = "mapreduce.reduce.java.opts";
+  public static final String MAPREDUCECHUNKINGBYTESIZE = "pir.mapreduceChunkingByteSize";
   public static final String USEHDFSLOOKUPTABLE = "pir.useHDFSLookupTable";
   public static final String NUMDATAPARTITIONS = "pir.numDataPartitions";
   public static final String ALLOWEMBEDDEDQUERYSCHEMAS = "pir.allowEmbeddedQuerySchemas";
@@ -128,7 +129,7 @@ public class ResponderProps
   public static final List<String> PROPSLIST = Arrays
       .asList((String[]) ArrayUtils.addAll(new String[] {PLATFORM, QUERYINPUT, DATAINPUTFORMAT, INPUTDATA, BASEQUERY, ESRESOURCE, ESQUERY, ESNODES, OUTPUTFILE,
           BASEINPUTFORMAT, STOPLISTFILE, NUMREDUCETASKS, USELOCALCACHE, LIMITHITSPERSELECTOR, MAXHITSPERSELECTOR, MAPMEMORY, REDUCEMEMORY, MAPJAVAOPTS,
-          REDUCEJAVAOPTS, QUERYSCHEMAS, DATASCHEMAS, ENCRYPTCOLUMNMETHOD, RESPONDERJNILIBFILEPATH, RESPONDERJNILIBBASENAME, NUMEXPLOOKUPPARTS, USEHDFSLOOKUPTABLE, NUMDATAPARTITIONS, NUMCOLMULTPARTITIONS, USEMODEXPJOIN,
+          REDUCEJAVAOPTS, QUERYSCHEMAS, DATASCHEMAS, ENCRYPTCOLUMNMETHOD, RESPONDERJNILIBFILEPATH, RESPONDERJNILIBBASENAME, MAPREDUCECHUNKINGBYTESIZE, NUMEXPLOOKUPPARTS, USEHDFSLOOKUPTABLE, NUMDATAPARTITIONS, NUMCOLMULTPARTITIONS, USEMODEXPJOIN,
           COLMULTREDUCEBYKEY, ALLOWEMBEDDEDQUERYSCHEMAS, BATCHSECONDS, WINDOWLENGTH, USEQUEUESTREAM, MAXBATCHES, STOPGRACEFULLY}, STORMPROPS));
 
   /**
