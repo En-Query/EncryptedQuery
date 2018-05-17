@@ -58,7 +58,7 @@ public class ResponderProps
   public static final String QUERYSCHEMAS = "responder.querySchemas";
   public static final String DATASCHEMAS = "responder.dataSchemas";
   public static final String ENCRYPTCOLUMNMETHOD = "responder.encryptColumnMethod";
-  public static final String RESPONDERJNILIBFILEPATH = "responder.jniLibraryFilePath";
+  public static final String RESPONDERJNILIBFILEPATH = "mapreduce.jniLibraryFilePath";
   public static final String RESPONDERJNILIBBASENAME = "responder.jniLibraryBaseName";
   public static final String NUMEXPLOOKUPPARTS = "pir.numExpLookupPartitions";
   public static final String USELOCALCACHE = "pir.useLocalCache";
