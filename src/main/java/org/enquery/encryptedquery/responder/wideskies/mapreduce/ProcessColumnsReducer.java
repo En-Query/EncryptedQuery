@@ -43,10 +43,10 @@ import org.slf4j.LoggerFactory;
  * Reducer class for the ProcessColumn job
 
  * <p> Each call to {@code reducer()} receives a stream of values
- * {@code (row,window)} at a given column position.  These values are
+ * {@code (row,chunk)} at a given column position.  These values are
  * all read in (there will be a limited number of them) and used to
  * compute the encrypted column value for each successive column
- * within the window, using one of the classes implementing the {@code
+ * within the chunk, using one of the classes implementing the {@code
  * ComputeEncryptedColumn} interface.  As each encrypted column value
  * is computed, a key-value pair {@code (col, encvalue)} is emitted.
  */
@@ -63,10 +63,10 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   private int hashBitSize = 0;
   private int dataPartitionBitSize = 8;
   private int bytesPerPart = 0;
-  private int windowMaxByteSize;
-  private int partsPerWindow;
-  private int bytesPerWindow;
-  private byte[][] dataWindows;
+  private int chunkingByteSize;
+  private int partsPerChunk;
+  private int bytesPerChunk;
+  private byte[][] dataChunks;
   private int rowIndices[];
   private int numParts[];
   private static BigInteger NSquared = null;
@@ -90,10 +90,10 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     NSquared = query.getNSquared();
     dataPartitionBitSize = Integer.valueOf(ctx.getConfiguration().get("dataPartitionBitSize"));
     bytesPerPart = QueryUtils.getBytesPerPartition(dataPartitionBitSize);
-    windowMaxByteSize = Integer.valueOf(ctx.getConfiguration().get("pirMR.windowMaxByteSize"));
-    partsPerWindow = windowMaxByteSize / bytesPerPart;
-    bytesPerWindow = partsPerWindow * bytesPerPart;
-    dataWindows = new byte[1 << hashBitSize][];
+    chunkingByteSize = Integer.valueOf(ctx.getConfiguration().get("pirMR.chunkingByteSize"));
+    partsPerChunk = Math.max(chunkingByteSize / bytesPerPart, 1);
+    bytesPerChunk = partsPerChunk * bytesPerPart;
+    dataChunks = new byte[1 << hashBitSize][];
     rowIndices = new int[1 << hashBitSize];
     numParts = new int[1 << hashBitSize];
 
@@ -106,7 +106,7 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
   {
     ctx.getCounter(MRStats.NUM_COLUMNS).increment(1);
 
-    int numWindows = 0;
+    int numChunks = 0;
     int colIndex = colIndexW.get();
 
     // read in all the (row, data) pairs
@@ -114,24 +114,24 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     {
       // extract row index
       int rowIndex = val.getFirst().get();
-      byte[] dataWindow = val.getSecond().copyBytes();
+      byte[] dataChunk = val.getSecond().copyBytes();
 
-      rowIndices[numWindows] = rowIndex;
-      dataWindows[numWindows] = dataWindow;
-      numParts[numWindows] = dataWindow.length / bytesPerPart;
-      numWindows++;
+      rowIndices[numChunks] = rowIndex;
+      dataChunks[numChunks] = dataChunk;
+      numParts[numChunks] = dataChunk.length / bytesPerPart;
+      numChunks++;
     }
     
     /* process each column of the buffered data */
-    for (int col = 0; col < partsPerWindow; col++)
+    for (int col = 0; col < partsPerChunk; col++)
     {
       boolean emptyColumn = true;
-    	  for (int i = 0; i < numWindows; i++)
+    	  for (int i = 0; i < numChunks; i++)
     	  {
     		if (numParts[i] <= col) continue;
         emptyColumn = false;
         int rowIndex = rowIndices[i];        
-        byte[] partBytes = Arrays.copyOfRange(dataWindows[i], col*bytesPerPart, (col+1)*bytesPerPart);
+        byte[] partBytes = Arrays.copyOfRange(dataChunks[i], col*bytesPerPart, (col+1)*bytesPerPart);
         BigInteger part = new BigInteger(1, partBytes);
         cec.insertDataPart(rowIndex, part);
     	  }
@@ -144,7 +144,7 @@ public class ProcessColumnsReducer extends Reducer<IntWritable,IntBytesPairWrita
     	  BigInteger encryptedColumn = cec.computeColumnAndClearData();
 
     	  /* write encrypted column to file */
-      long partColIndex = (long) colIndex * partsPerWindow + col;
+      long partColIndex = (long) colIndex * partsPerChunk + col;
       outputKey.set(partColIndex);
       byte[] columnBytes = encryptedColumn.toByteArray(); 
       outputValue.set(columnBytes, 0, columnBytes.length);

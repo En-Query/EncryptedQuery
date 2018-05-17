@@ -81,9 +81,9 @@ import org.slf4j.LoggerFactory;
  * <p> The first job {@code SortDataIntoRows} breaks each input data
  * element into parts and computes its selector hash ("row number").
  * Within each row, the stream of parts for all the data elements are
- * grouped into successive fixed-size "windows" that are assigned
+ * grouped into successive fixed-size chunks that are assigned
  * successive column numbers.  This job emits key-value pairs {@code
- * ((row,col), window)}.
+ * ((row,col), chunk)}.
  *
  * <p> The second job {@code ProcessColumn} groups the result from the
  * preceding job by column number, then computes encrypted column
@@ -426,7 +426,7 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("pirWL.maxHitsPerSelector", maxHitsPerSelector.toString());
     job.getConfiguration().set("dataPartitionBitSize", Integer.toString(queryInfo.getDataPartitionBitSize()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
-    job.getConfiguration().set("pirMR.windowMaxByteSize", SystemConfiguration.getProperty("pir.mapreduceWindowMaxByteSize"));
+    job.getConfiguration().set("pirMR.chunkingByteSize", SystemConfiguration.getProperty(ResponderProps.MAPREDUCECHUNKINGBYTESIZE));
 
     if (dataInputFormat.equals(InputFormatConst.ES))
     {
@@ -657,7 +657,7 @@ public class ComputeResponseTool extends Configured implements Tool
     job.getConfiguration().set("numPartsPerElement", Integer.toString(queryInfo.getNumPartitionsPerDataElement()));
     job.getConfiguration().set("hashBitSize", Integer.toString(queryInfo.getHashBitSize()));
     job.getConfiguration().set(ResponderProps.ENCRYPTCOLUMNMETHOD, SystemConfiguration.getProperty("responder.encryptColumnMethod", "true"));
-    job.getConfiguration().set("pirMR.windowMaxByteSize", SystemConfiguration.getProperty("pir.mapreduceWindowMaxByteSize"));
+    job.getConfiguration().set("pirMR.chunkingByteSize", SystemConfiguration.getProperty(ResponderProps.MAPREDUCECHUNKINGBYTESIZE));
     
     job.setJarByClass(ProcessColumnsMapper.class);
     job.setMapperClass(ProcessColumnsMapper.class);
