@@ -457,13 +457,62 @@ Decrypted query results:
 
 The kafka-stream example shows Encrypted Query executing a query against data from a kafka stream in real-time.
 
-To run this example you need to have kafka installed with a topic named 'stream-test' available.  The example will generate data in a kafka-producer application 
-that feeds data into the stream-test topic.  Two core configuration options for Encrypted Query of stream data are the search window (time period to search the stream) and how many instances you want to search.   After each instance a result file is returned.   
+To run this example you need to have kafka installed with a topic named 'stream-test' available.  This example will generate data in a kafka-producer application 
+that feeds data into the stream-test topic.  Two core configuration options for Encrypted Query for processing of stream data are the search window (time period to search the stream) and how many instances you want to search.   After each instance a result file is returned.   
 
 To execute the streaming example start the script: `run_streaming_example.sh`
 
-This script will generate the encrypted query, start the kafka producer, start the responder to search the data, then after each 30sec time window expires it will create a result file.  Two 20sec windows will be queried.
+This script will perform the following:
 
-You can change configuration options by editing the config/responder.properties file
- 
+1. Generate the encrypted query
+2. Start a kafka producer process to stream  into kafka
+3. Start the responder to search the data in two 30 second time windows.  After each time window expires the responder will output a result file.
+4. Decrypt each result file.
+5. Display the output to the screen.
 
+To configure the properties needed to connect to kafka, you can edit the `examples/kafka-stream/config/responder.properties` file.  Here are the 
+kafka specific and streaming settings:
+
+```
+##Properties for Kafka
+kafka.topic = stream-test
+# kafka.clientId can be set to any String
+kafka.clientId = Encrypted-Query
+# kafka.brokers points to the kafka server ip:port
+kafka.brokers = localhost:9092
+# kafka.groupId can be set to any String.  This value is used to track what the last record read from the kafka stream was.
+kafka.groupId = enquery
+# kafka.forceFromStart (Tells the consumer where to start picking up the kafka stream (true or false).
+# (True will read from the beginning of the stream, False will read from the last offset or the lastest entry.
+kafka.forceFromStart = false
+# kafka.zk is the zookeeper server host:port used by kafka (zookeeper is required for kafka to run)
+kafka.zk = localhost:2181
+
+# For Kafka Streaming
+# How long of a stream to process before sending results back (time in seconds)
+kafka.streamDuration = 30
+# How many iterations of the stream to process before exiting.  Set to 0 to continually process.
+kafka.streamIterations = 2
+
+## Settings for Streaming and Standalone Methods
+# Responder processing threads for Stream and Standalone responder Processing
+responder.processing.threads = 6
+# Max queue size before input is paused.  Higher the number the more memory required
+responder.maxQueueSize=100000
+# Once the input has been paused, how long to wait before checking again.  Time in seconds
+responder.pauseTimeForQueueCheck=5
+```
+
+#### Kafa Twitter Example
+Another streaming example uses a twitter feed as the source of the kafka stream.  To run this example you will need to get credentials from twitter to enable the 
+twitter feed.  This example also requires a kafka topic twitter-feed to be created.
+
+The credentials needed are:
+
+```
+## Twitter Login credentials
+twitter.consumer.key=<your consumer key>
+twitter.consumer.secret.key=<your consumer secret key>
+twitter.access.token.key=<your access token>
+twitter.access.token.secret.key=<your access token secret ke
+```
