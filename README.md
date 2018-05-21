@@ -2,7 +2,7 @@
 
 ## Overview
 
-Encrypted Query is designed to allow a user to query a third party database without revealing the contents of the query search, or the results of that query. This means that the entire database Encrypted Query utilizes homomorphic encryption technologies, specifically, pallier encryption, which allows for this unique security of the query.
+Encrypted Query is designed to allow a user to query a third party database without revealing the contents of the query search, or the results of that query. To hide the contents of the query Encrypted Query utilizes homomorphic encryption technologies, specifically, pallier encryption, which allows for this unique security of the query.
 
 
 Encrypted Query has two distinct sides - the Querier and Responder.

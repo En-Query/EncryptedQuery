@@ -1,26 +1,22 @@
 # Running Encrypted Query
 
-
 There are three steps to running Encrypted Query:
 1. Create an encrypted query (on the querier side)
 2. Run the Responder to query against the data (on the server side)
 3. Decrypt the server response (on the querier side)
 
-Currently Encrypted query supports querying against data in JSON format.  The Encrypted Query Responder (Server side piece that actually queries the data) supports three different modes: standalone, kafka streaming and Hadoop map/reduce.  Steps 1 and 3 do not depend on the mode.
+Currently Encrypted query supports querying against data in JSON format.  The Encrypted Query Responder (Server side piece that actually queries the data) supports three methods of quering data: standalone, kafka streaming and Hadoop map/reduce.  Steps 1 and 3 do not depend on the method.
 
 
 ## Pre-requisites
-* To build Encrypted Query will require Oracle Java 1.8x JDK and Apache Maven.  It will also require a gcc compiler.
 
-* To build download the project from github and build with the command: `mvn clean install -P native-libs`
+* To build Encrypted Query will require Oracle Java 1.8x JDK, a gcc compiler, and Apache Maven.
 
-This will create a distribution tar file (encryptedquery-1.0.0-SNAPSHOT-dist.tar.gz) in the target folder.  Un-tar this file into a working folder.
- 
-* To run Encrypted Query you will need to have java 1.8x runtime installed on the server.
+* To run Encrypted Query you will need Oracle Java 1.8x runtime installed on the server.
 
-* If you plan on running in streaming mode you will also need a kafka server running.
+* If you plan on running the responder using the streaming method you will also need access to a running kafka server.
 
-* To run in Hadoop map/reduce mode will require a Hadoop installation with map/reduce.
+* To run the responder using the Hadoop map/reduce method will require access to a Hadoop installation with map/reduce.
 
 
 Installing of these pre-requisites  are beyond the scope of this document but information can be found:
@@ -31,9 +27,16 @@ Installing of these pre-requisites  are beyond the scope of this document but in
 
 **Hadoop**: `http://hadoop.apache.org/`
 
+## Building the Application
+To build the Encrypted Query application download and unpack the project from github
+
+Use the build command: `mvn clean install -P native-libs`
+
+This will create a distribution tar file `encryptedquery-1.0.0-SNAPSHOT-dist.tar.gz` in the target folder.  Un-tar this file into a working folder.
+ 
 ## Required Files
 
-Below we describe how to perform a test runs in each mode.  The following files are required to execute an Encrypted Query:
+The following files are required to execute an Encrypted Query:
 
 * *Data Schema file* - This file describes the data to be queried against.  Each field in the JSON record is described.
 
@@ -102,7 +105,7 @@ The first line is a UUID value that represents the id of the query.  Our value w
 { "name": "Donna", "age": "19", "children": [ ] }
 ```
 
-## Example run in Standalone mode
+## Example run using the Standalone method
 In the Simple Query example our test query is looking for records with name = "Bob" and is asking for both the name and the age fields for such records.  The simple example files are available and can be executed from the *examples/simple/* folder.
 
 To run the simple query enter the command: `./run_simple_query.sh`
@@ -228,9 +231,9 @@ Some important command line options:
 ```
 
 
-## Example Run in Hadoop Map/Reduce Mode
+## Example run using the Hadoop Map/Reduce method
 
-The phone example shows the details for executing an Encrypted Query in Hadoop Map/Reduce mode.
+The phone example shows the details for executing an Encrypted Query using the Hadoop Map/Reduce method.
 
 Execute the phone query by issuing the following command: `./run_phone_query.sh phone mapreduce` 
 
@@ -453,7 +456,7 @@ Decrypted query results:
 {"event_type":"phone query","query_id":"7d0d11cb-1313-4720-88be-3e0864ccd1a0","Caller #":"797-844-8761","Callee #":"667-828-9241","Date\/Time":"04\/09\/2016 10:53","match":"797-844-8761"}
 ```
 
-## Example run in Streaming mode
+## Example run using the Streaming method
 
 The kafka-stream example shows Encrypted Query executing a query against data from a kafka stream in real-time.
 
