@@ -5,21 +5,21 @@ There are three steps to running Encrypted Query:
 2. Run the Responder to query against the data (on the server side)
 3. Decrypt the server response (on the querier side)
 
-Currently Encrypted query supports querying against data in JSON format.  The Encrypted Query Responder (Server side piece that actually queries the data) supports three methods of quering data: standalone, kafka streaming and Hadoop map/reduce.  Steps 1 and 3 do not depend on the method.
+Currently Encrypted query supports querying against data in JSON format.  The Encrypted Query Responder (Server-side component that actually queries the data) supports three modes of operation: standalone, Kafka streaming and Hadoop map/reduce.  Steps 1 and 3 do not depend on the mode.
 
 
-## Pre-requisites
+## Prerequisites
 
-* To build Encrypted Query will require Oracle Java 1.8x JDK, a gcc compiler, and Apache Maven.
+* To build Encrypted Query will require Oracle Java 1.8.0_144 or greater JDK, a gcc compiler, and Apache Maven.
 
-* To run Encrypted Query you will need Oracle Java 1.8x runtime installed on the server.
+* To run Encrypted Query you will need Oracle Java 1.8.0_144 or greater runtime installed on the server.
 
-* If you plan on running the responder using the streaming method you will also need access to a running kafka server.
+* If you plan on running the responder using the streaming mode you will also need access to a running Kafka server.
 
-* To run the responder using the Hadoop map/reduce method will require access to a Hadoop installation with map/reduce.
+* To run the responder using the Hadoop map/reduce mode will require access to a Hadoop installation with map/reduce.
 
 
-Installing of these pre-requisites  are beyond the scope of this document but information can be found:
+Installing of these prerequisites  are beyond the scope of this document but information can be found:
 
 **Java JDK**:  `http://www.oracle.com/technetwork/java//jdk8-downloads-2133151.html`
 
@@ -28,7 +28,7 @@ Installing of these pre-requisites  are beyond the scope of this document but in
 **Hadoop**: `http://hadoop.apache.org/`
 
 ## Building the Application
-To build the Encrypted Query application download and unpack the project from github
+To build the Encrypted Query application download and unpack the project from Github
 
 Use the build command: `mvn clean install -P native-libs`
 
@@ -44,7 +44,7 @@ The following files are required to execute an Encrypted Query:
 
 * *Selector data file* - This file contains a unique id for the query as well as specifying the specific selectors (search terms) we are interested in.
 
-* *Data file* - This is the actual data we will be quering against
+* *Data file* - This is the actual data we will be querying against
 
 ### Examples of each file:
 
@@ -105,7 +105,7 @@ The first line is a UUID value that represents the id of the query.  Our value w
 { "name": "Donna", "age": "19", "children": [ ] }
 ```
 
-## Example run using the Standalone method
+## Example run using the Standalone mode
 In the Simple Query example our test query is looking for records with name = "Bob" and is asking for both the name and the age fields for such records.  The simple example files are available and can be executed from the *examples/simple/* folder.
 
 To run the simple query enter the command: `./run_simple_query.sh`
@@ -195,7 +195,6 @@ Option | Description
  -q    | encrypted query file name
  -o    | encrypted results file name
  
-** Notes: ** 
 ```
  
 ### Decrypting the server response
@@ -226,14 +225,12 @@ Some important command line options:
 | -qs    | The Query Schema file. | 
 | -ds    | The Data Schema file. | 
 
-**Notes: **
-
 ```
 
 
-## Example run using the Hadoop Map/Reduce method
+## Example run using the Hadoop Map/Reduce mode
 
-The phone example shows the details for executing an Encrypted Query using the Hadoop Map/Reduce method.
+The phone example shows the details for executing an Encrypted Query using the Hadoop Map/Reduce mode.
 
 Execute the phone query by issuing the following command: `./run_phone_query.sh phone mapreduce` 
 
@@ -299,12 +296,12 @@ if that argument was used instead.   When running an encrypted query in mapreduc
 1. Data Schema file
 2. Query Schema file
 3. Encrypted Query file
-4. Data file  (Thought this file would most likely already be in Hadoop..)
+4. Data file  (Though this file would most likely already be in Hadoop..)
 5. Shared library for the responder
 
 _Note: refer to the run responder script that show the commands to upload files to hadoop_
 
-At the of the script it copies the result file from hadoop into the local folder. 
+At the of the script it copies the result file from Hadoop into the local folder. 
 
 ```
 # *******************
@@ -456,11 +453,11 @@ Decrypted query results:
 {"event_type":"phone query","query_id":"7d0d11cb-1313-4720-88be-3e0864ccd1a0","Caller #":"797-844-8761","Callee #":"667-828-9241","Date\/Time":"04\/09\/2016 10:53","match":"797-844-8761"}
 ```
 
-## Example run using the Streaming method
+## Example run using the Streaming mode
 
-The kafka-stream example shows Encrypted Query executing a query against data from a kafka stream in real-time.
+The Kafka-stream example shows Encrypted Query executing a query against data from a Kafka stream in real-time.
 
-To run this example you need to have kafka installed with a topic named 'stream-test' available.  This example will generate data in a kafka-producer application 
+To run this example you need to have Kafka installed with a topic named 'stream-test' available.  This example will generate data in a Kafka-producer application 
 that feeds data into the stream-test topic.  Two core configuration options for Encrypted Query for processing of stream data are the search window (time period to search the stream) and how many instances you want to search.   After each instance a result file is returned.   
 
 To execute the streaming example start the script: `run_streaming_example.sh`
@@ -468,7 +465,7 @@ To execute the streaming example start the script: `run_streaming_example.sh`
 This script will perform the following:
 
 1. Generate the encrypted query
-2. Start a kafka producer process to stream  into kafka
+2. Start a Kafka producer process to stream  into Kafka
 3. Start the responder to search the data in two 30 second time windows.  After each time window expires the responder will output a result file.
 4. Decrypt each result file.
 5. Display the output to the screen.
@@ -507,8 +504,8 @@ responder.pauseTimeForQueueCheck=5
 ```
 
 #### Kafa Twitter Example
-Another streaming example uses a twitter feed as the source of the kafka stream.  To run this example you will need to get credentials from twitter to enable the 
-twitter feed.  This example also requires a kafka topic twitter-feed to be created.
+Another streaming example uses a twitter feed as the source of the Kafka stream.  To run this example you will need to get credentials from twitter to enable the 
+twitter feed.  This example also requires a Kafka topic twitter-feed to be created.
 
 The credentials needed are:
 
