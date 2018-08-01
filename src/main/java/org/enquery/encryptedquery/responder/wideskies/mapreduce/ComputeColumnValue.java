@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
+import org.enquery.encryptedquery.utils.ConversionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,7 @@ public class ComputeColumnValue implements Callable<ColumnValue> {
     		String part = valueInfo[1];
     		//  logger.debug("Processing rowIndex {}, value {}", rowIndex, part);
 
-    		byte[] partAsByteArray = QueryUtils.hexStringToByteArray(part);
+    		byte[] partAsByteArray = ConversionUtils.hexStringToByteArray(part);
     		BigInteger partAsBI = new BigInteger(1, partAsByteArray);
     		//  logger.debug("partAsBi: " + partAsBI.toString(16));
 

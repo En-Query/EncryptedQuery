@@ -29,6 +29,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.utils.CSVOutputUtils;
+import org.enquery.encryptedquery.utils.ConversionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
                tempByteArray[j] = decodedString[i];
            } else {
                keyOut.set(partsCounter++); // colNum
-               valueOut.set(tokens[0] + "," + QueryUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
+               valueOut.set(tokens[0] + "," + ConversionUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
               // logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
                ctx.write(keyOut, valueOut);
         	   j = 0;
@@ -104,7 +105,7 @@ public class ColumnMultMapper extends Mapper<LongWritable,Text,LongWritable,Text
     	    	j++;
         	}
             keyOut.set(partsCounter++); // colNum
-            valueOut.set(tokens[0] + "," + QueryUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
+            valueOut.set(tokens[0] + "," + ConversionUtils.byteArrayToHexString(tempByteArray)); // rowIndex, colValue
             // logger.debug("columnMultMapper output key = " + keyOut.get() + " value = " + valueOut.toString());
             ctx.write(keyOut, valueOut);
         }

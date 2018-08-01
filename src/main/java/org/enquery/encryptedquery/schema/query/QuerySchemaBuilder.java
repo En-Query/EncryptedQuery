@@ -55,6 +55,8 @@ public class QuerySchemaBuilder
   private String name;
   private String dataSchemaName;
   private String selectorName;
+  private String tableName;
+  private String databaseQuery;
   private Set<String> queryElementNames = Collections.emptySet();
   private String filterTypeName = NO_FILTER;
   private Set<String> filteredElementNames = Collections.emptySet();
@@ -84,7 +86,7 @@ public class QuerySchemaBuilder
     verifyQueryElements();
 
     DataFilter filter = instantiateFilter(filterTypeName, filteredElementNames);
-    QuerySchema schema = new QuerySchema(name, dataSchemaName, selectorName, filterTypeName, filter, computeDataElementSize());
+    QuerySchema schema = new QuerySchema(name, dataSchemaName, selectorName, tableName, databaseQuery, filterTypeName, filter, computeDataElementSize());
     schema.getElementNames().addAll(queryElementNames);
     schema.getFilteredElementNames().addAll(filteredElementNames);
     schema.getAdditionalFields().putAll(additionalFields);
@@ -184,6 +186,52 @@ public class QuerySchemaBuilder
     return this;
   }
 
+  /**
+   * Sets the table name used in the database query
+   * 
+   * @param tableName
+   *          The name of the table used in the database query.
+   * @return This builder.
+   */
+  public QuerySchemaBuilder setTableName(String tableName)
+  {
+    this.tableName = tableName;
+    return this;
+  }
+
+  /**
+   * Returns the table name used for the database query.
+   * 
+   * @return the table name used for the database query.
+   */
+  public String getTableName()
+  {
+    return tableName;
+  }
+
+  /**
+   * Sets the database query string used to query the database
+   * 
+   * @param databaseQuery
+   *          The syntactically correct string for the database query sent to the database.
+   * @return This builder.
+   */
+  public QuerySchemaBuilder setDatabaseQuery(String databaseQuery)
+  {
+    this.databaseQuery = databaseQuery;
+    return this;
+  }
+
+  /**
+   * Returns the Database Query string used to query the database.
+   * 
+   * @return the database query string used to query the database.
+   */
+  public String getDatabaseQuery()
+  {
+    return databaseQuery;
+  }
+  
   /**
    * Returns the name of a filter to use with this query schema.
    * 

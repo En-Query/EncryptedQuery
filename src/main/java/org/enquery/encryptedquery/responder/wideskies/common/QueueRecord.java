@@ -19,7 +19,6 @@
  */
 package org.enquery.encryptedquery.responder.wideskies.common;
 
-import java.math.BigInteger;
 import java.util.List;
 
 public class QueueRecord {
@@ -31,9 +30,9 @@ public class QueueRecord {
 	String selector;
 	
 	// Record data broken into parts
-	List<BigInteger> parts;
+	List<Byte> parts;
 	
-	public QueueRecord(int rowIndex, String selector, List<BigInteger> parts) {
+	public QueueRecord(int rowIndex, String selector, List<Byte> parts) {
 		this.rowIndex = rowIndex;
 		this.selector = selector;
 		this.parts = parts;
@@ -47,7 +46,7 @@ public class QueueRecord {
 		return selector;
 	}
 
-	public List<BigInteger> getParts() {
+	public List<Byte> getParts() {
 		return parts;
 	}
 	

@@ -66,6 +66,14 @@ public class QuerySchema implements Serializable
   @Expose
   private final List<String> elementNames = new ArrayList<>();
 
+  //Name of the database table for JDBC queries
+  @Expose
+  private final String tableName;
+ 
+  // Query string for JDBC queries
+  @Expose
+  private final String databaseQuery;
+
   // Name of class to use in data filtering.
   @Expose
   private final String filterTypeName;
@@ -85,11 +93,14 @@ public class QuerySchema implements Serializable
   @Expose
   private final Map<String,String> additionalFields = new HashMap<>();
 
-  QuerySchema(String schemaName, String dataSchemaName, String selectorName, String filterTypeName, DataFilter filter, int dataElementSize)
+  QuerySchema(String schemaName, String dataSchemaName, String selectorName, String tableName, String databaseQuery,
+		   String filterTypeName, DataFilter filter, int dataElementSize)
   {
     this.schemaName = schemaName;
     this.dataSchemaName = dataSchemaName;
     this.selectorName = selectorName;
+    this.tableName = tableName;
+    this.databaseQuery = databaseQuery;
     this.filterTypeName = filterTypeName;
     this.filter = filter;
     this.dataElementSize = dataElementSize;
@@ -141,6 +152,31 @@ public class QuerySchema implements Serializable
     return selectorName;
   }
 
+  /**
+   * Returns the table name used for the JDBC query.
+   * <p>
+   * The table name is the database table used for JDBC queries.
+   * 
+   * @return
+   */
+  public String getTableName()
+  {
+	  return tableName;
+  }
+
+  /**
+   * Returns the Query String used for the database query.
+   * <p>
+   * The Query string is the exact database query to send to the given database.
+   * 
+   * @return
+   */
+  public String getDatabaseQuery()
+  {
+	  return databaseQuery;
+  }
+  
+  
   public int getDataElementSize()
   {
     return dataElementSize;

@@ -38,26 +38,27 @@ public class IPDataPartitioner implements DataPartitioner
   private static final long serialVersionUID = 1L;
 
   @Override
-  public List<BigInteger> toPartitions(Object object, String type)
+  public List<Byte> toPartitions(Object object, String type)
   {
-    List<BigInteger> parts = new ArrayList<>(4);
+    List<Byte> parts = new ArrayList<>(4);
 
     String[] octets = ((String) object).split("\\.");
     for (String oct : octets)
     {
-      parts.add(new BigInteger(oct));
+      BigInteger bi = new BigInteger(oct);
+      parts.add(bi.byteValue());
     }
 
     return parts;
   }
 
   @Override
-  public Object fromPartitions(List<BigInteger> parts, int partsIndex, String type)
+  public Object fromPartitions(List<Byte> parts, int partsIndex, String type)
   {
     String element;
 
-    element = parts.get(partsIndex).toString() + "." + parts.get(partsIndex + 1).toString() + "." + parts.get(partsIndex + 2).toString() + "."
-        + parts.get(partsIndex + 3).toString();
+    element = (parts.get(partsIndex) & 0xFF) + "." + (parts.get(partsIndex + 1)  & 0xFF) + "." + (parts.get(partsIndex + 2)  & 0xFF) + "."
+        + (parts.get(partsIndex + 3)  & 0xFF);
 
     return element;
   }
@@ -69,18 +70,19 @@ public class IPDataPartitioner implements DataPartitioner
   }
 
   @Override
-  public List<BigInteger> getPaddedPartitions(String type)
+  public List<Byte> getPaddedPartitions(String type)
   {
-    return Arrays.asList(BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO);
+//    return Arrays.asList(BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO);
+	    return Arrays.asList(new Byte("0"), new Byte("0"), new Byte("0"), new Byte("0"));
   }
 
   /**
    * Create partitions for an array of the same type of elements - used when a data value field is an array and we wish to encode these into the return value
    */
   @Override
-  public List<BigInteger> arrayToPartitions(List<?> elementList, String type)
+  public List<Byte> arrayToPartitions(List<?> elementList, String type)
   {
-    List<BigInteger> parts = new ArrayList<>();
+    List<Byte> parts = new ArrayList<>();
 
     int numArrayElementsToReturn = SystemConfiguration.getIntProperty("pir.numReturnArrayElements", 1);
     for (int i = 0; i < numArrayElementsToReturn; ++i)

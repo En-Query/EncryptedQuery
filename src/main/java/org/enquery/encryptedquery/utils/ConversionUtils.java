@@ -48,7 +48,6 @@ public class ConversionUtils {
 		return buffer.array();
 	}
 
-	// toByteArray and toObject are taken from: http://tinyurl.com/69h8l7x
 	/**
 	 * Convert a byte array Object into a byte array
 	 * @param obj
@@ -76,6 +75,12 @@ public class ConversionUtils {
 		return bytes;
 	}
 
+	/**
+	 * Convert from a BigInteger to byte[]
+	 * @param bigInteger
+	 * @param byteArraySize
+	 * @return
+	 */
 	public static byte[] bigIntegerToByteArray(final BigInteger bigInteger, int byteArraySize) {
 
 		byte[] bytes = bigInteger.toByteArray();
@@ -130,5 +135,21 @@ public class ConversionUtils {
 					+ Character.digit(s.charAt(i+1), 16));
 		}
 		return data;
+	}
+	
+	/**
+	 * Convert Byte[] object to byte[]
+	 * @param oBytes
+	 * @return byte[]
+	 */
+	public static byte[] toPrimitives(Byte[] oBytes)
+	{
+
+	    byte[] bytes = new byte[oBytes.length];
+	    for(int i = 0; i < oBytes.length; i++){
+	        bytes[i] = oBytes[i];
+	    }
+	    return bytes;
+
 	}
 }

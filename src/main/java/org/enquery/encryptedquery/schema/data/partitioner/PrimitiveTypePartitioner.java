@@ -50,46 +50,6 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
   public static final String CHAR = "char";
   public static final String STRING = "string";
 
-  /**
-   * Splits the given BigInteger into partitions given by the partitionSize.
-   */
-  public static List<BigInteger> partitionBits(BigInteger value, int partitionSize, BigInteger mask) throws PIRException
-  {
-    if (mask.bitLength() != partitionSize)
-    {
-      throw new PIRException("mask.bitLength() " + mask.bitLength() + " != partitionSize = " + partitionSize);
-    }
-
-    List<BigInteger> partitions = new ArrayList<>();
-    if (value.bitLength() < partitionSize)
-    {
-      partitions.add(value);
-    }
-    else
-    {
-      int bitLength = value.bitLength();
-      mask = mask.shiftLeft(bitLength - partitionSize); // shift left for big endian partitioning
-
-      int partNum = 0;
-      for (int i = 0; i < bitLength; i += partitionSize)
-      {
-        BigInteger result = value.and(mask);
-
-        int shiftSize = bitLength - (partNum + 1) * partitionSize;
-        if (shiftSize < 0) // partitionSize does not divide bitLength, the remaining bits do not need shifting
-        {
-          shiftSize = 0;
-        }
-
-        result = result.shiftRight(shiftSize);
-        mask = mask.shiftRight(partitionSize);
-
-        partitions.add(result);
-        ++partNum;
-      }
-    }
-    return partitions;
-  }
 
   /**
    * Returns a <code>BigInteger</code> bit mask for the given partitionSize.
@@ -161,14 +121,14 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
    * Reconstructs the object from the partitions
    */
   @Override
-  public Object fromPartitions(List<BigInteger> parts, int partsIndex, String type) throws PIRException
+  public Object fromPartitions(List<Byte> parts, int partsIndex, String type) throws PIRException
   {
     Object element;
 
     switch (type)
     {
       case BYTE:
-        element = parts.get(partsIndex).byteValueExact();
+        element = parts.get(partsIndex).byteValue();
         break;
       case SHORT:
       {
@@ -227,7 +187,7 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
     return element;
   }
 
-  private byte[] partsToBytes(List<BigInteger> parts, int partsIndex, String type) throws PIRException
+  private byte[] partsToBytes(List<Byte> parts, int partsIndex, String type) throws PIRException
   {
     int numParts = getNumPartitions(type);
     logger.debug("# of Parts {} numParts {} partsIndex {}", parts.size(), numParts, partsIndex);
@@ -247,9 +207,9 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
    * Partitions an object to a List of BigInteger values, currently represents an 8-bit partitioning
    */
   @Override
-  public List<BigInteger> toPartitions(Object obj, String type) throws PIRException
+  public List<Byte> toPartitions(Object obj, String type) throws PIRException
   {
-    List<BigInteger> parts = new ArrayList<>();
+    List<Byte> parts = new ArrayList<>();
 
     byte[] bytes = new byte[0];
 
@@ -297,11 +257,11 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
         {
           if (i < stringBytes.length)
           {
-            parts.add(BigInteger.valueOf((long) stringBytes[i] & 0xFF));
+        	  parts.add(stringBytes[i]);
           }
           else
           {
-            parts.add(BigInteger.ZERO);
+        	  parts.add( (byte)32 );   // Add space for strings
           }
         }
         break;
@@ -312,10 +272,18 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
     // Add any bytes to parts list.
     for (byte b : bytes)
     {
-      // Make sure that BigInteger treats the byte as 'unsigned' literal
-      parts.add(BigInteger.valueOf((long) b & 0xFF));
+    	parts.add(b);
     }
 
+    // This code below was used when using BigInteger.   Kept around for reference 
+    // Make sure that BigInteger treats the byte as 'unsigned' literal
+    //  parts.add(BigInteger.valueOf((long) b & 0xFF));
+
+    // This code is for debug/testing only
+    //    int counter = 0;
+    //   for (Byte part: parts) {
+    //    	logger.info("Part {} value {}", counter++, String.format("%02X ", part));
+    //   }
     return parts;
   }
 
@@ -323,14 +291,14 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
    * Method to get an empty set of partitions by data type - used for padding return array values
    */
   @Override
-  public List<BigInteger> getPaddedPartitions(String type) throws PIRException
+  public List<Byte> getPaddedPartitions(String type) throws PIRException
   {
     int numParts = getNumPartitions(type);
 
-    List<BigInteger> parts = new ArrayList<>(numParts);
+    List<Byte> parts = new ArrayList<>(numParts);
     for (int i = 0; i < numParts; i++)
     {
-      parts.add(BigInteger.ZERO);
+      parts.add( (byte) 0);
     }
     return parts;
   }
@@ -339,9 +307,9 @@ public final class PrimitiveTypePartitioner implements DataPartitioner
    * Create partitions for an array of the same type of elements - used when a data value field is an array and we wish to encode these into the return value
    */
   @Override
-  public List<BigInteger> arrayToPartitions(List<?> elementList, String type) throws PIRException
+  public List<Byte> arrayToPartitions(List<?> elementList, String type) throws PIRException
   {
-    List<BigInteger> parts = new ArrayList<>();
+    List<Byte> parts = new ArrayList<>();
 
     int numArrayElementsToReturn = SystemConfiguration.getIntProperty("pir.numReturnArrayElements", 1);
     for (int i = 0; i < numArrayElementsToReturn; ++i)

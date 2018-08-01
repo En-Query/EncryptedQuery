@@ -30,7 +30,6 @@ import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
 import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
-import org.enquery.encryptedquery.responder.wideskies.standalone.Responder;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
@@ -40,13 +39,11 @@ import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.utils.QueryResultsWriter;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -81,8 +78,6 @@ public class StandaloneQuery
   {
 
     logger.info("Performing watchlisting: ");
-
-    QuerySchema qSchema = QuerySchemaRegistry.get(queryType);
 
     // Create the necessary files
     LocalFileSystemStore storage = new LocalFileSystemStore();
@@ -134,7 +129,7 @@ public class StandaloneQuery
     	{
     		String selector = QueryUtils.getSelectorByQueryTypeJSON(query.getQueryInfo().getQuerySchema(), jsonData).trim();
     		int rowIndex = KeyedHash.hash(query.getQueryInfo().getHashKey(), query.getQueryInfo().getHashBitSize(), selector);
-    		List<BigInteger> parts = QueryUtils.partitionDataElement(query.getQueryInfo().getQuerySchema(), jsonData, query.getQueryInfo().getEmbedSelector());
+    		List<Byte> parts = QueryUtils.partitionDataElement(query.getQueryInfo().getQuerySchema(), jsonData, query.getQueryInfo().getEmbedSelector());
     		QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
     		newRecordQueue.add(qr);
     	} catch (Exception e)

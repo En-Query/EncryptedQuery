@@ -63,7 +63,7 @@ public class ResponderProps
   public static final String NUMEXPLOOKUPPARTS = "pir.numExpLookupPartitions";
   public static final String USELOCALCACHE = "pir.useLocalCache";
   public static final String LIMITHITSPERSELECTOR = "pir.limitHitsPerSelector";
-  public static final String MAXHITSPERSELECTOR = "pir.maxHitsPerSelector";
+  public static final String MAXHITSPERSELECTOR = "responder.maxHitsPerSelector";
   public static final String NUMCOLMULTPARTITIONS = "pir.numColMultPartitions";
   public static final String USEMODEXPJOIN = "pir.useModExpJoin";
   public static final String COLMULTREDUCEBYKEY = "pir.colMultReduceByKey";

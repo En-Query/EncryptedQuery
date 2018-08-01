@@ -40,7 +40,7 @@ public class ISO8601DatePartitioner implements DataPartitioner
   private final PrimitiveTypePartitioner ptp = new PrimitiveTypePartitioner();
 
   @Override
-  public List<BigInteger> toPartitions(Object object, String type) throws PIRException
+  public List<Byte> toPartitions(Object object, String type) throws PIRException
   {
     long dateLongFormat;
     try
@@ -55,7 +55,7 @@ public class ISO8601DatePartitioner implements DataPartitioner
   }
 
   @Override
-  public Object fromPartitions(List<BigInteger> parts, int partsIndex, String type) throws PIRException
+  public Object fromPartitions(List<Byte> parts, int partsIndex, String type) throws PIRException
   {
     long dateLongFormat = (long) ptp.fromPartitions(parts, partsIndex, PrimitiveTypePartitioner.LONG);
 
@@ -69,13 +69,13 @@ public class ISO8601DatePartitioner implements DataPartitioner
   }
 
   @Override
-  public List<BigInteger> arrayToPartitions(List<?> elementList, String type) throws PIRException
+  public List<Byte> arrayToPartitions(List<?> elementList, String type) throws PIRException
   {
     return ptp.arrayToPartitions(elementList, PrimitiveTypePartitioner.LONG);
   }
 
   @Override
-  public List<BigInteger> getPaddedPartitions(String type) throws PIRException
+  public List<Byte> getPaddedPartitions(String type) throws PIRException
   {
     return ptp.getPaddedPartitions(PrimitiveTypePartitioner.LONG);
   }

@@ -73,21 +73,22 @@ class DecryptResponseTask<V> implements Callable<Map<String, List<QueryResponseJ
 	private static byte[] bigIntegerToByteArray(final BigInteger bigInteger, int byteArraySize) {
 
 		byte[] bytes = bigInteger.toByteArray();
-		byte[] returnBytes = null;
-
+		byte[] tempBytes = null;
+		byte[] returnBytes = new byte[byteArraySize];
+        
 		// bigInteger.toByteArray returns a two's compliment.  We need an unsigned value
 		if (bytes[0] == 0) {
-			returnBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+			tempBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
 		} else {
-			returnBytes = bytes;
+			tempBytes = bytes;
 		}
-
 		//If the Biginteger is zero, we still need to return a byte array of zeros!
-		if (returnBytes.length < byteArraySize) {
-        	returnBytes = new byte[byteArraySize];
-            for (int i = 0 ; i < 2; i++) {
-            	returnBytes[i] = 0x00;
-            }
+        int sizeDifference = byteArraySize - tempBytes.length;
+		if (sizeDifference > 0) {
+			System.arraycopy(tempBytes, 0, returnBytes, sizeDifference, tempBytes.length);
+			
+        } else {
+        	returnBytes = tempBytes;
         }
 
 		return returnBytes;
@@ -129,7 +130,8 @@ class DecryptResponseTask<V> implements Callable<Map<String, List<QueryResponseJ
 				logger.debug("selector = " + selector);
 
 				List<BigInteger> partitions = new ArrayList<>();
-				List<BigInteger> parts = new ArrayList<>();
+//				List<BigInteger> parts = new ArrayList<>();
+				List<Byte> parts = new ArrayList<>();
 				
 				boolean zeroElement = true;
 				for (int partNum = 0; partNum < numPartitionsPerDataElement; partNum++) {
@@ -162,26 +164,28 @@ class DecryptResponseTask<V> implements Callable<Map<String, List<QueryResponseJ
 			    }
 				logger.debug("bytesPerPartition {} \"partitions.size() {}", bytesPerPartition, partitions.size());
 
-				if (bytesPerPartition > 1 ) {
+//				if (bytesPerPartition > 1 ) {
 				int index = 1;
 			    for (BigInteger bi : partitions) {
 			    	logger.debug("Part {} BigInt {} / Byte {}", index, bi.toString(), bi.toString(16) );
 			    	index++;
                     byte[] partitionBytes = bigIntegerToByteArray(bi, bytesPerPartition);
                     for (byte b : partitionBytes) {
-                    	parts.add(BigInteger.valueOf((long) b & 0xFF));
+//                    	parts.add(BigInteger.valueOf((long) b & 0xFF));
+                    	parts.add(b);
                     	logger.debug("Added part {}", BigInteger.valueOf((long) b & 0xFF).toString(16));
                     }
 			    }
-				} else {
-                   parts = partitions;					
-				}
+//				} else {
+
+//					parts = partitions;					
+//				}
 				
 				logger.debug("parts.size() = " + parts.size());
 				
 				int counter = 0;
-				for (BigInteger bi : parts) {
-					logger.debug("part {} value {}", counter, bi.toString(16));
+				for (Byte bi : parts) {
+					logger.debug("part {} value {}", counter, bi.toString());
 					counter++;
 				}
 				

@@ -39,14 +39,14 @@ public interface DataPartitioner extends Serializable
    * <p>
    * If the Object does not have/need a specific type identifier, use null.
    */
-  List<BigInteger> toPartitions(Object object, String type) throws PIRException;
+  List<Byte> toPartitions(Object object, String type) throws PIRException;
 
   /**
    * Method to reconstruct an Object given a List of its BigInteger partition elements and its type identifier.
    * <p>
    * If the Object does not have/need a specific type identifier, use null.
    */
-  Object fromPartitions(List<BigInteger> parts, int partsIndex, String type) throws PIRException;
+  Object fromPartitions(List<Byte> parts, int partsIndex, String type) throws PIRException;
 
   /**
    * Returns the number of bits of an object with the given type.
@@ -56,12 +56,12 @@ public interface DataPartitioner extends Serializable
   /**
    * Creates partitions for an array of the same type of elements - used when a data value field is an array and we wish to encode these into the return value.
    */
-  List<BigInteger> arrayToPartitions(List<?> elementList, String type) throws PIRException;
+  List<Byte> arrayToPartitions(List<?> elementList, String type) throws PIRException;
 
   /**
    * Method to get an empty set of partitions by data type - used for padding return array values.
    */
-  List<BigInteger> getPaddedPartitions(String type) throws PIRException;
+  List<Byte> getPaddedPartitions(String type) throws PIRException;
 
   /**
    * Method to get the number of partitions of the data object given the type.

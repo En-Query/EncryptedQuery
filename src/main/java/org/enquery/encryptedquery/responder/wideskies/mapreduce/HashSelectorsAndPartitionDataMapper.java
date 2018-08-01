@@ -136,7 +136,8 @@ public class HashSelectorsAndPartitionDataMapper extends Mapper<Text,MapWritable
       Tuple2<Integer,BytesArrayWritable> returnTuple;
       try
       {
-        returnTuple = HashSelectorAndPartitionData.hashSelectorAndFormPartitions(value, qSchema, dSchema, queryInfo);
+//        returnTuple = HashSelectorAndPartitionData.hashSelectorAndFormPartitions(value, qSchema, dSchema, queryInfo);
+        returnTuple = null;
       } catch (Exception e)
       {
         logger.error("Error in partitioning data element value = " + StringUtils.mapWritableToString(value));

@@ -188,6 +188,7 @@ public class BaseTests
         printResultList(correctResults);
         fail("results.size() = " + results.size() + " != correctResults.size() = " + correctResults.size());
       }
+      // Order of results is not in the same as initial so this will fail a compare which does a one by one compare
       for (QueryResponseJSON result : results)
       {
         if (!compareResultArray(correctResults, result))

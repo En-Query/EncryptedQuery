@@ -23,13 +23,11 @@ import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.commons.lang3.tuple.Pair;
 
 import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.query.wideskies.QueryInfo;
@@ -37,7 +35,7 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
-import org.enquery.encryptedquery.utils.JavaUtilities;
+import org.enquery.encryptedquery.utils.ConversionUtils;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,18 +60,11 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	private ComputeEncryptedColumn cec = null;
 	private long computeThreshold = 0;
 
-	// dataColumns[column number][row index] = data part (i.e. exponent)
-	private HashMap<Integer, BigInteger[]> dataColumns;
-
-	private long dataStart, dataTime = 0;
-	private long mathStart, mathTime = 0;
-	private long respStart, respTime = 0;
-	private long arrayStart, arrayTime = 0;
-	private long adeStart, adeTime = 0;
+	private HashMap<Integer, List<Pair<Integer, Byte[]>>> dataColumns;
 
 	private TreeMap<Integer,BigInteger> columns = null; // the column values for the encrypted query calculations
 
-	private ArrayList<Integer> rowColumnCounters; // keeps track of how many hit partitions have been recorded for each row/selector
+	private ArrayList<Integer> rowColumnCounters; // keeps track of column location for each rowIndex (Selector Hash)
 
 	private ConcurrentLinkedQueue<QueueRecord> inputQueue;
 	private ConcurrentLinkedQueue<Response> responseQueue;
@@ -81,7 +72,6 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	public ColumnBasedResponderProcessor(ConcurrentLinkedQueue<QueueRecord> inputQueue, ConcurrentLinkedQueue<Response> responseQueue,
 			Query queryInput) {
 
-		logger.debug("Initializing Responder Processing Thread");
 		this.query = queryInput;
 		this.inputQueue = inputQueue;
 		this.responseQueue = responseQueue;
@@ -104,10 +94,12 @@ public class ColumnBasedResponderProcessor implements Runnable {
 
 		resetResponse();
 
-		dataColumns = new HashMap<Integer, BigInteger[]>();
+		dataColumns = new HashMap<Integer, List<Pair<Integer, Byte[]>>>();
 
 		encryptColumnMethod = SystemConfiguration.getProperty("responder.encryptColumnMethod");
 		cec = ComputeEncryptedColumnFactory.getComputeEncryptedColumnMethod(encryptColumnMethod, query.getQueryElements(), NSquared, (1<<hashBitSize), dataPartitionBitSize);
+		logger.info("Initialized Responder Processing Thread using encryptColumnMethod {} with processing threshold {}", 
+				 encryptColumnMethod, numFormat.format(computeThreshold));
 	}
 
 	public void stopProcessing() {
@@ -128,16 +120,15 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	public void run() {
 
 		threadId = Thread.currentThread().getId();
-		logger.info("Starting Responder Processing Thread {} with encryptColumnMethod {}", threadId, encryptColumnMethod);
+		logger.info("Starting Responder Processing Thread {}", threadId);
 		QueueRecord nextRecord = null;
 		while (!stopProcessing) {
 			while ((nextRecord = inputQueue.poll()) != null) {
 				try {
-					//logger.info("Processing selector {}", selector);
 					addDataElement(nextRecord);
 					recordCount++;
 					if ( (recordCount % computeThreshold) == 0) {
-						logger.info("Thread {} Retrieved {} records so far will pause queue to compute", threadId, recordCount);
+						logger.info("Thread {} Retrieved {} records so far will pause queue to compute", threadId, numFormat.format(recordCount));
 						processColumns();
 						logger.info("Thread {} compute finished, resuming queue input", threadId);
 					}
@@ -159,8 +150,8 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	}
 
 	/**
-	 * Method to add a data element associated with the given selector to the Response
-	 * Assumes that the dataMap contains the data in the schema specified
+	 * Method to add a data record associated with the given selector to the Response
+	 * Assumes that the query record contains the data in the schema specified
 	 * Initialize Paillier ciphertext values Y_i to 1 (as needed -- column values as the # of hits grows)
 	 * Initialize 2^hashBitSize counters: c_t = 0, 0 <= t <= (2^hashBitSize - 1)
 	 * For selector T:
@@ -174,12 +165,10 @@ public class ColumnBasedResponderProcessor implements Runnable {
 	 */
 	public void addDataElement(QueueRecord qr) throws Exception
 	{
-		// Extract the data from the input record into byte chunks.
-		List<BigInteger> inputData = qr.getParts();
-
 		// Convert from byte data into partitions of data partition size.
-		List<BigInteger> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
-
+		List<Byte[]> hitValPartitions = QueryUtils.createPartitions(qr.getParts(), dataPartitionBitSize);
+//        logger.info("rowIndex {} Part count: {}", qr.getRowIndex(), qr.getParts().size());
+        
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);
 
@@ -187,9 +176,11 @@ public class ColumnBasedResponderProcessor implements Runnable {
 		{
 			if (!dataColumns.containsKey(i + rowCounter))
 			{
-				dataColumns.put(i + rowCounter, new BigInteger[1 << queryInfo.getHashBitSize()]);
+				dataColumns.put(i + rowCounter, new ArrayList<Pair<Integer, Byte[]>>());
 			}
-			dataColumns.get(i + rowCounter)[rowIndex] = hitValPartitions.get(i);
+ //       	logger.info("rowIndex {} Partition {} added to dataColumns index {} Value {}", rowIndex,
+ //      			i, i + rowCounter, ConversionUtils.byteArrayToHexString(ConversionUtils.toPrimitives(hitValPartitions.get(i))));
+			dataColumns.get(i + rowCounter).add(Pair.of(rowIndex, hitValPartitions.get(i)));
 		}
 
 		// Update the rowCounter (next free column position) for the selector
@@ -205,17 +196,23 @@ public class ColumnBasedResponderProcessor implements Runnable {
         dataColumns.clear();
     }
     
+    /*
+     * This method adds all the entries ready for computation into the library and 
+     * computes to a single value.  That value is then stored to be computed with the next 
+     * batch of values.
+     */
     
     public void computeEncryptedColumns()
     {
-    	for(Map.Entry<Integer, BigInteger[]> entry : dataColumns.entrySet()) {
-    		int col = entry.getKey();
-    		BigInteger[] dataCol = entry.getValue();
-    		for (int rowIndex=0; rowIndex < dataCol.length; ++rowIndex)
+    	for(Map.Entry<Integer, List<Pair<Integer, Byte[]>>> entry : dataColumns.entrySet()) {
+    		int col = entry.getKey();   
+    		List<Pair<Integer, Byte[]>> dataCol = entry.getValue();
+    		for (int i=0; i < dataCol.size(); ++i)
     		{
-    			if (null != dataCol[rowIndex])
+    			if (null != dataCol.get(i))
     			{
-    				cec.insertDataPart(rowIndex, dataCol[rowIndex]);
+    				BigInteger BI = new BigInteger(1, ConversionUtils.toPrimitives(dataCol.get(i).getRight()));
+    				cec.insertDataPart(dataCol.get(i).getLeft(), BI);
     			}
     		}
     		BigInteger newColumn = cec.computeColumnAndClearData();
@@ -223,6 +220,7 @@ public class ColumnBasedResponderProcessor implements Runnable {
     		{
     			columns.put(col, BigInteger.valueOf(1));
     		}
+         
     		BigInteger column = columns.get(col);
     		column = (column.multiply(newColumn)).mod(query.getNSquared());
     		columns.put(col, column);

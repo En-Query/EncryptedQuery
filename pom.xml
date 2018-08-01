@@ -61,6 +61,7 @@
 		<elasticsearch.version>2.3.4</elasticsearch.version>
 		<storm.version>1.0.1</storm.version>
 		<kafka.version>1.0.0</kafka.version>
+		<mysql.version>6.0.6</mysql.version>
 		<spark-streaming.version>2.0.0</spark-streaming.version>
 		<encryptedquery.forkCount>1C</encryptedquery.forkCount>
 		<encryptedquery.reuseForks>true</encryptedquery.reuseForks>
@@ -339,6 +340,23 @@
 			<artifactId>scala-library</artifactId>
 			<version>${scala.version}</version>
 		</dependency>
+		
+        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql.version}</version>
+            </dependency>
+            
+        <!--
+		<dependency>
+			<groupId>com.oracle.jdbc</groupId>
+			<artifactId>ojdbc8</artifactId>
+			<version>12.2.0.1</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/ojdbc8.jar</systemPath>
+		</dependency>
+        -->
 
 	</dependencies>
 
@@ -416,6 +434,9 @@
 							<exclude>examples/simple/*</exclude> <!-- Exclude simple example -->
 							<exclude>examples/phone/*</exclude> <!-- Phone log example -->
 							<exclude>examples/phone/config/*</exclude> <!-- Phone log example -->
+                                                        <exclude>examples/jdbc/*</exclude> <!-- JDBC example -->
+                                                        <exclude>examples/jdbc/data/*</exclude> 
+                                                        <exclude>examples/jdbc/config/*</exclude>
 							<exclude>examples/kafka-stream/*</exclude> <!-- kafka streaming example -->
 							<exclude>examples/kafka-stream/config/*</exclude> <!-- kafka streaming example -->
 							<exclude>examples/kafka-stream/kafka-producer/*</exclude> <!-- kafka streaming example -->

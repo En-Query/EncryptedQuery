@@ -25,7 +25,6 @@ package org.enquery.encryptedquery.responder.wideskies.standalone;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class to perform stand alone responder functionalities
+ * Class to perform Encrypted Query in a standalone method
  * Used primarily for testing, although it can be used anywhere in standalone mode
  * Does not use the DataFilter class -- assumes all filtering happens before calling addDataElement()
  * NOTE: Only uses in expLookupTables that are contained in the Query object, not in hdfs as this is a standalone responder
@@ -75,7 +74,7 @@ public class Responder
 	private static final Integer numberOfProcessorThreads = Integer.valueOf(SystemConfiguration.getProperty("responder.processing.threads", "1"));
 	private long maxQueueSize = SystemConfiguration.getLongProperty("responder.maxQueueSize", 1000000);
 	private int pauseTimeForQueueCheck = SystemConfiguration.getIntProperty("responder.pauseTimeForQueueCheck", 10);
-	private int maxHitsPerSelector = SystemConfiguration.getIntProperty("pir.maxHitsPerSelector", 16000);
+	private int maxHitsPerSelector = SystemConfiguration.getIntProperty("responder.maxHitsPerSelector", 16000);
 	private HashMap<Integer, Integer> rowIndexCounter; // keeps track of how many hits a given selector has
 	private HashMap<Integer, Integer> rowIndexOverflowCounter;   // Log how many records exceeded the maxHitsPerSelector
  
@@ -102,7 +101,8 @@ public class Responder
         
 		// Based on the number of processor threads, calculate the number of hashes for each queue
 		int hashGroupSize = ((1 << queryInfo.getHashBitSize()) + numberOfProcessorThreads -1 ) / numberOfProcessorThreads;
-		logger.info("Based on {} Processor Thread(s) the hashGroupSize is {}", numberOfProcessorThreads, hashGroupSize);
+		logger.info("Based on {} Processor Thread(s) the hashGroupSize is {} and maxQueueSize {}",
+				numberOfProcessorThreads, numFormat.format(hashGroupSize), numFormat.format(maxQueueSize));
 
         // Create a Queue for each thread
 		for (int i = 0 ; i < numberOfProcessorThreads; i++) {
@@ -126,7 +126,7 @@ public class Responder
 		// Read data file and add records to the queue
 		BufferedReader br = new BufferedReader(new FileReader(inputData));
 		String line;
-		logger.info("Reading and processing input file...");
+		logger.info("Reading and processing input file: {}", inputData);
 		JSONParser jsonParser = new JSONParser();
 
 		Boolean waitForProcessing = false;
@@ -142,17 +142,21 @@ public class Responder
 			}
 			if (jsonData != null) {
 				selector = QueryUtils.getSelectorByQueryTypeJSON(queryInfo.getQuerySchema(), jsonData).trim();
-//	            logger.info("Selector ({})", selector);			
 				if (selector != null && selector.length() > 0) {
 					try {
 						int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+//			            logger.info("Selector {} / Hash {}", selector, rowIndex);			
+
+						// Track how many "hits" there are for each selector (Converted into rowIndex) 
 						if ( rowIndexCounter.containsKey(rowIndex) ) {
 							rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
 						} else {
 							rowIndexCounter.put(rowIndex, 1);
 						}
+						
+						// If we are not over the max hits value add the record to the appropriate queue
 						if ( rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-							List<BigInteger> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
+							List<Byte> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
 							QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
 							int whichQueue = rowIndex / hashGroupSize;
 							newRecordQueues.get(whichQueue).add(qr);
@@ -192,7 +196,7 @@ public class Responder
 								waitForProcessing = false;
 							}
 							logger.info("Loading paused to catchup on processing, Queue Size {}", numFormat.format(queueSize));
-						} catch (InterruptedException e) {
+						} catch (Exception e) {
 							logger.error("Interrupted Exception waiting on main thread {}", e.getMessage() );
 						}
 					}

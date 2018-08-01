@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<schema>
+
+    <schemaName>Business Articles</schemaName>
+
+    <element>
+        <name>id</name>
+        <type>int</type>
+        <isArray>false</isArray>
+    </element>
+
+    <element>
+        <name>companyname</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+
+    <element>
+        <name>tickersymbol</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+
+    <element>
+        <name>articledate</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+
+    <element>
+        <name>articleURL</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+
+    <element>
+        <name>subject</name>
+        <type>string</type>
+        <isArray>false</isArray>
+    </element>
+
+</schema>

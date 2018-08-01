@@ -209,6 +209,19 @@ public class QuerySchemaLoader
     schemaBuilder.setSelectorName(selectorName);
     logger.info("selectorName = " + selectorName);
 
+    // Extract the tableName
+    String tableName = extractValue(doc, "tableName", "N/A");
+    schemaBuilder.setTableName(tableName);
+    if (!tableName.equalsIgnoreCase("N/A")) {
+    	logger.info("tableName = {}", tableName);
+    }
+    // Extract the tableName
+    String databaseQuery = extractValue(doc, "databaseQuery", "N/A");
+    schemaBuilder.setDatabaseQuery(databaseQuery);
+    if (!databaseQuery.equalsIgnoreCase("N/A")) {
+        logger.info("databaseQuery = {}", databaseQuery);
+    }
+
     // Extract the query elements.
     NodeList elementsList = doc.getElementsByTagName("elements");
     if (elementsList.getLength() != 1)
@@ -349,6 +362,20 @@ public class QuerySchemaLoader
       throw new PIRException("itemList.getLength() = " + itemList.getLength() + " -- should be 1");
     }
     return itemList.item(0).getTextContent().trim();
+  }
+  
+  private String extractValue(Document doc, String tagName, String valueIfNull) throws PIRException
+  {
+	  NodeList itemList = doc.getElementsByTagName(tagName);
+	  if (itemList.getLength() != 1 )
+	  { 
+		  if (valueIfNull == null) {
+			  throw new PIRException("No XML tag and Value if Null is null");
+		  } else {
+			  return valueIfNull;
+		  }
+	  }
+	  return itemList.item(0).getTextContent().trim();
   }
 
   /**

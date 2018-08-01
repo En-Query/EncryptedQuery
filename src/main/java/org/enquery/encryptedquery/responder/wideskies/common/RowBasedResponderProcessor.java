@@ -34,6 +34,7 @@ import org.enquery.encryptedquery.query.wideskies.QueryUtils;
 import org.enquery.encryptedquery.response.wideskies.Response;
 import org.enquery.encryptedquery.schema.query.QuerySchema;
 import org.enquery.encryptedquery.schema.query.QuerySchemaRegistry;
+import org.enquery.encryptedquery.utils.ConversionUtils;
 import org.enquery.encryptedquery.utils.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,8 +142,8 @@ public class RowBasedResponderProcessor implements Runnable {
 	 */
 	public void addDataElement(QueueRecord qr) throws Exception
 	{
-		List<BigInteger> inputData = qr.getParts();
-		List<BigInteger> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
+		List<Byte> inputData = qr.getParts();
+		List<Byte[]> hitValPartitions = QueryUtils.createPartitions(inputData, dataPartitionBitSize);
 
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);
@@ -156,16 +157,18 @@ public class RowBasedResponderProcessor implements Runnable {
 			}
 			BigInteger column = columns.get(i + rowCounter); // the next 'free' column relative to the selector
 			BigInteger exp;
+			BigInteger BI = new BigInteger(1, ConversionUtils.toPrimitives(hitValPartitions.get(i)));
+
 			if (query.getQueryInfo().useExpLookupTable() && !query.getQueryInfo().useHDFSExpLookupTable()) // using the standalone
 				// lookup table
 			{
-				exp = query.getExp(rowQuery, hitValPartitions.get(i).intValue());
+				exp = query.getExp(rowQuery, BI.intValue());
 			}
 			else
 				// without lookup table
 			{
 				//	        logger.debug("i = " + i + " hitValPartitions.get(i).intValue() = " + hitValPartitions.get(i).intValue());
-				exp = ModPowAbstraction.modPow(rowQuery, hitValPartitions.get(i), query.getNSquared());
+				exp = ModPowAbstraction.modPow(rowQuery, BI, query.getNSquared());
 			}
 			column = (column.multiply(exp)).mod(query.getNSquared());
 

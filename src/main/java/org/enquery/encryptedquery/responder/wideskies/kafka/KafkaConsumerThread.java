@@ -184,7 +184,7 @@ public class KafkaConsumerThread implements Runnable {
         							rowIndexCounter.put(rowIndex, 1);
         						}
         						if ( rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-        							List<BigInteger> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
+        							List<Byte> parts = QueryUtils.partitionDataElement(queryInfo.getQuerySchema(), jsonData, queryInfo.getEmbedSelector());
         							QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
         							//                                    logger.debug("Adding Queue Record: {}",qr.toString());
         							inputQueues.get(whichQueue).add(qr);
