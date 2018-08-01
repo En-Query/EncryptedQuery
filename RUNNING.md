@@ -5,7 +5,9 @@ There are three steps to running Encrypted Query:
 2. Run the Responder to query against the data (on the server side)
 3. Decrypt the server response (on the querier side)
 
-Currently Encrypted query supports querying against data in JSON format.  The Encrypted Query Responder (Server-side component that actually queries the data) supports three modes of operation: standalone, Kafka streaming and Hadoop map/reduce.  Steps 1 and 3 do not depend on the mode.
+Currently Encrypted query supports querying against data in JSON formati(except for JDBC data).  The Encrypted Query Responder (Server-side component that actually queries the data) supports three modes of operation: standalone, Kafka streaming, JDBC,  and Hadoop map/reduce.  JDBC support has been verified against MySQL and MariaDB databases.
+
+Steps 1 and 3 are independant of the mode of query execution.
 
 
 ## Prerequisites
@@ -17,6 +19,8 @@ Currently Encrypted query supports querying against data in JSON format.  The En
 * If you plan on running the responder using the streaming mode you will also need access to a running Kafka server.
 
 * To run the responder using the Hadoop map/reduce mode will require access to a Hadoop installation with map/reduce.
+
+* To run the responder against a JDBC database will require remote access to the database with username, password, database name.
 
 
 Installing of these prerequisites  are beyond the scope of this document but information can be found:
