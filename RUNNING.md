@@ -16,11 +16,11 @@ Steps 1 and 3 are independant of the mode of query execution.
 
 * To run Encrypted Query you will need Oracle Java 1.8.0_144 or greater runtime installed on the server.
 
-* If you plan on running the responder using the streaming mode you will also need access to a running Kafka server.
+* To run the responder using the streaming mode you will also need access to a running Kafka server.
 
 * To run the responder using the Hadoop map/reduce mode will require access to a Hadoop installation with map/reduce.
 
-* To run the responder against a JDBC database will require remote access to the database with username, password, database name.
+* To run the responder against a JDBC database will require remote access to the database with url, username, password, database name.
 
 
 Installing of these prerequisites  are beyond the scope of this document but information can be found:
@@ -30,6 +30,8 @@ Installing of these prerequisites  are beyond the scope of this document but inf
 **Apache kafka**: `https://kafka.apache.org/downloads`
 
 **Hadoop**: `http://hadoop.apache.org/`
+
+**MariaDB**: `https://downloads.mariadb.org/`
 
 ## Building the Application
 To build the Encrypted Query application download and unpack the project from Github
@@ -462,7 +464,9 @@ Decrypted query results:
 The Kafka-stream example shows Encrypted Query executing a query against data from a Kafka stream in real-time.
 
 To run this example you need to have Kafka installed with a topic named 'stream-test' available.  This example will generate data in a Kafka-producer application 
-that feeds data into the stream-test topic.  Two core configuration options for Encrypted Query for processing of stream data are the search window (time period to search the stream) and how many instances you want to search.   After each instance a result file is returned.   
+that feeds data into the 'stream-test' topic.  Two core configuration options for Encrypted Query for processing of stream data are the search window (time period to search the stream) and how many instances you want to search.   After each instance a result file is returned.   
+
+Before you execute the streaming example untar the kafka-producer.tar file.   This will create the `kafka-producer` folder which includes the jar file to execute as well as the source to rebuild if necessary.
 
 To execute the streaming example start the script: `run_streaming_example.sh`
 
@@ -520,3 +524,81 @@ twitter.consumer.secret.key=<your consumer secret key>
 twitter.access.token.key=<your access token>
 twitter.access.token.secret.key=<your access token secret ke
 ```
+
+#### JDBC Example
+
+The JDBC example shows Encrypted Query executing a query against data from a JDBC database.  It has been tested against MariaDB and MySQL databases.  
+
+To run the JDBC example will require a connection to a JDBC database using url, username, password, and database name.  This example uses a database name `enquery` with a username `enquery` and a password of `enquery`.   There are SQL scripts in the /data folder to create the database, add the user, and import the data.
+The create_database.sql script file creates the enquery database, creates the user, then grants privileges on the enquery database to the enquery user.
+The  enquery_businessarticles.sql script file creates the table and imports the data for the example.
+
+
+Update the responder properties with the appropriate values for running the responder in JDBC mode
+##Properties for JDBC
+# SSL
+# jdbc.useSSL Set to true if the database connection requires SSL for a connection.  Defaults to false.
+jdbc.useSSL = false
+#jdbc.ssl.keystore - Fully qualified filename for the Keystore file used for SSL conection
+jdbc.ssl.keystore=/home/hadoop/.ssl/keystore.jks
+#jdbc.ssl.keystorePassword - Password to read Keystore file
+jdbc.ssl.keystorePassword=mysqlclient
+#jdbc.ssl.truststore - Fully qualified filename for the Truststore file used for SSL connection
+jdbc.ssl.truststore=/home/hadoop/.ssl/truststore
+#jdbc.ssl.truststorePassword - Password to read the Truststore file
+jdbc.ssl.truststorePassword=mysqlserver
+# Database Info
+#jdbc.database.url - Fully qualified URL for the database connection
+jdbc.database.url=192.168.142.128:3306
+#jdbc.database.name - Database name to connect to for the above URL
+jdbc.database.name=enquery
+#jdbc.database.username - Database Account username to connect to the database with
+jdbc.database.username=enquery
+#jdbc.database.password - Password for the database account
+jdbc.database.password=enquery
+#jdbc.database.type - Database type to connect to (MySQL, MariaDB, Oracle, )
+jdbc.database.type=MariaDB
+
+Next update the queryschema.xml file to include the database query.  You can also limit some of the data by including a where clause as a filter.
+```
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema>
+    <schemaName>Business Article Query</schemaName>
+    <dataSchemaName>Business Articles</dataSchemaName>
+    <selectorName>tickersymbol</selectorName>
+    <tableName>businessarticles</tableName>
+    <databaseQuery>select id, tickersymbol, companyname, articledate, subject, articleurl from businessarticles;</databaseQuery>
+    <elements>
+        <name>id</name>
+        <name>tickersymbol</name>
+        <name>companyname</name>
+        <name>articledate</name>
+        <name>subject</name>
+        <name>articleURL</name>
+    </elements>
+</schema>
+```
+
+##Execute the JDBC example
+To execute the JDBC example run the following: ./run_jdbc_query.sh
+which should show the following results:
+```
+Generate query file...
+Thu Aug  1 14:14:43 EDT 2018
+Thu Aug  1 14:14:50 EDT 2018
+Run the query against JDBC database...
+Thu Aug  1 14:14:50 EDT 2018
+Decrypt the result...
+Thu Aug  1 14:14:57 EDT 2018
+Thu Aug  1 14:14:59 EDT 2018
+Display plain results
+{"tickersymbol":"NFLX","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Netflix","subject":"Adding 4K Dvds t","match":"NFLX","articledate":"2018\/07\/05 08:00","id":2,"articleURL":"https:\/\/www.dvd."}
+{"tickersymbol":"NUAN","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Nuance Communica","subject":"Computer Softwar","match":"NUAN","articledate":"2018\/07\/05 08:00","id":2158,"articleURL":"https:\/\/www.nasd"}
+{"tickersymbol":"ALNY","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Alnylam Pharmace","subject":"Major Pharmaceut","match":"ALNY","articledate":"2018\/07\/05 08:00","id":133,"articleURL":"https:\/\/www.nasd"}
+{"tickersymbol":"ABIL","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Ability Inc.","subject":"Telecommunicatio","match":"ABIL","articledate":"2018\/07\/05 08:00","id":22,"articleURL":"https:\/\/www.nasd"}
+{"tickersymbol":"FB","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Facebook","subject":"Did Russian Ads","match":"FB","articledate":"2018\/07\/05 08:00","id":3,"articleURL":"https:\/\/www.peop"}
+{"tickersymbol":"AMZN","event_type":"Business Article Query","query_id":"7d0d13cb-1313-4720-88be-3e0866ccd1a0","companyname":"Amazon","subject":"Did Russian Ads","match":"AMZN","articledate":"2018\/07\/05 08:00","id":4,"articleURL":"https:\/\/www.peop"}
+```
+
+
+
