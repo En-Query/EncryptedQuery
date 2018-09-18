@@ -1,4 +1,4 @@
-# Encrypted Query
+# EncryptedQuery
 
 ## Overview
 
