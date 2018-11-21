@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+           http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+	<routeContext id="data-source-routes" 
+		xmlns="http://camel.apache.org/schema/blueprint"
+		xmlns:ds="http://enquery.net/encryptedquery/datasource"
+		xmlns:dsl="http://enquery.net/encryptedquery/datasource/list">
+		
+		<route id="datasource-list">
+			<from uri="direct:/dataschemas/{dataSchemaId}/datasources"/>
+
+			<onException>
+				<exception>org.apache.camel.http.common.HttpOperationFailedException</exception>
+				<exception>org.apache.http.conn.HttpHostConnectException</exception>
+				<exception>java.net.ConnectException</exception>
+				<exception>java.io.IOException</exception>
+				<handled><constant>true</constant></handled>
+				
+				<log loggingLevel="WARN" 
+					message="Will retrieve from the local database because connection to Responder server failed with error: ${exception.stacktrace}." />
+
+	            <to uri="direct:data-sources-from-db"/>
+	 			<to uri="direct:success"/>
+			</onException>
+			
+			<setHeader headerName="CamelHttpPath">
+				<constant>/responder/api/rest/datasources</constant>
+			</setHeader>
+			<removeHeader headerName="CamelHttpQuery"/>
+			
+			<to uri="direct:get-from-responder"/>
+			
+			<unmarshal ref="dataSourceFormat"/>
+
+			<to uri="direct:update-db-with-data-sources" />
+ 			<to uri="direct:data-sources-from-db"/>
+ 			<to uri="direct:success"/>
+		</route>
+		
+		<route id="datasource-retrieve">
+			<from uri="direct:/dataschemas/{dataSchemaId}/datasources/{dataSourceId}"/>
+			
+			<setBody>
+				<simple>${header.dataSourceId}</simple>
+			</setBody>
+			
+			<bean ref="dataSourceRepo" method="find"/>
+			
+			<filter>
+				<simple>${body} == null</simple>
+				<log message="Data Source not found: ${header.dataSourceId}."/>
+				<setHeader headerName="CamelHttpResponseCode">
+					<constant>404</constant>
+				</setHeader>
+				<stop/>
+			</filter>
+			
+			<bean ref="dataSourceConverter" method="toJSONResponse"/>
+			
+			<to uri="direct:success"/>
+		</route>
+				
+		<route id="data-sources-from-db">
+			<from uri="direct:data-sources-from-db"/>
+			
+			<choice>
+				<when>
+					<simple>${header.dataSchemaId} != null</simple>
+					<bean ref="dataSourceRepo" method="withDataSchema(${header.dataSchemaId})"/>
+				</when>
+				<otherwise>
+					<bean ref="dataSourceRepo" method="list"/>
+				</otherwise>
+			</choice>
+			
+			
+			
+			<!-- When returning a list, use the List view to limit the fields that are returned -->
+			<setHeader headerName="CAMEL_JSON_VIEW">
+				<constant>org.enquery.encryptedquery.querier.data.entity.json.Views$ListView</constant>
+			</setHeader>
+			
+			<bean ref="dataSourceConverter" method="toJSONResponse"/>
+		</route>
+		
+		<route id="update-db-with-data-sources">
+			<from uri="direct:update-db-with-data-sources"/>
+	
+			<split>
+				<simple>${body.dataSourceResource}</simple>
+				<bean ref="dataSourceConverter" method="toJPA"/>
+				<bean ref="dataSourceRepo" method="addOrUpdate"/>
+			</split>			
+		</route>
+		
+	</routeContext>
+</blueprint>

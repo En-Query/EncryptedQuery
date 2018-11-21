@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1542830045629
+Bundle-ManifestVersion: 2
+Bundle-Name: EncryptedQuery :: Flink :: Core
+Bundle-SymbolicName: encryptedquery-flink-core
+Bundle-Version: 2.0.0
+Created-By: 1.8.0_171 (Oracle Corporation)
+Import-Package: javax.xml.bind,org.apache.commons.lang3;version="[3.5,
+ 4)",org.apache.commons.lang3.tuple;version="[3.5,4)",org.apache.flink
+ .api.common,org.apache.flink.api.common.functions,org.apache.flink.ap
+ i.common.io,org.apache.flink.api.common.typeinfo,org.apache.flink.api
+ .java,org.apache.flink.api.java.functions,org.apache.flink.api.java.o
+ perators,org.apache.flink.api.java.tuple,org.apache.flink.api.java.ty
+ peutils,org.apache.flink.core.fs,org.apache.flink.types,org.apache.fl
+ ink.util,org.enquery.encryptedquery.core;version="[2.0,3)",org.enquer
+ y.encryptedquery.data;version="[2.0,3)",org.enquery.encryptedquery.en
+ cryption;version="[2.0,3)",org.enquery.encryptedquery.query.wideskies
+ ;version="[2.0,3)",org.enquery.encryptedquery.responder,org.enquery.e
+ ncryptedquery.responder.wideskies.common;version="[2.0,3)",org.enquer
+ y.encryptedquery.response.wideskies;version="[2.0,3)",org.enquery.enc
+ ryptedquery.utils;version="[2.0,3)",org.enquery.encryptedquery.xml.sc
+ hema;version="[2.0,3)",org.enquery.encryptedquery.xml.transformation;
+ version="[2.0,3)",org.slf4j;version="[1.7,2)"
+Private-Package: org.enquery.encryptedquery.flink
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
+Tool: Bnd-4.0.0.201805111645

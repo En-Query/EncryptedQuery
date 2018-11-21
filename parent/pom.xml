@@ -1,0 +1,722 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ~ Licensed to the Apache Software Foundation (ASF) under one or more 
+	~ contributor license agreements. See the NOTICE file distributed with ~ 
+	this work for additional information regarding copyright ownership. ~ The 
+	ASF licenses this file to You under the Apache License, Version 2.0 ~ (the 
+	"License"); you may not use this file except in compliance with ~ the License. 
+	You may obtain a copy of the License at ~ ~ http://www.apache.org/licenses/LICENSE-2.0 
+	~ ~ Unless required by applicable law or agreed to in writing, software ~ 
+	distributed under the License is distributed on an "AS IS" BASIS, ~ WITHOUT 
+	WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. ~ See the 
+	License for the specific language governing permissions and ~ limitations 
+	under the License. --><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.apache</groupId>
+		<artifactId>apache</artifactId>
+		<version>18</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>org.enquery.encryptedquery</groupId>
+	<artifactId>encryptedquery-parent</artifactId>
+	<version>2.0.0</version>
+	<packaging>pom</packaging>
+
+	<name>EncryptedQuery</name>
+	<description>Enquery EncryptedQuery is a framework for scalable Private Information Retrieval (PIR).</description>
+
+	<inceptionYear>2018</inceptionYear>
+
+	<organization>
+		<name>EnQuery</name>
+	</organization>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0</url>
+		</license>
+	</licenses>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+
+		<karaf.version>4.2.0</karaf.version>
+		<osgi.version>6.0.0</osgi.version>
+
+		<scala.version>2.10.4</scala.version>
+		<flink.scala.version>2.11</flink.scala.version>
+
+		<flink.version>1.6.2</flink.version>
+		<jmh.version>1.13</jmh.version>
+		<benchmarkjar.name>benchmarks</benchmarkjar.name>
+		<javac.target>1.8</javac.target>
+		<slf4j.version>1.7.25</slf4j.version>
+		<log4j2.version>2.1</log4j2.version>
+		<junit.version>4.12</junit.version>
+		<log4j.configuration>log4j2.xml</log4j.configuration>
+		<hadoop.version>3.0.0</hadoop.version>
+		<spark.version>2.0.0</spark.version>
+		<elasticsearch.version>2.3.4</elasticsearch.version>
+		<storm.version>1.0.1</storm.version>
+		<kafka.version>1.0.0</kafka.version>
+		<spark-streaming.version>2.0.0</spark-streaming.version>
+		<encryptedquery.forkCount>1C</encryptedquery.forkCount>
+		<encryptedquery.reuseForks>true</encryptedquery.reuseForks>
+		<coveralls.maven.plugin>4.3.0</coveralls.maven.plugin>
+		<jacoco.maven.plugin>0.7.8</jacoco.maven.plugin>
+		<argLine>-Xmx1G -Djava.net.preferIPv4Stack=true</argLine>
+		<jnagmp.version>2.1.0</jnagmp.version>
+		<jna.version>4.5.1</jna.version>
+		<gmp.version>6.1.1</gmp.version>
+		<jackson.version>2.8.10</jackson.version>
+
+		<pax-exam.version>4.11.0</pax-exam.version>
+		<camel.version>2.21.1</camel.version>
+		<java.version>1.8</java.version>
+		<quartz.version>2.2.3</quartz.version>
+
+		<hibernate.version>5.2.9.Final</hibernate.version>
+		<aries.jpa.version>2.7.0</aries.jpa.version>
+		<jackson.version>2.8.10</jackson.version>
+		<openjpa.version>2.4.2</openjpa.version>
+		<aries.transaction.blueprint.version>2.1.0</aries.transaction.blueprint.version>
+		<felix.coordinator.version>1.0.2</felix.coordinator.version>
+		<aries.tx.control.version>1.0.0</aries.tx.control.version>
+		<pax-jdbc.version>1.3.0</pax-jdbc.version>
+		<mariadb-client.version>2.3.0</mariadb-client.version>
+		<liquibase.version>3.6.1</liquibase.version>
+		<snakeyaml.version>1.21</snakeyaml.version>
+		<derby-db.version>10.13.1.1</derby-db.version>
+
+		<!-- commons versions -->
+		<commons-codec.version>1.11</commons-codec.version>
+		<commons-io.version>2.6</commons-io.version>
+		<commons-lang.version>3.5</commons-lang.version>
+		<commons-net.version>3.5</commons-net.version>
+		<commons-cli.version>1.4</commons-cli.version>
+		<commons-collections.version>4.2</commons-collections.version>
+
+		<!-- Google Guava version -->
+		<guava.version>25.1-jre</guava.version>
+		
+		<pig.version>0.17.0</pig.version>
+		
+		<derby.plugin.version>1.10</derby.plugin.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- OSGI -->
+			<dependency>
+				<groupId>org.osgi</groupId>
+				<artifactId>org.osgi.core</artifactId>
+				<version>${osgi.version}</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.osgi</groupId>
+				<artifactId>osgi.cmpn</artifactId>
+				<version>${osgi.version}</version>
+				<scope>provided</scope>
+			</dependency>
+
+
+			<!-- Karaf -->
+			<dependency>
+				<groupId>org.apache.karaf.shell</groupId>
+				<artifactId>org.apache.karaf.shell.core</artifactId>
+				<version>${karaf.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.karaf.features</groupId>
+				<artifactId>framework</artifactId>
+				<type>kar</type>
+				<version>${karaf.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.karaf.features</groupId>
+				<artifactId>standard</artifactId>
+				<classifier>features</classifier>
+				<type>xml</type>
+				<version>${karaf.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.karaf.features</groupId>
+				<artifactId>enterprise</artifactId>
+				<version>${karaf.version}</version>
+				<classifier>features</classifier>
+				<type>xml</type>
+			</dependency>
+
+			<!-- Logging -->
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-api</artifactId>
+				<version>${slf4j.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>log4j</groupId>
+				<artifactId>log4j</artifactId>
+				<version>1.2.17</version>
+				<scope>test</scope>
+			</dependency>
+
+			<!-- Database/Persistence -->
+			<dependency>
+				<groupId>org.apache.aries.jpa.javax.persistence</groupId>
+				<artifactId>javax.persistence_2.1</artifactId>
+				<version>${aries.jpa.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.aries.jpa</groupId>
+				<artifactId>org.apache.aries.jpa.api</artifactId>
+				<version>${aries.jpa.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.ops4j.pax.jdbc</groupId>
+				<artifactId>pax-jdbc-pool-common</artifactId>
+				<version>${pax-jdbc.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.liquibase</groupId>
+				<artifactId>liquibase-core</artifactId>
+				<version>${liquibase.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.derby</groupId>
+				<artifactId>derby</artifactId>
+				<version>${derby-db.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.derby</groupId>
+				<artifactId>derbynet</artifactId>
+				<version>${derby-db.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.derby</groupId>
+				<artifactId>derbyclient</artifactId>
+				<version>${derby-db.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.derby</groupId>
+				<artifactId>derbytools</artifactId>
+				<version>${derby-db.version}</version>
+			</dependency>
+
+			<!-- JSON -->
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-annotations</artifactId>
+				<version>${jackson.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.google.code.gson</groupId>
+				<artifactId>gson</artifactId>
+				<version>2.7</version>
+			</dependency>
+			<dependency>
+				<groupId>com.googlecode.json-simple</groupId>
+				<artifactId>json-simple</artifactId>
+				<version>1.1.1</version>
+			</dependency>
+			
+			<!-- YAML -->
+			<dependency>
+				<groupId>org.yaml</groupId>
+				<artifactId>snakeyaml</artifactId>
+				<version>${snakeyaml.version}</version>
+			</dependency>
+
+			<!-- Unit test dependencies -->
+			<dependency>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>4.12</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-log4j12</artifactId>
+				<version>1.7.12</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-core</artifactId>
+				<version>1.9.5</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.karaf</groupId>
+				<artifactId>apache-karaf</artifactId>
+				<scope>test</scope>
+				<type>tar.gz</type>
+				<exclusions>
+					<exclusion>
+						<artifactId>org.apache.karaf.client</artifactId>
+						<groupId>org.apache.karaf</groupId>
+					</exclusion>
+				</exclusions>
+				<version>${karaf.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.servicemix.bundles</groupId>
+				<artifactId>org.apache.servicemix.bundles.javax-inject</artifactId>
+				<version>1_2</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>org.apache.felix.gogo.runtime</artifactId>
+				<version>0.16.2</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.ops4j.pax.exam</groupId>
+				<artifactId>pax-exam-container-karaf</artifactId>
+				<version>${pax-exam.version}</version>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.ops4j.pax.exam</groupId>
+				<artifactId>pax-exam-junit4</artifactId>
+				<version>${pax-exam.version}</version>
+				<scope>test</scope>
+			</dependency>
+
+			<!-- Camel -->
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-core</artifactId>
+				<version>${camel.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-netty4-http</artifactId>
+				<version>${camel.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel.karaf</groupId>
+				<artifactId>apache-camel</artifactId>
+				<type>xml</type>
+				<classifier>features</classifier>
+				<version>${camel.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-http4</artifactId>
+				<version>${camel.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-jackson</artifactId>
+				<version>${camel.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-test</artifactId>
+				<version>${camel.version}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-jaxb</artifactId>
+				<version>${camel.version}</version>
+			</dependency>
+			<dependency>
+			 	<groupId>org.apache.camel</groupId>
+			 	<artifactId>camel-script</artifactId>
+				<version>${camel.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.camel</groupId>
+				<artifactId>camel-groovy</artifactId>
+				<version>${camel.version}</version>
+			</dependency>
+			
+
+			<!-- Apache Commons -->
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-math3</artifactId>
+				<version>3.6.1</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>${commons-io.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-lang3</artifactId>
+				<version>${commons-lang.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-codec</groupId>
+				<artifactId>commons-codec</artifactId>
+				<version>${commons-codec.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-net</groupId>
+				<artifactId>commons-net</artifactId>
+				<version>${commons-net.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-cli</groupId>
+				<artifactId>commons-cli</artifactId>
+				<version>${commons-cli.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-collections4</artifactId>
+				<version>${commons-collections.version}</version>
+			</dependency>
+
+			<!-- Google Guava -->
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>${guava.version}</version>
+			</dependency>
+
+			<!-- Hadoop -->
+			<dependency>
+				<groupId>org.apache.hadoop</groupId>
+				<artifactId>hadoop-common</artifactId>
+				<version>${hadoop.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>org.slf4j</groupId>
+						<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.curator</groupId>
+						<artifactId>curator-client</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.hadoop</groupId>
+				<artifactId>hadoop-mapreduce-client-core</artifactId>
+				<version>${hadoop.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>org.slf4j</groupId>
+						<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>log4j</groupId>
+						<artifactId>log4j</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.hadoop</groupId>
+				<artifactId>hadoop-client</artifactId>
+				<version>${hadoop.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>org.slf4j</groupId>
+						<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>log4j</groupId>
+						<artifactId>log4j</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>xerces</groupId>
+						<artifactId>xercesImpl</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+
+			<!-- Kafka -->
+			<dependency>
+				<groupId>org.apache.kafka</groupId>
+				<artifactId>kafka_2.12</artifactId>
+				<version>${kafka.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>log4j</groupId>
+						<artifactId>log4j</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.slf4j</groupId>
+						<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.scala-lang</groupId>
+						<artifactId>scala-library</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+
+			<!-- Square's JNA GMP module -->
+			<dependency>
+				<groupId>com.squareup.jnagmp</groupId>
+				<artifactId>jnagmp</artifactId>
+				<version>${jnagmp.version}</version>
+			</dependency>
+
+			<!-- JMH for benchmarking the Paillier functions -->
+			<dependency>
+				<groupId>org.openjdk.jmh</groupId>
+				<artifactId>jmh-core</artifactId>
+				<version>${jmh.version}</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.openjdk.jmh</groupId>
+				<artifactId>jmh-generator-annprocess</artifactId>
+				<version>${jmh.version}</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<!-- Flink -->
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-java</artifactId>
+				<version>${flink.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-streaming-java_${flink.scala.version}</artifactId>
+				<version>${flink.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-jdbc</artifactId>
+				<version>${flink.version}</version>
+				<scope>compile</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-test-utils_${flink.scala.version}</artifactId>
+				<version>${flink.version}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-connector-kafka-0.10_${flink.scala.version}</artifactId>
+				<version>${flink.version}</version>
+			</dependency>
+			
+			<!-- Pig -->
+			<dependency>
+				<groupId>org.apache.pig</groupId>
+				<artifactId>pig</artifactId>
+				<version>${pig.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.datafu</groupId>
+				<artifactId>datafu-pig</artifactId>
+				<version>1.4.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.pig</groupId>
+				<artifactId>pigunit</artifactId>
+				<version>${pig.version}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<!-- will be able to remove this dependency for the next version of pig -->
+				<groupId>org.python</groupId>
+				<artifactId>jython-standalone</artifactId>
+				<version>2.7.0</version>
+				<scope>test</scope>
+			</dependency>
+			
+			<!-- Misc -->
+			<dependency>
+				<groupId>org.quartz-scheduler</groupId>
+				<artifactId>quartz</artifactId>
+				<version>${quartz.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>${jackson.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-databind</artifactId>
+				<version>${jackson.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>biz.aQute.bnd</groupId>
+				<artifactId>bnd-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+			</plugin>
+		</plugins>
+		<pluginManagement>
+			<plugins>
+				<!-- Use the bnd-maven-plugin and assemble the symbolic names -->
+				<plugin>
+					<groupId>biz.aQute.bnd</groupId>
+					<artifactId>bnd-maven-plugin</artifactId>
+					<version>4.0.0</version>
+					<configuration>
+						<bnd><![CDATA[-contract: *
+                        -plugin.spring: aQute.lib.spring.SpringXMLType
+                        ]]></bnd>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>bnd-process</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<!-- Required to make the maven-jar-plugin pick up the bnd generated 
+					manifest. Also avoid packaging empty Jars -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>3.0.2</version>
+					<configuration>
+						<archive>
+							<manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+						</archive>
+						<skipIfEmpty>true</skipIfEmpty>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>3.0.2</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-failsafe-plugin</artifactId>
+					<version>2.21.0</version>
+					<configuration>
+						<systemPropertyVariables>
+							<pax.exam.karaf.version>${dependency.karaf.version}</pax.exam.karaf.version>
+						</systemPropertyVariables>
+				        <trimStackTrace>false</trimStackTrace>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>integration-test</goal>
+								<goal>verify</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+
+				<!-- Needed if you use versionAsInProject() in Pax-Exam integration tests -->
+				<plugin>
+					<groupId>org.apache.servicemix.tooling</groupId>
+					<artifactId>depends-maven-plugin</artifactId>
+					<version>1.2</version>
+					<executions>
+						<execution>
+							<id>generate-depends-file</id>
+							<goals>
+								<goal>generate-depends-file</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.karaf.tooling</groupId>
+					<artifactId>karaf-maven-plugin</artifactId>
+					<version>${karaf.version}</version>
+					<extensions>true</extensions>
+				</plugin>
+				<plugin>
+					<groupId>org.jvnet.jaxb2.maven2</groupId>
+					<artifactId>maven-jaxb2-plugin</artifactId>
+					<version>0.13.1</version>
+				</plugin>
+				<plugin>
+					<groupId>org.carlspring.maven</groupId>
+					<artifactId>derby-maven-plugin</artifactId>
+					<version>${derby.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>build-helper-maven-plugin</artifactId>
+					<version>3.0.0</version>
+				</plugin>
+				<plugin>
+					<groupId>com.soebes.maven.plugins</groupId>
+					<artifactId>iterator-maven-plugin</artifactId>
+					<version>0.5.1</version>
+				</plugin>
+				<plugin>
+					<groupId>com.googlecode.maven-download-plugin</groupId>
+					<artifactId>download-maven-plugin</artifactId>
+					<version>1.4.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.camel</groupId>
+					<artifactId>camel-maven-plugin</artifactId>
+					<version>${camel.version}</version>
+					<configuration>
+						<useBlueprint>true</useBlueprint>
+						<failOnError>true</failOnError>
+						<logUnparseable>true</logUnparseable>
+						<ignoreUnknownComponent>false</ignoreUnknownComponent>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+	<modules>
+		<module>../core</module>
+		<module>../jpa</module>
+		<module>../health-status</module>
+		<module>../xml</module>
+		<module>../json</module>
+		<module>../pig</module>
+		<module>../flink</module>
+		<module>../standalone</module>
+		<module>../querier</module>
+		<module>../responder</module>
+	</modules>
+</project>

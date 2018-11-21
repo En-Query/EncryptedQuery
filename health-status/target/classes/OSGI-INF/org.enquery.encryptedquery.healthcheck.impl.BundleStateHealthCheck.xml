@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.healthcheck.impl.BundleStateHealthCheck" activate="activate">
+  <implementation class="org.enquery.encryptedquery.healthcheck.impl.BundleStateHealthCheck"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.healthcheck.SubsystemHealthCheck"/>
+  </service>
+  <reference name="bundleService" interface="org.apache.karaf.bundle.core.BundleService" field="bundleService"/>
+  <property name="ignore.bundle" type="String">org.apache.aries.blueprint.core.compatibility
+org.apache.karaf.shell.console
+org.apache.karaf.diagnostic.boot
+org.apache.karaf.features.extension</property>
+</scr:component>

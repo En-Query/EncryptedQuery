@@ -1,0 +1,17 @@
+Export-Package: \
+	org.enquery.encryptedquery.core,\
+	org.enquery.encryptedquery.encryption,\
+	org.enquery.encryptedquery.query.wideskies,\
+	org.enquery.encryptedquery.responder.wideskies.common,\
+	org.enquery.encryptedquery.response.wideskies,\
+	org.enquery.encryptedquery.schema.data,\
+	org.enquery.encryptedquery.schema.data.partitioner,\
+	org.enquery.encryptedquery.schema.query,\
+	org.enquery.encryptedquery.serialization,\
+	org.enquery.encryptedquery.utils,\
+	org.enquery.encryptedquery.query.wideskies,\
+	org.enquery.encryptedquery.serialization,\
+	org.enquery.encryptedquery.querier.wideskies.encrypt,\
+	org.enquery.encryptedquery.querier.wideskies.decrypt,\
+	org.enquery.encryptedquery.data, \
+	org.enquery.encryptedquery.concurrency

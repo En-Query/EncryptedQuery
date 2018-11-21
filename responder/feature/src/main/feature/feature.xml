@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<features name="encryptedquery-responder" 
+	 xmlns="http://karaf.apache.org/xmlns/features/v1.3.0" 
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	 xsi:schemaLocation="http://karaf.apache.org/xmlns/features/v1.3.0 http://karaf.apache.org/xmlns/features/v1.3.0">
+	
+	
+	<repository>mvn:org.apache.camel.karaf/apache-camel/${camel.version}/xml/features</repository>
+	<repository>mvn:org.apache.karaf.features/standard/${karaf.version}/xml/features</repository>
+	<repository>mvn:org.apache.karaf.features/enterprise/${karaf.version}/xml/features</repository>
+	<repository>mvn:org.apache.aries.jpa/jpa-features/${aries.jpa.version}/xml/features</repository>
+ 	<repository>mvn:org.ops4j.pax.jdbc/pax-jdbc-features/${pax-jdbc.version}/xml/features</repository>
+
+
+	<feature name='apache-commons' description='Apache Commons' version='1.0.0'>
+		<bundle>mvn:commons-io/commons-io/${commons-io.version}</bundle>
+		<bundle>mvn:org.apache.commons/commons-lang3/${commons-lang.version}</bundle>
+		<bundle>mvn:commons-codec/commons-codec/${commons-codec.version}</bundle>
+	</feature>
+
+
+	<feature name="encryptedquery-responder-core" version="${project.version}" description="Provides the EncryptedQuery Responder Core">
+
+    	<details>EncryptedQuery Responder Core</details>
+
+		<!-- Select which ModPow to use -->
+     	<config name="org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl">
+     	</config>
+     	<config name="org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck">
+     		.ignore.component=["org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl", "org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner", "org.enquery.encryptedquery.responder.standalone.runner.StandaloneQueryRunner"]
+     	</config>
+     	
+     	<config name="org.enquery.encryptedquery.healthcheck.impl.CamelHealthCheck">
+     		.required.camel=["rest", "data-import"]
+     	</config>
+     	
+     	<!--  
+     	<config name="org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl">
+     	</config>
+     	<config name="org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck">
+     		.ignore.component=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+     	</config>
+     	-->
+     	
+     	<!-- Set the context path from Maven property -->
+     	<config name="encrypted.query.responder.rest">
+     		context.path=${context.path}
+     	</config>
+     	<config name="org.enquery.encryptedquery.health.status">
+     		context.path=${context.path}
+     	</config>
+     	
+     	<!-- needed for XML generation see data-schema module -->
+  	    <bundle>mvn:com.sun.xml.bind/jaxb-core/2.3.0</bundle>
+     	
+		<feature>standard</feature>
+		<feature>apache-commons</feature>
+		<feature>aries-blueprint</feature>
+		<feature>war</feature>
+ 		<feature>camel-core</feature>
+		<feature>camel-servlet</feature>
+		<feature>camel-blueprint</feature>
+		<feature>camel-jackson</feature>
+		<feature>camel-http4</feature>
+		<feature>camel-jaxb</feature>
+		<feature>camel-quartz2</feature>
+		<feature>camel-script</feature>
+		<feature>camel-script-groovy</feature>
+		<feature>jndi</feature>
+		<feature>hibernate</feature>
+        <feature>transaction</feature>
+		<feature version="${aries.jpa.version}">jpa</feature>
+		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
+        <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+				
+        <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
+ 		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>
+        
+        <bundle>mvn:${project.groupId}/encryptedquery-jpa/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-xml/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-core/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-health-status/${project.version}</bundle>
+  
+        <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
+        <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}</bundle>
+        
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-business/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-data/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-integration/${project.version}</bundle>
+	
+		<!-- the query runners -->
+        <bundle>mvn:${project.groupId}/encryptedquery-flink-jdbc-runner/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-standalone-runner/${project.version}</bundle>
+	</feature>    	
+    	
+    <feature name="encryptedquery-responder-mariadb" version="${project.version}"
+    	description="Provides the EncryptedQuery Responder on a MariaDB Database">
+    	
+    	<details>EncryptedQuery Responder With MariaDB</details>
+    	
+    	<!-- javax.persistence.jdbc.driver=org.mariadb.jdbc.Driver -->
+    		
+    	<config name="org.enquery.encryptedquery.jpa.config.EMConfigurator">
+    		emfb.target=(osgi.unit.name=responderPersistenUnit)
+            ds.target=(osgi.jndi.service.name=responder)
+    		javax.persistence.provider=org.hibernate.jpa.HibernatePersistenceProvider
+    		hibernate.dialect=org.hibernate.dialect.MariaDBDialect
+    		hibernate.show_sql=true
+    		hibernate.format_sql=true
+    		hibernate.hbm2ddl.auto=none
+     	</config>
+
+		<feature>encryptedquery-responder-core</feature>
+		
+        <bundle dependency="true">mvn:org.mariadb.jdbc/mariadb-java-client/${mariadb-client.version}</bundle>
+        <bundle>mvn:org.ops4j.pax.jdbc/pax-jdbc-mariadb/${pax-jdbc.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-data-mariadb/${project.version}</bundle>
+    </feature>
+    
+    <feature name="encryptedquery-responder-derbydb" version="${project.version}"
+    	description="Provides the EncryptedQuery Responder on a Derby Database">
+    	
+    	<details>EncryptedQuery Responder With Derby</details>
+    	
+    	<config name="org.enquery.encryptedquery.jpa.config.EMConfigurator">
+    		emfb.target=(osgi.unit.name=responderPersistenUnit)
+            ds.target=(osgi.jndi.service.name=responder)
+    		javax.persistence.provider=org.hibernate.jpa.HibernatePersistenceProvider
+    		hibernate.dialect=org.hibernate.dialect.DerbyTenSevenDialect
+    		hibernate.show_sql=false
+    		hibernate.format_sql=true
+    		hibernate.hbm2ddl.auto=none
+    	</config>
+
+		<feature>encryptedquery-responder-core</feature>
+     
+     	 <bundle>mvn:org.apache.derby/derby/${derby-db.version}</bundle>
+     	 <bundle>wrap:mvn:org.apache.derby/derbytools/${derby-db.version}</bundle>
+         <bundle>mvn:org.ops4j.pax.jdbc/pax-jdbc-derby/${pax-jdbc.version}</bundle>
+         <bundle>mvn:${project.groupId}/encryptedquery-responder-data-derby/${project.version}</bundle>
+    </feature>
+</features>
+

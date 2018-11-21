@@ -1,0 +1,8 @@
+org/enquery/encryptedquery/pig/storage/XMLRecordWriter.class
+org/enquery/encryptedquery/pig/udfs/ColumnEncryptionUdf.class
+org/enquery/encryptedquery/pig/storage/XMLStorer.class
+org/enquery/encryptedquery/pig/udfs/AbstractUdf.class
+org/enquery/encryptedquery/pig/storage/XMLOutputFormat.class
+org/enquery/encryptedquery/pig/udfs/RowHashUdf.class
+org/enquery/encryptedquery/pig/udfs/DataPartitionUdf.class
+org/enquery/encryptedquery/pig/udfs/PigTypes.class

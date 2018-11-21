@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.healthcheck.impl.AggregatedHealthCheck">
+  <implementation class="org.enquery.encryptedquery.healthcheck.impl.AggregatedHealthCheck"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.healthcheck.SystemHealthCheck"/>
+  </service>
+  <reference name="subsystems" cardinality="0..n" policy="dynamic" interface="org.enquery.encryptedquery.healthcheck.SubsystemHealthCheck" policy-option="greedy" field="subsystems" field-collection-type="service"/>
+</scr:component>

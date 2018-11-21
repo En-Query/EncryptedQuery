@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases 
+  with queries under homomorphic encryption to securing the query and results 
+  set from database owner inspection. 
+  
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+	xmlns:ext="http://aries.apache.org/blueprint/xmlns/blueprint-ext/v1.0.0"
+	xsi:schemaLocation="
+           http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+	<cm:property-placeholder 
+		persistent-id="encrypted.query.responder.integration" 
+		update-strategy="reload" 
+		placeholder-prefix="#{" placeholder-suffix="}">
+		
+		<cm:default-properties>
+	        <cm:property name="port" value="8181"/>
+	        <cm:property name="context.path" value="/responder"/>
+
+	        <cm:property name="camel.trace.enabled" value="false"/>
+	        <cm:property name="camel.trace.showProperties" value="false"/>
+	        <cm:property name="camel.trace.showExchangePattern" value="false"/>
+	        <cm:property name="camel.trace.showShortExchangeId" value="true"/>
+	        <cm:property name="camel.trace.showBody" value="true"/>
+	        <cm:property name="camel.trace.showHeaders" value="true"/>
+
+			<cm:property name="api.latest.version" value="1"/>
+	        <cm:property name="api.media.type" value="application/vnd.encryptedquery.responder+xml"/>
+	        <cm:property name="api.root.path" value="/api/rest"/>
+		</cm:default-properties>
+		
+	</cm:property-placeholder>
+	
+	<reference id="httpService" interface="org.osgi.service.http.HttpService" />
+	<bean id="camelServlet" class="org.apache.camel.component.servlet.CamelHttpTransportServlet"/>
+	
+	<bean
+		class="org.apache.camel.component.servlet.osgi.OsgiServletRegisterer"
+		init-method="register" 
+		destroy-method="unregister">
+		
+		<property name="alias" value="#{context.path}#{api.root.path}" />
+		<property name="httpService" ref="httpService" />
+		<property name="servlet" ref="camelServlet" />
+		<property name="servletName" value="ResponderRestApiServlet"/>
+		<property name="matchOnUriPrefix" value="true"/>
+	</bean>
+
+	<bean id="headerFilter" class="org.apache.camel.impl.DefaultHeaderFilterStrategy">
+		<property name="inFilterPattern" value="(?!(Accept)).*"/>
+		<property name="outFilterPattern" value="(?!(Location)).*"/> 
+	</bean>
+	
+	<!--Enable logging of Exchange properties when tracing-->
+    <bean id="traceFormatter" class="org.apache.camel.processor.interceptor.DefaultTraceFormatter">
+        <property name="showProperties" value="#{camel.trace.showProperties}"/>
+        <property name="showExchangePattern" value="#{camel.trace.showExchangePattern}"/>
+        <property name="showShortExchangeId" value="#{camel.trace.showShortExchangeId}"/>
+        <property name="showBody" value="#{camel.trace.showBody}"/>
+        <property name="showHeaders" value="#{camel.trace.showHeaders}"/>
+    </bean>
+    
+	<reference id="dataSourceRegistry"
+		interface="org.enquery.encryptedquery.responder.data.service.DataSourceRegistry" />
+
+	<reference id="dataSchemaRegistry"
+		interface="org.enquery.encryptedquery.responder.data.service.DataSchemaService" />
+
+	<reference id="executionRepo"
+		interface="org.enquery.encryptedquery.responder.data.service.ExecutionRepository"/>
+		
+	<reference id="executionUpdater"
+		interface="org.enquery.encryptedquery.responder.business.execution.ExecutionUpdater"
+	/>
+			
+	<bean id="restRegistry"
+		class="org.enquery.encryptedquery.responder.data.service.RestServiceRegistry">
+		<argument value="#{context.path}#{api.root.path}"/>
+	</bean>
+	
+	<reference id="resultsRepo"
+		interface="org.enquery.encryptedquery.responder.data.service.ResultRepository"/>
+		
+	<reference id="resultConverter"
+		interface="org.enquery.encryptedquery.responder.data.transformation.ResultTypeConverter"
+		ext:proxy-method="classes"/>		
+</blueprint>

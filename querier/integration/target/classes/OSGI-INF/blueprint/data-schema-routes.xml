@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+           http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+	<routeContext id="data-schema-routes" 
+		xmlns="http://camel.apache.org/schema/blueprint"
+		xmlns:ds="http://enquery.net/encryptedquery/dataschema"
+		xmlns:dsl="http://enquery.net/encryptedquery/dataschema/list">
+		
+		<route id="dataschema-list">
+			<from uri="direct:/dataschemas"/>
+			
+			<onException>
+				<exception>org.apache.camel.http.common.HttpOperationFailedException</exception>
+				<exception>org.apache.http.conn.HttpHostConnectException</exception>
+				<exception>java.net.ConnectException</exception>
+				<exception>java.io.IOException</exception>
+				<handled><constant>true</constant></handled>
+				
+				<log loggingLevel="WARN" message="Will retrieve data schemas cached in local database. Connection to Responder server failed with: ${exception.stacktrace}." />
+	            <to uri="direct:data-schemas-from-db"/>
+	           	<to uri="direct:success"/>
+			</onException>
+						
+			<setHeader headerName="CamelHttpPath">
+				<constant>/responder/api/rest/dataschemas</constant>
+			</setHeader>
+			<removeHeader headerName="CamelHttpQuery"/>
+			<to uri="direct:get-from-responder"/>
+           	<to uri="direct:store-data-schemas"/>
+           	<to uri="direct:data-schemas-from-db"/>
+			<to uri="direct:success"/>
+		</route>
+		
+		<route id="dataschema-retrieve">
+			<from uri="direct:/dataschemas/{dataSchemaId}"/>
+			
+			<setBody>
+				<simple>${header.dataSchemaId}</simple>
+			</setBody>
+
+			<bean ref="dataSchemaRepo" method="find"/>
+			
+			<filter>
+				<simple>${body} == null</simple>
+				<log message="Data Schema not found: ${header.dataSchemaId}."/>
+				<setHeader headerName="CamelHttpResponseCode">
+					<constant>404</constant>
+				</setHeader>
+				<stop/>
+			</filter>
+			
+			<bean ref="dataSchemaConverter" method="toJSONResponse"/>
+			
+			<to uri="direct:success"/>		
+		</route>
+		
+		<route id="store-data-schemas">
+			<from uri="direct:store-data-schemas"/>
+		
+ 			<log message="Received: ${body}"/>
+			<unmarshal ref="dataSchemaFormat"/>
+
+			<split>
+				<simple>${body.dataSchemaResource}</simple>
+  				<bean ref="dataSchemaConverter" method="toJPA(${body.dataSchema})"/>
+				<bean ref="dataSchemaRepo" method="addOrUpdate"/>
+			</split>			
+		</route>
+
+		<route id="data-schemas-from-db">
+			<from uri="direct:data-schemas-from-db"/>
+			
+			<bean ref="dataSchemaRepo" method="list"/>
+
+			
+			<!-- When returning a list, use the List view to limit the fields that are returned -->
+			<setHeader headerName="CAMEL_JSON_VIEW">
+				<constant>org.enquery.encryptedquery.querier.data.entity.json.Views$ListView</constant>
+			</setHeader>
+			
+<!-- 			<split strategyRef="arrayListAggregator">
+				<simple>${body}</simple>
+				<convertBodyTo type="org.enquery.encryptedquery.querier.data.entity.json.DataSchema"/>		
+			</split>
+			<convertBodyTo type="org.enquery.encryptedquery.querier.data.entity.json.DataSchemaCollectionResponse"/>
+ -->
+ 
+ 			<bean ref="dataSchemaConverter" method="toJSONCollectionResponse"/>
+ 
+ 		</route>
+
+	</routeContext>
+</blueprint>

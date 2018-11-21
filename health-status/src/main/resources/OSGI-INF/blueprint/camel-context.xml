@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<blueprint 
+	xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+	xsi:schemaLocation="
+             http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+	<cm:property-placeholder persistent-id="org.enquery.encryptedquery.health.status" 
+			update-strategy="reload">
+		<cm:default-properties>
+	        <cm:property name="context.path" value="/"/>
+	        <cm:property name="port" value="8181"/>
+		</cm:default-properties>
+	</cm:property-placeholder>
+	
+	<reference id="healthCheck" interface="org.enquery.encryptedquery.healthcheck.SystemHealthCheck" />
+
+	<reference id="httpService" interface="org.osgi.service.http.HttpService" />
+ 	<bean id="camelServlet" class="org.apache.camel.component.servlet.CamelHttpTransportServlet"/>
+ 
+	<bean class="org.apache.camel.component.servlet.osgi.OsgiServletRegisterer"
+		init-method="register" 
+		destroy-method="unregister">
+		
+		<property name="alias" value="${context.path}/health" />
+		<property name="httpService" ref="httpService" />
+		<property name="servlet" ref="camelServlet" />
+		<property name="servletName" value="healthStatusServlet"/>
+	</bean>
+	
+	<bean id="headerFilter" class="org.apache.camel.impl.DefaultHeaderFilterStrategy">
+		<property name="inFilterPattern" value=".*"/>
+		<property name="outFilterPattern" value=".*"/>
+	</bean>
+	
+	<camelContext id="health-status" trace="true" xmlns="http://camel.apache.org/schema/blueprint">
+
+		<onException>
+			<exception>java.lang.Exception</exception>
+			<redeliveryPolicy maximumRedeliveries="0" />
+			<handled><constant>true</constant></handled>
+			<log loggingLevel="ERROR" message="${exception.stacktrace}" />
+
+			<setHeader headerName="CamelHttpResponseCode">
+				<constant>500</constant>
+			</setHeader>
+			<setBody>
+				<constant>down</constant>
+			</setBody>
+			<stop/>			
+		</onException>
+		
+		<restConfiguration 
+			component="servlet" 
+			contextPath="{{context.path}}/health"
+			bindingMode="off"
+			port="{{port}}">
+			
+			<endpointProperty key="servletName" value="healthStatusServlet"/>
+			<endpointProperty key="headerFilterStrategy" value="#headerFilter" />
+ 		</restConfiguration>
+
+		<!-- REST Service Definition -->
+		<rest path="/status">
+			<get>
+				<to uri="direct:health-status" />
+			</get>
+		</rest>
+		
+		<route id="health-status">
+			<from uri="direct:health-status" />
+
+			<setBody>
+				<constant/>
+			</setBody>
+			
+			<to uri="bean:healthCheck?method=isHealthy"/>
+
+			<filter>
+				<simple>${body} == null || ${body} == false</simple>
+				<setBody>
+					<constant>down</constant>
+				</setBody>
+				<setHeader headerName="CamelHttpResponseCode">
+					<constant>500</constant>
+				</setHeader>
+				<stop/>
+			</filter>
+			
+			<setBody>
+				<constant>up</constant>
+			</setBody>
+			<setHeader headerName="CamelHttpResponseCode">
+				<constant>200</constant>
+			</setHeader>
+		</route>
+	</camelContext>
+</blueprint>

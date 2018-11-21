@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSchemaResources
+	xmlns="http://enquery.net/encryptedquery/dataschema"
+	xmlns:res="http://enquery.net/encryptedquery/resource"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://enquery.net/encryptedquery/dataschema 
+	../../main/resources/org/enquery/encryptedquery/xml/schema/data-schema-resources.xsd ">
+
+	<dataSchemaResource>
+		<res:id>1000</res:id>
+		<res:selfUri>/responder/api/rest/dataschemas/1000</res:selfUri>
+		<dataSchema>
+			<name>name</name>
+			<field>
+				<name>name</name>
+				<dataType>dataType</dataType>
+				<position>0</position>
+			</field>
+		</dataSchema>
+		<dataSourcesUri>/responder/api/rest/dataschemas/1000/datasources</dataSourcesUri>
+	</dataSchemaResource>
+
+	<dataSchemaResource>
+		<res:id>1010</res:id>
+		<res:selfUri>/responder/api/rest/dataschemas/1010</res:selfUri>
+		<dataSchema>
+			<name>name</name>
+			<field>
+				<name>name</name>
+				<dataType>dataType</dataType>
+				<position>0</position>
+			</field>
+		</dataSchema>
+		<dataSourcesUri>/responder/api/rest/dataschemas/1010/datasources</dataSourcesUri>
+	</dataSchemaResource>
+</dataSchemaResources>

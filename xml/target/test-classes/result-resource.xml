@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resultResource xmlns="http://enquery.net/encryptedquery/result">
+	<id xmlns="http://enquery.net/encryptedquery/resource">4</id>
+	<selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/5/datasources/5/executions/5/results/4</selfUri>
+	<createdOn>2018-11-12T15:31:05.000-05:00</createdOn>
+	<execution>
+		<id xmlns="http://enquery.net/encryptedquery/resource">5</id>
+		<selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/5/datasources/5/executions/5</selfUri>
+	</execution>
+	<payload>
+		<ns5:queryInfo xmlns:ns5="http://enquery.net/encryptedquery/response">
+			<ns2:identifier xmlns:ns2="http://enquery.net/encryptedquery/query">8d008ed7-92cd-4f7a-9ea5-f93db1753532</ns2:identifier>
+			<ns2:numSelectors xmlns:ns2="http://enquery.net/encryptedquery/query">1</ns2:numSelectors>
+			<ns2:queryType xmlns:ns2="http://enquery.net/encryptedquery/query">Books</ns2:queryType>
+			<ns2:hashBitSize xmlns:ns2="http://enquery.net/encryptedquery/query">9</ns2:hashBitSize>
+			<ns2:hashKey xmlns:ns2="http://enquery.net/encryptedquery/query">3e5bf440812460c4e6d5</ns2:hashKey>
+			<ns2:numBitsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numBitsPerDataElement>
+			<ns2:dataPartitionBitSize xmlns:ns2="http://enquery.net/encryptedquery/query">8</ns2:dataPartitionBitSize>
+			<ns2:numPartitionsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numPartitionsPerDataElement>
+			<ns2:useExpLookupTable xmlns:ns2="http://enquery.net/encryptedquery/query">false</ns2:useExpLookupTable>
+			<ns2:useHDFSLookupTable xmlns:ns2="http://enquery.net/encryptedquery/query">false</ns2:useHDFSLookupTable>
+			<ns2:embedSelector xmlns:ns2="http://enquery.net/encryptedquery/query">true</ns2:embedSelector>
+			<ns3:querySchema xmlns:ns3="http://enquery.net/encryptedquery/queryschema">
+				<ns3:name>Books</ns3:name>
+				<ns3:selectorField>title</ns3:selectorField>
+				<ns3:field>
+					<ns3:name>price</ns3:name>
+					<ns3:lengthType>fixed</ns3:lengthType>
+					<ns3:size>0</ns3:size>
+					<ns3:maxArrayElements>1</ns3:maxArrayElements>
+				</ns3:field>
+				<ns4:dataSchema xmlns:ns4="http://enquery.net/encryptedquery/dataschema">
+					<ns4:name>Books</ns4:name>
+					<ns4:field>
+						<ns4:name>id</ns4:name>
+						<ns4:dataType>int</ns4:dataType>
+						<ns4:isArray>false</ns4:isArray>
+						<ns4:position>0</ns4:position>
+					</ns4:field>
+					<ns4:field>
+						<ns4:name>title</ns4:name>
+						<ns4:dataType>string</ns4:dataType>
+						<ns4:isArray>false</ns4:isArray>
+						<ns4:position>1</ns4:position>
+					</ns4:field>
+					<ns4:field>
+						<ns4:name>author</ns4:name>
+						<ns4:dataType>string</ns4:dataType>
+						<ns4:isArray>false</ns4:isArray>
+						<ns4:position>2</ns4:position>
+					</ns4:field>
+					<ns4:field>
+						<ns4:name>price</ns4:name>
+						<ns4:dataType>double</ns4:dataType>
+						<ns4:isArray>false</ns4:isArray>
+						<ns4:position>3</ns4:position>
+					</ns4:field>
+					<ns4:field>
+						<ns4:name>qty</ns4:name>
+						<ns4:dataType>int</ns4:dataType>
+						<ns4:isArray>false</ns4:isArray>
+						<ns4:position>4</ns4:position>
+					</ns4:field>
+				</ns4:dataSchema>
+			</ns3:querySchema>
+		</ns5:queryInfo>
+		<ns5:resultSet xmlns:ns5="http://enquery.net/encryptedquery/response">
+			<ns5:result column="0"
+				value="633180558726867077436963675285680604569636087807659063416805477802874735746302902954699753136183882091453631160427043382049657316923446954064592809422210209611205701202457683275293275561041419223863961907291213878117976481839760619" />
+			<ns5:result column="1"
+				value="456505628126916795734747931385686477714005825568291266726931100544053703162832973655046392197883884127662701968817334045195960072443622217023832268439811505492036369452240243401882383150973037746983860070068993065396623551777617544" />
+			<ns5:result column="2"
+				value="243796719607147108844507859045371466413003508250032220573043313008992663788919259877397309095712812141587279392214690799746816566800327774481900208180638467065635318346037504741370652675281401478598334377677630518301555667900156725" />
+			<ns5:result column="3"
+				value="598456745485354889077696604017375193202669212937856695370488897997295365660889290769639516553800636712954478923481565003469969366810407014921314861815068221268966591584340428534593639834322623264707296258785811099777272340592615768" />
+			<ns5:result column="4"
+				value="349195422242972313337463295346919262241531264087574362324763006301097982915847428421618468261038359684129427823046607865400205992443725188616935837441383110552079771534868036554738652511079888342845396437835879447840448693533799809" />
+			<ns5:result column="5"
+				value="425075792413504094382325535455563695966731744805372427129883519947938634760501773034065569615934813473744165314555521173504257178088159082816602383594560588770416065063027802061800957672726200598050268919988133192218203776689552658" />
+			<ns5:result column="6"
+				value="483032653330077466632984647373743352084013424439371092159906891155788784679717341650493804286434054033398427659210243271576286391533385749165647203448951807494034345128783800575693646322163139126536230091360094428359898481049945540" />
+			<ns5:result column="7"
+				value="532143110519205335065750562622942040084845106775970274392206634389922537903598663037993376411213079801219538648532703751772996487022424380480598254496672771758814341445332360878864524545087729622604058314525243425863851166570805504" />
+		</ns5:resultSet>
+	</payload>
+</resultResource>

@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1542830046075
+Bundle-ManifestVersion: 2
+Bundle-Name: EncryptedQuery :: Flink :: JDBC
+Bundle-SymbolicName: encryptedquery-flink-jdbc
+Bundle-Version: 2.0.0
+Created-By: 1.8.0_171 (Oracle Corporation)
+Import-Package: org.apache.commons.cli;version="[1.4,2)",org.apache.co
+ mmons.lang3;version="[3.5,4)",org.apache.flink.api.common.io,org.apac
+ he.flink.api.java,org.apache.flink.api.java.io.jdbc,org.apache.flink.
+ api.java.operators,org.apache.flink.api.java.typeutils,org.apache.fli
+ nk.types,org.enquery.encryptedquery.flink,org.enquery.encryptedquery.
+ utils;version="[2.0,3)"
+Main-Class: org.enquery.encryptedquery.flink.jdbc.App
+Private-Package: org.enquery.encryptedquery.flink.jdbc
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
+Tool: Bnd-4.0.0.201805111645

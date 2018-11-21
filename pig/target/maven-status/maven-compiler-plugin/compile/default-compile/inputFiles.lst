@@ -1,0 +1,8 @@
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/udfs/AbstractUdf.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/udfs/PigTypes.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/udfs/ColumnEncryptionUdf.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/storage/XMLRecordWriter.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/udfs/DataPartitionUdf.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/udfs/RowHashUdf.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/storage/XMLOutputFormat.java
+/home/enquery/staging/EncryptedQuery/pig/src/main/java/org/enquery/encryptedquery/pig/storage/XMLStorer.java

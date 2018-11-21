@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter">
+  <implementation class="org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter"/>
+  </service>
+</scr:component>

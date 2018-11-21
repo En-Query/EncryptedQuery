@@ -1,0 +1,22 @@
+-contract: JavaJPA
+
+Export-Package: \
+	org.enquery.encryptedquery.responder.data.entity,\
+	org.enquery.encryptedquery.responder.data.service,\
+	org.enquery.encryptedquery.responder.data.transformation
+	
+Provide-Capability: \
+	osgi.service;effective:=active;objectClass=javax.sql.DataSource;osgi.jndi.service.name=responder,\
+	osgi.service;effective:=active;objectClass=javax.persistence.spi.PersistenceProvider;javax.persistence.provider=org.hibernate.jpa.HibernatePersistenceProvider,\
+	osgi.service;effective:=active;objectClass=org.apache.aries.jpa.template.JpaTemplate
+	
+Meta-Persistence: META-INF/persistence.xml
+
+# Due to a long standing bug in Hibernate's entity enhancement these packages must 
+# be imported when Hibernate is used (https://hibernate.atlassian.net/browse/HHH-10742)
+Import-Package: \
+	org.hibernate.proxy;resolution:=optional,\
+	javassist.util.proxy;resolution:=optional,\
+	org.encryptedquery.responder.data.orm, \
+	*
+	

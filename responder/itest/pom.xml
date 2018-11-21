@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.enquery.encryptedquery</groupId>
+		<artifactId>encryptedquery-responder-parent</artifactId>
+		<version>2.0.0</version>
+	</parent>
+    
+    <artifactId>encryptedquery-responder-itests</artifactId>
+   	
+   	<name>EncryptedQuery :: Responder :: Integration Tests</name>
+
+    <dependencies>
+    	<dependency>
+    		<groupId>org.osgi</groupId>
+    		<artifactId>osgi.cmpn</artifactId>
+    	</dependency>
+    	<dependency>
+            <groupId>org.apache.geronimo.specs</groupId>
+            <artifactId>geronimo-atinject_1.0_spec</artifactId>
+            <scope>test</scope>
+            <version>1.0</version>
+        </dependency>  
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>encryptedquery-responder-data</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+        	<groupId>org.enquery.encryptedquery</groupId>
+        	<artifactId>encryptedquery-flink-jdbc-runner</artifactId>
+        	<version>${project.version}</version>
+        </dependency>
+		 <dependency>
+        	<groupId>org.enquery.encryptedquery</groupId>
+        	<artifactId>encryptedquery-standalone-runner</artifactId>
+        	<version>${project.version}</version>
+        </dependency>
+        
+        <!-- Derby needed for testing Flink-Jdbc queries -->
+    	<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derby</artifactId>
+		</dependency>
+    	<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derbyclient</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derbytools</artifactId>
+		</dependency>
+			
+        <!-- Karaf -->
+        <dependency>
+			<groupId>org.apache.karaf</groupId>
+			<artifactId>apache-karaf</artifactId>
+			<type>tar.gz</type>
+			<exclusions>
+				<exclusion>
+					<artifactId>org.apache.karaf.client</artifactId>
+					<groupId>org.apache.karaf</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		
+        <dependency>
+            <groupId>org.apache.karaf.features</groupId>
+            <artifactId>enterprise</artifactId>
+            <type>xml</type>
+            <classifier>features</classifier>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- pax exam -->
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-container-karaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-junit4</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-link-mvn</artifactId>
+            <version>${pax-exam.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.aries.jpa</groupId>
+            <artifactId>jpa-features</artifactId>
+            <version>${aries.jpa.version}</version>
+            <type>xml</type>
+            <classifier>features</classifier>
+            <scope>test</scope>
+       </dependency>
+       
+       <!-- Camel -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-http4</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jackson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core-osgi</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jaxb</artifactId>
+		</dependency>
+		
+		<!-- application -->
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-responder-business</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-responder-data</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-core</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>encryptedquery-responder-integration</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-responder-feature</artifactId>
+            <version>${project.version}</version>
+			<classifier>features</classifier>
+			<type>xml</type>
+		</dependency>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-xml</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-health-status</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+    </dependencies>
+
+    <profiles>
+    	<profile>
+			<id>itests</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<build>
+		        <plugins>
+		            <plugin>
+		                <groupId>org.apache.servicemix.tooling</groupId>
+		                <artifactId>depends-maven-plugin</artifactId>
+		                <executions>
+		                    <execution>
+		                        <id>generate-depends-file</id>
+		                        <goals>
+		                            <goal>generate-depends-file</goal>
+		                        </goals>
+		                    </execution>
+		                </executions>
+		            </plugin>
+		            <plugin>
+						<groupId>com.googlecode.maven-download-plugin</groupId>
+						<artifactId>download-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>download-flink</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>wget</goal>
+								</goals>
+								<configuration>
+									<!-- when flink version is changed, the url and sha512 need to be updated -->
+									<url>http://apache.cs.utah.edu/flink/flink-${flink.version}/flink-${flink.version}-bin-scala_${flink.scala.version}.tgz</url>
+									<unpack>true</unpack>
+									<outputDirectory>${project.build.directory}/flink</outputDirectory>
+									<sha512>80db12d0f108e2d3e6f5e6c300d9147b68fbc823d0344f9ef7547dbfb9fe0d0ffaede289cd5c97383105c1a868a5931adf4790f54e7db8ded8bf2b1fbc2fd93e</sha512>
+								</configuration>
+							</execution>
+							<execution>
+								<!-- download the Derby JDBC Drive onto the Flink installation's lib directory. -->
+								<id>download-derby-jar</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>artifact</goal>
+								</goals>
+								<configuration>
+									<groupId>org.apache.derby</groupId>
+									<artifactId>derbyclient</artifactId>
+									<version>${derby-db.version}</version>
+									<outputDirectory>${project.build.directory}/flink/flink-${flink.version}/lib</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+		            <plugin>
+		            	<groupId>org.apache.maven.plugins</groupId>
+		            	<artifactId>maven-dependency-plugin</artifactId>
+		            	<executions>
+		            		<execution>
+		            			<!-- get the Flink-JDBC application jar so we can run it -->
+		            			<id>download-flink-jdbc</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>copy</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-flink-jdbc</artifactId>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
+		            	</executions>
+		            </plugin>
+		            <plugin>
+		            	<!-- Start Derby Network Server before running the tests -->
+						<groupId>org.carlspring.maven</groupId>
+						<artifactId>derby-maven-plugin</artifactId>
+						<executions>
+		                    <execution>
+								<id>start-derby</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>start</goal>
+								</goals>
+								<configuration>
+									<port>1527</port>
+								</configuration>
+							</execution>
+						</executions>
+			        </plugin>
+		            <plugin>
+		            	<groupId>org.apache.maven.plugins</groupId>
+		            	<artifactId>maven-failsafe-plugin</artifactId>
+		            	<configuration>
+		            		<!-- pass the downloaded artifact's directories as system properties -->
+		            		<systemPropertyVariables>
+		            			<flink.install.dir>${project.build.directory}/flink/flink-${flink.version}</flink.install.dir>
+		            			<flink.jdbc.app>${project.build.directory}/dependency/encryptedquery-flink-jdbc-${project.version}.jar</flink.jdbc.app>
+			                	<db.engine>derbydb</db.engine>
+		            		</systemPropertyVariables>
+		            	</configuration>
+		            </plugin>
+		        </plugins>
+		    </build>			
+		</profile>
+    	<profile>
+    		<id>mariadb</id>
+    		<activation>
+    			<activeByDefault>false</activeByDefault>
+    		</activation>
+    		<build>
+    			<plugins>
+		            <plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+				              <systemPropertyVariables>
+				                <db.engine>mariadb</db.engine>
+				              </systemPropertyVariables>
+ 						</configuration>
+					</plugin>
+    			</plugins>
+    		</build>
+    	</profile>
+    </profiles>
+</project>

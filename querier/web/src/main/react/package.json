@@ -1,0 +1,28 @@
+{
+  "name": "encryptedquery-enquery",
+  "version": "0.1.0",
+  "homepage": ".",
+  "private": true,
+  "dependencies": {
+    "axios": "^0.18.0",
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
+    "react-scripts": "1.1.4",
+    "react-router-dom": "4.3.1",
+    "axios-debug":"0.0.4",
+    "react-checkbox-group":"4.0.1",
+    "prettier":"1.14.2",
+    "formik":"1.2.0",
+    "react-render-debugger":"1.0.2",
+    "react-datetime":"2.15.0",
+    "moment":"2.22.2",
+    "history":"4.7.2",
+    "react-bootstrap":"0.32.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}

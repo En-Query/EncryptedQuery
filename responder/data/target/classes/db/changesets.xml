@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog logicalFilePath="responderDBMigration"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+        	http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+
+	<property name="autoinc" value="true" dbms="mariadb,mysql"/>
+	<property name="uri.type" value="varchar(5120)"/>
+	
+	<changeSet id="1" author="asoto">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<dbms type="mariadb"/>
+			</not>
+			<not>
+				<dbms type="mysql"/>
+			</not>
+		</preConditions>
+		<createSequence sequenceName="ids_sequence"/>
+	</changeSet>
+
+    <changeSet id="2" author="asoto">
+		
+        <createTable tableName="dataschemas">
+        	<column name="id" type="int" autoIncrement="${autoinc}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+        
+        <createTable tableName="dataschemafields">
+        	<column name="id" type="int" autoIncrement="${autoinc}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="dataschema_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fieldname" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="datatype" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="isarray" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+             <column name="pos" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+		<addUniqueConstraint 
+			tableName="dataschemafields"
+			columnNames="dataschema_id,fieldname" />
+	
+		<addUniqueConstraint 
+			tableName="dataschemafields"
+			columnNames="dataschema_id,pos" />
+					        
+        <addForeignKeyConstraint 
+        		constraintName="fk_dataschemafields_dataschemas" 
+        		baseTableName="dataschemafields" 
+        		baseColumnNames="dataschema_id" 
+        		referencedTableName="dataschemas" 
+        		referencedColumnNames="id"/>
+
+        <createTable tableName="executions">
+        	<column name="id" type="int" autoIncrement="${autoinc}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            
+            <column name="dataschema_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            
+            <column name="received_ts" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            
+            <column name="schedule_ts" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            
+            <column name="start_ts" type="timestamp">
+            </column>
+
+            <column name="end_ts" type="timestamp">
+            </column>
+            
+            <column name="data_source_name" type="varchar(64)">
+            </column>
+            
+            <column name="parameters" type="clob"/>
+           	<column name="query_url" type="${uri.type}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        
+       	<addForeignKeyConstraint 
+        		constraintName="fk_executions_dataschemas" 
+        		baseTableName="executions" 
+        		baseColumnNames="dataschema_id" 
+        		referencedTableName="dataschemas" 
+        		referencedColumnNames="id"/>
+    </changeSet>
+
+	<changeSet id="3" author="asoto">
+		<sqlFile relativeToChangelogFile="true" path="tables_derby.sql" dbms="derby" />
+		<sqlFile relativeToChangelogFile="true" path="tables_mysql_innodb.sql" dbms="mariadb,mysql" />
+	</changeSet>
+	
+	<changeSet id="4" author="asoto">
+		<createTable tableName="data_source_ids">
+        	<column name="id" type="int" autoIncrement="${autoinc}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+	</changeSet>
+	
+	<changeSet id="5" author="asoto">
+		<createTable tableName="results">
+        	<column name="id" type="int" autoIncrement="${autoinc}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            
+            <column name="creation_time" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            
+            <column name="execution_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            
+            <column name="payload_url" type="${uri.type}"/>
+            
+        </createTable>		
+        
+        <addForeignKeyConstraint constraintName="fk_results_executions" 
+			baseTableName="results"
+			baseColumnNames="execution_id" 
+			referencedTableName="executions"
+			referencedColumnNames="id" />
+	</changeSet>
+	
+</databaseChangeLog>

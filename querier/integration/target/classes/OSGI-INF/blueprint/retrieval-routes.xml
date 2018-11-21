@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+           http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+	<routeContext id="retrieval-routes" xmlns="http://camel.apache.org/schema/blueprint">
+
+		<route id="list-retrievals">
+			<from uri="direct:/dataschemas/{dataSchemaId}/queryschemas/{querySchemaId}/queries/{queryId}/schedules/{scheduleId}/results/{resultId}/retrievals"/>
+			
+			<to uri="direct:resolve-retrieval-parents"/>
+			
+			<bean ref="retrievalRepo" method="listForResult(${header.result})"/>
+							
+			<bean ref="retrievalConverter" method="toJSONResponse"/>
+
+			<enrich>
+				<constant>bean:retrievalStatus</constant>
+			</enrich>
+
+			<to uri="direct:success"/>
+		</route>
+		
+		<route id="retrieve-retrieval">
+			<from uri="direct:/dataschemas/{dataSchemaId}/queryschemas/{querySchemaId}/queries/{queryId}/schedules/{scheduleId}/results/{resultId}/retrievals/{retrievalId}"/>
+			
+			<to uri="direct:resolve-retrieval-parents"/>
+			
+			<bean ref="retrievalRepo" method="findForResult(${header.result}, ${header.retrievalId})"/>
+			
+			<filter>
+				<simple>${body} == null</simple>
+				<log message="Retrieval ${header.retrievalId} not found for Result ${header.result}."/>
+				<setHeader headerName="CamelHttpResponseCode">
+					<constant>404</constant>
+				</setHeader>
+				<stop/>
+			</filter>
+			
+			<bean ref="retrievalConverter" method="toJSONResponse"/>
+
+			<enrich>
+				<constant>bean:retrievalStatus</constant>
+			</enrich>
+			
+			<to uri="direct:success"/>
+		</route>
+	
+		<route id="create-retrieval">
+			<from uri="direct:create-retrieval"/>
+			
+			<to uri="direct:resolve-retrieval-parents"/>
+			
+			<!-- the payload sent by the client is ignored, we don't need any data elements to start
+				the retrieval process
+			 -->
+			<script>
+				<groovy>
+					request.body = new org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval();
+					request.body.result = request.headers.get('result');
+				</groovy>
+			</script>
+			
+			<bean ref="retrievalRepo" method="add"/>
+			<inOnly uri="seda:download-single-result-from-responder"/>
+
+			<bean ref="retrievalConverter" method="toJSONResponse"/>
+
+			<enrich>
+				<constant>bean:retrievalStatus</constant>
+			</enrich>
+
+			<to uri="direct:created"/>
+		</route>
+	
+		<route id="resolve-retrieval-parents">
+			<from uri="direct:resolve-retrieval-parents"/>
+			
+			<to uri="direct:resolve-result-parents"/>
+			
+			<setHeader headerName="result">
+				<method ref="resultRepo" method="findForSchedule(${header.schedule}, ${header.resultId})"/>
+			</setHeader>
+			
+			<filter>
+				<simple>${header.result} == null</simple>
+				<log message="Result not found: ${header.resultId}."/>
+				<setHeader headerName="CamelHttpResponseCode">
+					<constant>404</constant>
+				</setHeader>
+				<stop/>
+			</filter>
+		</route>	
+		 
+		<route id="download-single-result-from-responder" streamCache="false">
+			<from uri="seda:download-single-result-from-responder?purgeWhenStopping=true&amp;size={{retrieve.result.queue.size}}&amp;concurrentConsumers={{retrieve.result.worker.count}}"/>
+		
+			<!-- Handle exceptions connecting to responder -->
+			<onException>
+				<exception>org.apache.camel.http.common.HttpOperationFailedException</exception>
+				<exception>org.apache.http.conn.HttpHostConnectException</exception>
+				<exception>java.net.ConnectException</exception>
+				<exception>java.io.IOException</exception>
+				<handled><constant>true</constant></handled>
+
+				<log loggingLevel="WARN" 
+					message="Failed to retrieve response. Connection to Responder server failed with error: ${exception.stacktrace}." />
+					
+				<!-- restore the original retrieval object --> 
+				<setBody>
+					<simple>${exchangeProperty.retrieval}</simple>
+				</setBody>
+				<bean ref="retrievalRepo" method="updateWithError(${body}, ${exception})"/>
+				<bean ref="retrievalStatus" method="retrievalEnded"/>
+			</onException>
+			
+			<bean ref="retrievalStatus" method="retrievalStarted"/>
+			
+			<!-- save the retrieval in the exchange to later update it -->
+			<setProperty propertyName="retrieval">
+				<simple>${body}</simple>
+			</setProperty>
+			
+			<setHeader headerName="CamelHttpPath">
+				<simple>${body.result.responderUri}</simple>
+			</setHeader>
+			
+			<removeHeader headerName="CamelHttpQuery"/>
+			
+			<!-- this delay is normally zero, only used for testing -->
+			<delay>
+				 <constant>{{retrieve.result.delay.ms}}</constant>
+			</delay>
+			
+			<to uri="direct:get-from-responder"/>
+		
+			<bean ref="retrievalUpdater" method="updatePayload(
+					${exchangeProperty.retrieval},
+					${body})"/>
+					
+			<bean ref="retrievalStatus" method="retrievalEnded"/>
+	   </route>
+			
+	</routeContext>
+</blueprint>

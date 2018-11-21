@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.querier.data.service.impl.RetrievalRepoImpl">
+  <implementation class="org.enquery.encryptedquery.querier.data.service.impl.RetrievalRepoImpl"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.querier.data.service.RetrievalRepository"/>
+  </service>
+  <reference name="blobLocation" interface="org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry" target="(type=blob)" field="blobLocation"/>
+  <reference name="blobRepo" interface="org.enquery.encryptedquery.querier.data.service.BlobRepository" field="blobRepo"/>
+  <reference name="jpa" interface="org.apache.aries.jpa.template.JpaTemplate" target="(osgi.unit.name=querierPersistenUnit)" field="jpa"/>
+</scr:component>

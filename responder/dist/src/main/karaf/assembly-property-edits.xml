@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<property-edits xmlns="http://karaf.apache.org/tools/property-edits/1.0.0">
+    <edits>
+        <edit>
+            <file>org.ops4j.pax.logging.cfg</file>
+            <operation>put</operation>
+            <key>log4j2.logger.camel.name</key>
+            <value>org.apache.camel</value>
+        </edit>
+        <edit>
+            <file>org.ops4j.pax.logging.cfg</file>
+            <operation>put</operation>
+            <key>log4j2.logger.camel.level</key>
+            <value>WARN</value>
+        </edit>
+    </edits>
+</property-edits>

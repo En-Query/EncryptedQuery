@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration>
+	<Properties>
+		<Property name="projectPrefix">encryptedQuery</Property>
+		<Property name="Directory">target/logs</Property>
+		<Property name="Filename">${projectPrefix}.log</Property>
+	</Properties>
+
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5p %c - %m%n"/>
+		</Console>
+
+		<!-- <RollingFile name="RollingFile" fileName="${Directory}/${Filename}" filePattern="${projectPrefix}-%i.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5p %c - %m%n"/>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="1 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="2"/>
+		</RollingFile> -->
+	</Appenders>
+
+	<Loggers>
+		<!-- <Logger name="org.enquery.encryptedquery" level="info" additivity="false"/>
+		<Logger name="org.apache.flink.api" level="warn" additivity="false"/>
+		
+		<Logger name="org.apache.hadoop.hbase.zookeeper" level="warn" additivity="false"/>
+		<Logger name="org.apache.zookeeper" level="error" additivity="false"/>
+		 -->
+		<Logger name="org.apache.flink.runtime" level="WARN"/>
+		<Logger name="org.enquery.encryptedquery.flink" level="DEBUG"/>
+		
+		<Root level="INFO">
+			<AppenderRef ref="Console"/>
+			<!-- AppenderRef ref="RollingFile"/> -->
+		</Root>
+	</Loggers>
+
+</Configuration>

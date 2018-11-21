@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.encryptedquery.querier.business.ScheduleUpdater">
+  <implementation class="org.encryptedquery.querier.business.ScheduleUpdater"/>
+  <service>
+    <provide interface="org.encryptedquery.querier.business.ScheduleUpdater"/>
+  </service>
+  <reference name="dataSourceRepo" interface="org.enquery.encryptedquery.querier.data.service.DataSourceRepository" field="dataSourceRepo"/>
+  <reference name="scheduleRepo" interface="org.enquery.encryptedquery.querier.data.service.ScheduleRepository" field="scheduleRepo"/>
+</scr:component>

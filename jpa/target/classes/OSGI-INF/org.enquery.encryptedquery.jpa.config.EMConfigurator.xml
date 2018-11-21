@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.jpa.config.EMConfigurator" configuration-policy="require" activate="start" deactivate="stop">
+  <implementation class="org.enquery.encryptedquery.jpa.config.EMConfigurator"/>
+  <reference name="ds" interface="javax.sql.DataSource" field="ds"/>
+  <reference name="emfb" interface="org.osgi.service.jpa.EntityManagerFactoryBuilder" field="emfb"/>
+</scr:component>

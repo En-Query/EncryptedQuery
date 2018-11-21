@@ -1,0 +1,22 @@
+<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://enquery.net/encryptedquery/dataschema 
+		../../main/resources/org/enquery/encryptedquery/xml/schema/data-schema.xsd">
+		
+	<name>name</name>
+	
+	<field>
+		<name>name1</name>
+		<dataType>int</dataType>
+		<isArray>false</isArray>
+		<position>0</position>
+	</field>
+	
+	<field>
+		<name>name2</name>
+		<dataType>int</dataType>
+		<isArray>false</isArray>
+		<!-- position duplicate -->
+		<position>0</position>
+	</field>
+</dataSchema>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dataSchema
+	xmlns="http://enquery.net/encryptedquery/dataschema"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<name>Phone Record</name>
+	<field>
+		<name>action</name>
+		<dataType>string</dataType>
+		<isArray>false</isArray>
+		<position>0</position>
+	</field>
+	<field>
+		<name>message</name>
+		<dataType>string</dataType>
+		<isArray>false</isArray>
+		<position>1</position>
+	</field>
+	<field>
+		<name>duration</name>
+		<dataType>double</dataType>
+		<isArray>false</isArray>
+		<position>2</position>
+	</field>
+	<field>
+		<name>time_stamp</name>
+		<dataType>string</dataType>
+		<isArray>false</isArray>
+		<position>3</position>
+	</field>
+	<field>
+		<name>caller</name>
+		<dataType>string</dataType>
+		<isArray>false</isArray>
+		<position>4</position>
+	</field>
+	<field>
+		<name>callee</name>
+		<dataType>string</dataType>
+		<isArray>false</isArray>
+		<position>5</position>
+	</field>
+</dataSchema>

@@ -1,0 +1,401 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.enquery.encryptedquery</groupId>
+		<artifactId>encryptedquery-querier-parent</artifactId>
+		<version>2.0.0</version>
+	</parent>
+	<artifactId>encryptedquery-querier-itest</artifactId>
+
+	<name>EncryptedQuery :: Querier :: Integration Tests</name>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.geronimo.specs</groupId>
+			<artifactId>geronimo-atinject_1.0_spec</artifactId>
+			<scope>test</scope>
+			<version>1.0</version>
+		</dependency>
+		
+		<!-- Application -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-querier-data</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-standalone-core</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-querier-business</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-querier-feature</artifactId>
+			<version>${project.version}</version>
+			<classifier>features</classifier>
+			<type>xml</type>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-xml</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-health-status</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		
+		<!-- Derby needed for testing Flink-Jdbc queries -->
+    	<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derby</artifactId>
+		</dependency>
+    	<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derbyclient</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derbytools</artifactId>
+		</dependency>
+				
+		<!-- Karaf -->
+		<dependency>
+			<groupId>org.apache.karaf</groupId>
+			<artifactId>apache-karaf</artifactId>
+			<type>tar.gz</type>
+			<exclusions>
+				<exclusion>
+					<artifactId>org.apache.karaf.client</artifactId>
+					<groupId>org.apache.karaf</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.karaf.features</groupId>
+			<artifactId>enterprise</artifactId>
+			<type>xml</type>
+			<classifier>features</classifier>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.karaf.shell</groupId>
+			<artifactId>org.apache.karaf.shell.core</artifactId>
+		</dependency>
+		
+		<!-- pax exam -->
+		<dependency>
+			<groupId>org.ops4j.pax.exam</groupId>
+			<artifactId>pax-exam-container-karaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ops4j.pax.exam</groupId>
+			<artifactId>pax-exam-junit4</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ops4j.pax.exam</groupId>
+			<artifactId>pax-exam-link-mvn</artifactId>
+			<version>${pax-exam.version}</version>
+		</dependency>
+
+		<!-- Camel -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-http4</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jackson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jaxb</artifactId>
+		</dependency>
+		
+	</dependencies>
+	
+	<profiles>
+		<profile>
+			<id>itests</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<build>
+				<testResources>
+					<testResource>
+						<directory>src/test/resources</directory>
+						<filtering>true</filtering>
+					</testResource>
+				</testResources>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.servicemix.tooling</groupId>
+						<artifactId>depends-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>generate-depends-file</id>
+								<goals>
+									<goal>generate-depends-file</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>com.googlecode.maven-download-plugin</groupId>
+						<artifactId>download-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<!-- Download and expand Flink  -->
+								<id>download-flink</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>wget</goal>
+								</goals>
+								<configuration>
+									<skip></skip>
+									<!-- when flink version is changed, the url and sha512 need to be updated -->
+									<url>http://apache.cs.utah.edu/flink/flink-${flink.version}/flink-${flink.version}-bin-scala_${flink.scala.version}.tgz</url>
+									<unpack>true</unpack>
+									<outputDirectory>${project.build.directory}/flink</outputDirectory>
+									<sha512>80db12d0f108e2d3e6f5e6c300d9147b68fbc823d0344f9ef7547dbfb9fe0d0ffaede289cd5c97383105c1a868a5931adf4790f54e7db8ded8bf2b1fbc2fd93e</sha512>
+								</configuration>
+							</execution>
+							<execution>
+								<!-- download the Derby JDBC Drive onto the Flink installation's lib directory. -->
+								<id>download-derby-jar</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>artifact</goal>
+								</goals>
+								<configuration>
+									<groupId>org.apache.derby</groupId>
+									<artifactId>derbyclient</artifactId>
+									<version>${derby-db.version}</version>
+									<outputDirectory>${project.build.directory}/flink/flink-${flink.version}/lib</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+		            	<groupId>org.apache.maven.plugins</groupId>
+		            	<artifactId>maven-dependency-plugin</artifactId>
+		            	<executions>
+		            		<execution>
+		            			<!-- Download Flink-JDBC application jar so we can run it -->
+		            			<id>download-flink-jdbc</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>copy</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-flink-jdbc</artifactId>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
+		            		<execution>
+		            			<!-- Download Responder Application and expand it -->
+		            			<id>download-responder</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>unpack</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-responder-dist</artifactId>
+											<type>tar.gz</type>
+											<classifier>derbydb</classifier>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
+		            		<execution>
+		            			<!-- Download Stand-alone query runer -->
+		            			<id>download-standalone-runner</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>copy</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-standalone-app</artifactId>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
+		            		<execution>
+		            			<!-- Download Native Libs -->
+		            			<id>download-native-libs</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>unpack</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-core</artifactId>
+											<version>${project.version}</version>
+											<classifier>native-libs</classifier>
+											<type>tar.gz</type>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
+		            	</executions>
+		            </plugin>
+		            <plugin>
+		            	<!-- Start Derby Network Server before running the tests -->
+						<groupId>org.carlspring.maven</groupId>
+						<artifactId>derby-maven-plugin</artifactId>
+						<executions>
+		                    <execution>
+								<id>start-derby</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>start</goal>
+								</goals>
+								<configuration>
+									<port>1527</port>
+								</configuration>
+							</execution>
+						</executions>
+			        </plugin>
+		          	<plugin>
+						<!-- Configure and Run Responder -->
+						<artifactId>maven-antrun-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>configure-responder</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target name="configure-and-run-responder" 
+											description="configure and run responder">
+											
+										<property name="responder.install.dir"
+											value="${project.build.directory}/dependency/encryptedquery-responder-dist-${project.version}" />
+		
+										<copy todir="${responder.install.dir}/data">
+											<fileset dir="${project.build.testOutputDirectory}/responder-conf/data" />
+										</copy>
+										
+										<copy todir="${responder.install.dir}/etc">
+											<fileset dir="${project.build.testOutputDirectory}/responder-conf/etc" />
+										</copy>
+										
+										<mkdir dir="${responder.install.dir}/inbox"/>
+										
+										<copy toDir="${responder.install.dir}/inbox">
+											<fileset dir="${project.build.testOutputDirectory}/responder-conf/inbox"/>
+										</copy>
+										
+										<exec dir="${responder.install.dir}/bin" 
+											executable="./start"
+											failonerror="true"/>
+									</target>
+								</configuration>
+							</execution>
+							<execution>
+								<id>stop-responder</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target name="stop-responder" 
+											description="stop responder">
+											
+										<property name="responder.install.dir"
+											value="${project.build.directory}/dependency/encryptedquery-responder-dist-${project.version}" />
+		
+										<exec dir="${responder.install.dir}/bin" 
+											executable="./stop"
+											failonerror="false"/>
+										
+									</target>
+								</configuration>
+							</execution>
+						</executions>
+						<dependencies>
+							<dependency>
+								<groupId>org.apache.ant</groupId>
+								<artifactId>ant</artifactId>
+								<version>1.10.4</version>
+							</dependency>
+						</dependencies>
+					</plugin>
+					<plugin>
+		            	<groupId>org.apache.maven.plugins</groupId>
+		            	<artifactId>maven-failsafe-plugin</artifactId>
+		            	<configuration>
+		            		<!-- pass the downloaded artifact's directories as system properties -->
+		            		<systemPropertyVariables>
+		            			<flink.install.dir>${project.build.directory}/flink/flink-${flink.version}</flink.install.dir>
+		            			<flink.jdbc.app>${project.build.directory}/dependency/encryptedquery-flink-jdbc-${project.version}.jar</flink.jdbc.app>
+		            			<responder.install.dir>${project.build.directory}/dependency/encryptedquery-responder-dist-${project.version}</responder.install.dir>
+		            			<native.libs.install.dir>${project.build.directory}/dependency</native.libs.install.dir>
+		            			<db.engine>derbydb</db.engine>
+		            		</systemPropertyVariables>
+		            	</configuration>
+		            </plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+    		<id>mariadb</id>
+    		<activation>
+    			<activeByDefault>false</activeByDefault>
+    		</activation>
+    		<build>
+    			<plugins>
+		            <plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+				              <systemPropertyVariables>
+		            			<flink.install.dir>${project.build.directory}/flink/flink-${flink.version}</flink.install.dir>
+		            			<flink.jdbc.app>${project.build.directory}/dependency/encryptedquery-flink-jdbc-${project.version}.jar</flink.jdbc.app>
+		            			<responder.install.dir>${project.build.directory}/dependency/encryptedquery-responder-dist-${project.version}</responder.install.dir>
+		            			<native.libs.install.dir>${project.build.directory}/dependency</native.libs.install.dir>
+				                <db.engine>mariadb</db.engine>
+				              </systemPropertyVariables>
+ 						</configuration>
+					</plugin>
+    			</plugins>
+    		</build>
+    	</profile>
+	</profiles>
+</project>

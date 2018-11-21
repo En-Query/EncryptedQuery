@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <name>Business Articles</name>
+    <field>
+        <name>id</name>
+        <dataType>int</dataType>
+        <isArray>false</isArray>
+        <position>0</position>
+    </field>
+    <field>
+        <name>companyname</name>
+        <dataType>string</dataType>
+        <isArray>false</isArray>
+        <position>1</position>
+    </field>
+    <field>
+        <name>tickersymbol</name>
+        <dataType>string</dataType>
+        <isArray>false</isArray>
+        <position>2</position>
+    </field>
+    <field>
+        <name>articledate</name>
+        <dataType>string</dataType>
+        <isArray>false</isArray>
+        <position>3</position>
+    </field>
+    <field>
+        <name>articleURL</name>
+        <dataType>string</dataType>
+        <isArray>false</isArray>
+        <position>4</position>
+    </field>
+    <field>
+        <name>subject</name>
+        <dataType>string</dataType>
+        <isArray>false</isArray>
+        <position>5</position>
+    </field>
+</dataSchema>

@@ -1,5 +1,0 @@
-org.enquery.encryptedquery.responder.wideskies.mapreduce.MapReduceResponder
-org.enquery.encryptedquery.responder.wideskies.standalone.StandaloneResponder
-org.enquery.encryptedquery.responder.wideskies.jdbc.JDBCResponder
-org.enquery.encryptedquery.responder.wideskies.kafka.KafkaResponder
-org.enquery.encryptedquery.responder.wideskies.kafka.KafkaMultiThreadedResponder

@@ -1,0 +1,133 @@
+// ------------------------------------------------------------------
+// Transitive dependencies of this project determined from the
+// maven pom organized by organization.
+// ------------------------------------------------------------------
+
+EncryptedQuery :: Responder :: Integration Tests
+
+
+From: 'an unknown organization'
+  - c3p0:JDBC DataSources/Resource Pools (http://c3p0.sourceforge.net) c3p0:c3p0:jar:0.9.1.1
+    License: GNU LESSER GENERAL PUBLIC LICENSE  (http://www.gnu.org/licenses/lgpl.txt)
+  - Java Native Access (https://github.com/java-native-access/jna) net.java.dev.jna:jna:jar:4.5.1
+    License: LGPL, version 2.1  (http://www.gnu.org/licenses/licenses.html)    License: Apache License v2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - JLine Bundle (http://nexus.sonatype.org/oss-repository-hosting.html/jline-parent/jline) org.jline:jline:jar:3.6.2
+    License: The BSD License  (http://www.opensource.org/licenses/bsd-license.php)
+  - SnakeYAML (http://www.snakeyaml.org) org.yaml:snakeyaml:bundle:1.21
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'Apache Software Foundation' (http://db.apache.org/)
+  - Apache Derby Database Engine and Embedded JDBC Driver (http://db.apache.org/derby/) org.apache.derby:derby:jar:10.13.1.1
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Derby Client JDBC Driver (http://db.apache.org/derby/) org.apache.derby:derbyclient:jar:10.13.1.1
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Derby Tools (http://db.apache.org/derby/) org.apache.derby:derbytools:jar:10.13.1.1
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'Apache Software Foundation' (http://groovy-lang.org)
+  - Apache Groovy (http://groovy-lang.org) org.codehaus.groovy:groovy-all:jar:2.4.13
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'EnQuery'
+  - EncryptedQuery :: Core (https://www.apache.org/encryptedquery-core/) org.enquery.encryptedquery:encryptedquery-core:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Flink :: Core (https://www.apache.org/encryptedquery-flink-parent/encryptedquery-flink-core/) org.enquery.encryptedquery:encryptedquery-flink-core:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Flink :: JDBC :: Runner (https://www.apache.org/encryptedquery-flink-parent/encryptedquery-flink-jdbc-runner/) org.enquery.encryptedquery:encryptedquery-flink-jdbc-runner:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Health Status (https://www.apache.org/encryptedquery-health-status/) org.enquery.encryptedquery:encryptedquery-health-status:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: JSON (https://www.apache.org/encryptedquery-json/) org.enquery.encryptedquery:encryptedquery-json:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Responder :: Business (https://www.apache.org/encryptedquery-responder-parent/encryptedquery-responder-business/) org.enquery.encryptedquery:encryptedquery-responder-business:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Responder :: Feature (https://www.apache.org/encryptedquery-responder-parent/encryptedquery-responder-feature/) org.enquery.encryptedquery:encryptedquery-responder-feature:pom:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Responder :: Integration (https://www.apache.org/encryptedquery-responder-parent/encryptedquery-responder-integration/) org.enquery.encryptedquery:encryptedquery-responder-integration:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Standalone :: Core (https://www.apache.org/encryptedquery-standalone-parent/encryptedquery-standalone-core/) org.enquery.encryptedquery:encryptedquery-standalone-core:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: Standalone :: Runner (https://www.apache.org/encryptedquery-standalone-parent/encryptedquery-standalone-runner/) org.enquery.encryptedquery:encryptedquery-standalone-runner:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+  - EncryptedQuery :: XML (https://www.apache.org/encryptedquery-xml/) org.enquery.encryptedquery:encryptedquery-xml:jar:2.0.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+From: 'FasterXML' (http://fasterxml.com/)
+  - Jackson-annotations (http://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-annotations:bundle:2.8.10
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Jackson-core (https://github.com/FasterXML/jackson-core) com.fasterxml.jackson.core:jackson-core:bundle:2.8.10
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - jackson-databind (http://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-databind:bundle:2.8.10
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'OPS4J - Open Participation Software for Java' (http://www.ops4j.org/)
+  - OPS4J Base - Lang (http://team.ops4j.org/wiki/display/base/ops4j-base-lang/) org.ops4j.base:ops4j-base-lang:bundle:1.5.0
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Base - Util - Property (http://team.ops4j.org/wiki/display/base/ops4j-base-util-property/) org.ops4j.base:ops4j-base-util-property:bundle:1.5.0
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Exam Links for Maven (http://team.ops4j.org/wiki/display/paxexam/pax-exam-link-mvn/) org.ops4j.pax.exam:pax-exam-link-mvn:jar:4.11.0
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+  - OPS4J Pax Swissbox :: Optional JCL (http://team.ops4j.org/wiki/display/PAXSB/pax-swissbox-optional-jcl) org.ops4j.pax.swissbox:pax-swissbox-optional-jcl:bundle:1.8.2
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Swissbox :: Property (http://team.ops4j.org/wiki/display/PAXSB/pax-swissbox-property) org.ops4j.pax.swissbox:pax-swissbox-property:bundle:1.8.3
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Url - aether: (http://team.ops4j.org/wiki/display/paxurl/pax-url-aether) org.ops4j.pax.url:pax-url-aether:bundle:2.4.5
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Url - classpath: (http://team.ops4j.org/wiki/display/paxurl/pax-url-classpath) org.ops4j.pax.url:pax-url-classpath:bundle:2.4.5
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Url - Commons (http://team.ops4j.org/wiki/display/paxurl/pax-url-commons) org.ops4j.pax.url:pax-url-commons:bundle:2.4.5
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+  - OPS4J Pax Url - link: (http://team.ops4j.org/wiki/display/paxurl/pax-url-link) org.ops4j.pax.url:pax-url-link:bundle:2.4.5
+    License: ALv2  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+From: 'Oracle Corporation' (http://www.oracle.com/)
+  - Old JAXB Core (http://jaxb.java.net/jaxb-bundles/jaxb-core) com.sun.xml.bind:jaxb-core:jar:2.3.0
+    License: CDDL+GPL License  (http://glassfish.java.net/public/CDDL+GPL_1_1.html)
+  - Old JAXB Runtime (http://jaxb.java.net/jaxb-bundles/jaxb-impl) com.sun.xml.bind:jaxb-impl:jar:2.3.0
+    License: CDDL+GPL License  (http://glassfish.java.net/public/CDDL+GPL_1_1.html)
+
+From: 'QOS.ch' (http://www.qos.ch)
+  - JCL 1.1.1 implemented over SLF4J (http://www.slf4j.org) org.slf4j:jcl-over-slf4j:jar:1.6.4
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+  - SLF4J API Module (http://www.slf4j.org) org.slf4j:slf4j-api:jar:1.7.25
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+
+From: 'Square, Inc.' (http://squareup.com)
+  - JNA GMP (http://nexus.sonatype.org/oss-repository-hosting.html/jnagmp-parent/jnagmp) com.squareup.jnagmp:jnagmp:jar:2.1.0
+    License: Apache License Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'Terracotta, Inc.' (http://www.terracotta.org)
+  - quartz (http://www.quartz-scheduler.org/quartz) org.quartz-scheduler:quartz:jar:2.2.3
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'The Apache Software Foundation' (http://www.apache.org/)
+  - Apache Mina SSHD :: Core (http://www.apache.org/sshd/sshd-core/) org.apache.sshd:sshd-core:jar:1.7.0
+    License: Apache 2.0 License  (http://www.apache.org/licenses/LICENSE-2.0)
+
+From: 'The Apache Software Foundation' (https://www.apache.org/)
+  - Apache Commons Codec (http://commons.apache.org/proper/commons-codec/) commons-codec:commons-codec:jar:1.11
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Commons IO (http://commons.apache.org/proper/commons-io/) commons-io:commons-io:jar:2.6
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Camel :: Core (http://camel.apache.org/camel-parent/camel-core) org.apache.camel:camel-core:jar:2.21.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Camel :: Core OSGi (http://camel.apache.org/camel-parent/components/camel-core-osgi) org.apache.camel:camel-core-osgi:jar:2.21.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Camel :: Groovy (http://camel.apache.org/camel-parent/components/camel-groovy) org.apache.camel:camel-groovy:jar:2.21.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Camel :: JAXB (http://camel.apache.org/camel-parent/components/camel-jaxb) org.apache.camel:camel-jaxb:jar:2.21.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Camel :: Script (http://camel.apache.org/camel-parent/components/camel-script) org.apache.camel:camel-script:jar:2.21.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Commons Lang (http://commons.apache.org/proper/commons-lang/) org.apache.commons:commons-lang3:jar:3.5
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Karaf :: Bundle :: Core (https://www.apache.org/karaf/bundle/org.apache.karaf.bundle.core/) org.apache.karaf.bundle:org.apache.karaf.bundle.core:bundle:4.2.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Karaf :: JAAS :: Boot (https://www.apache.org/karaf/jaas/org.apache.karaf.jaas.boot/) org.apache.karaf.jaas:org.apache.karaf.jaas.boot:bundle:4.2.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Karaf :: Shell :: Core (https://www.apache.org/karaf/shell/org.apache.karaf.shell.core/) org.apache.karaf.shell:org.apache.karaf.shell.core:bundle:4.2.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+
+

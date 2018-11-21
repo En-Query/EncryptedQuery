@@ -1,0 +1,3 @@
+/home/enquery/staging/EncryptedQuery/xml/src/test/java/org/enquery/encryptedquery/xml/transformation/ResultXMLExtractorTest.java
+/home/enquery/staging/EncryptedQuery/xml/src/test/java/org/enquery/encryptedquery/loader/SchemaLoaderTest.java
+/home/enquery/staging/EncryptedQuery/xml/src/test/java/org/enquery/encryptedquery/xml/transformation/ClearTextResponseTypeConverterTest.java

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+ ~ Licensed to the Apache Software Foundation (ASF) under one or more
+ ~ contributor license agreements.  See the NOTICE file distributed with
+ ~ this work for additional information regarding copyright ownership.
+ ~ The ASF licenses this file to You under the Apache License, Version 2.0
+ ~ (the "License"); you may not use this file except in compliance with
+ ~ the License.  You may obtain a copy of the License at
+ ~
+ ~    http://www.apache.org/licenses/LICENSE-2.0
+ ~
+ ~ Unless required by applicable law or agreed to in writing, software
+ ~ distributed under the License is distributed on an "AS IS" BASIS,
+ ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ~ See the License for the specific language governing permissions and
+ ~ limitations under the License.
+ -->
+ <xs:schema 
+ 	targetNamespace="http://enquery.net/encryptedquery/queryschema"
+	xmlns="http://enquery.net/encryptedquery/queryschema"
+	xmlns:qs="http://enquery.net/encryptedquery/queryschema"
+	xmlns:dschema="http://enquery.net/encryptedquery/dataschema"
+ 	xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    elementFormDefault="qualified">
+
+    <xs:import schemaLocation="data-schema.xsd"
+        namespace="http://enquery.net/encryptedquery/dataschema"/>
+
+    <xs:element name="querySchema" type="querySchema">
+    	<xs:unique name="uniqueFieldNames">
+              <xs:selector xpath="qs:field"/>
+              <xs:field xpath="qs:name"/>
+        </xs:unique>
+    </xs:element>
+    
+    <xs:complexType name="querySchema">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>The name of the query schema.
+                        The name omits leading and trailing
+                        whitespace, and is case sensitive.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+
+            
+            <xs:element name="selectorField" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>The name of the field used as
+                        the selector for this query.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+
+            <xs:element name="field" maxOccurs="unbounded">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="name" type="xs:string">
+                            <xs:annotation>
+                                <xs:documentation>The name of the
+                                    data element.
+                                    The name omits
+                                    leading and trailing whitespace,
+                                    and is case sensitive.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+
+                        <xs:element name="lengthType" type="xs:string"
+                            default="fixed" minOccurs="0">
+                            <xs:annotation>
+                                <xs:documentation>Whether or not the schema element is
+                                    fixed or variable length.  fixed if unspecified.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+
+                        <xs:element name="size" type="xs:int" default="10" minOccurs="0">
+                            <xs:annotation>
+                                <xs:documentation>The maximum length for string or 
+                                    bytearray elements. 10 if unspecified.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        
+                        <xs:element name="maxArrayElements" type="xs:int"
+                            default="1" minOccurs="0">
+                            <xs:annotation>
+                                <xs:documentation>The maximum number of elements if the 
+                                    element is an array. 1 if unspecified.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            
+			<xs:element ref="dschema:dataSchema"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>

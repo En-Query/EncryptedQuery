@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory">
+  <implementation class="org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory"/>
+  </service>
+  <reference name="encryptQuery" interface="org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery" field="encryptQuery"/>
+  <reference name="modPowAbstraction" interface="org.enquery.encryptedquery.encryption.ModPowAbstraction" field="modPowAbstraction"/>
+  <reference name="paillierEncryption" interface="org.enquery.encryptedquery.encryption.PaillierEncryption" field="paillierEncryption"/>
+</scr:component>

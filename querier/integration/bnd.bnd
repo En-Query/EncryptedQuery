@@ -1,0 +1,12 @@
+Import-Package: \
+	org.enquery.encryptedquery.xml.schema,\
+	org.enquery.encryptedquery.utils,\
+	org.enquery.encryptedquery.querier.data.entity,\
+	org.enquery.encryptedquery.querier.data.entity.json,\
+	org.enquery.encryptedquery.querier.data.entity.jpa,\
+	org.enquery.encryptedquery.querier.data.service,\
+	org.enquery.encryptedquery.querier.data.transformation,\
+	org.apache.camel.http.common,\
+	org.apache.http.conn,\
+	*
+

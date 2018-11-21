@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.querier.data.transformation.ScheduleTypeConverter">
+  <implementation class="org.enquery.encryptedquery.querier.data.transformation.ScheduleTypeConverter"/>
+  <service>
+    <provide interface="org.enquery.encryptedquery.querier.data.transformation.ScheduleTypeConverter"/>
+  </service>
+  <reference name="dataSourceConverter" interface="org.enquery.encryptedquery.querier.data.transformation.DataSourceTypeConverter" field="dataSourceConverter"/>
+  <reference name="queryConverter" interface="org.enquery.encryptedquery.querier.data.transformation.QueryTypeConverter" field="queryConverter"/>
+  <reference name="queryRepo" interface="org.enquery.encryptedquery.querier.data.service.QueryRepository" field="queryRepo"/>
+  <reference name="registry" interface="org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry" target="(type=rest-service)" field="registry"/>
+</scr:component>

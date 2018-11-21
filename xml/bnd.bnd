@@ -1,0 +1,6 @@
+Export-Package: \
+	org.enquery.encryptedquery.xml.schema,\
+	org.enquery.encryptedquery.loader, \
+	org.enquery.encryptedquery.xml.transformation
+	
+	
