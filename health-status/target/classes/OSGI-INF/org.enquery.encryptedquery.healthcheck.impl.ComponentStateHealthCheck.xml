@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck" activate="activate">
-  <implementation class="org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck"/>
-  <service>
-    <provide interface="org.enquery.encryptedquery.healthcheck.SubsystemHealthCheck"/>
-  </service>
-  <reference name="scr" interface="org.osgi.service.component.runtime.ServiceComponentRuntime" field="scr"/>
-</scr:component>

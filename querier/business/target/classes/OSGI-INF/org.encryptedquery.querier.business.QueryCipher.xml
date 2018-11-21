@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.encryptedquery.querier.business.QueryCipher">
-  <implementation class="org.encryptedquery.querier.business.QueryCipher"/>
-  <service>
-    <provide interface="org.encryptedquery.querier.business.QueryCipher"/>
-  </service>
-  <reference name="querierFactory" interface="org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory" field="querierFactory"/>
-  <reference name="querySchemaConverter" interface="org.enquery.encryptedquery.querier.data.transformation.QuerySchemaTypeConverter" field="querySchemaConverter"/>
-</scr:component>

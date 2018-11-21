@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.querier.data.service.impl.QueryKeyBlobUriRegistryImpl" activate="activate" configuration-pid="encrypted.query.querier.data">
-  <implementation class="org.enquery.encryptedquery.querier.data.service.impl.QueryKeyBlobUriRegistryImpl"/>
-  <service>
-    <provide interface="org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry"/>
-  </service>
-  <property name="type" type="String" value="query-key"/>
-</scr:component>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.encryptedquery.querier.business.RetrievalUpdater">
-  <implementation class="org.encryptedquery.querier.business.RetrievalUpdater"/>
-  <service>
-    <provide interface="org.encryptedquery.querier.business.RetrievalUpdater"/>
-  </service>
-  <reference name="retrievalRepo" interface="org.enquery.encryptedquery.querier.data.service.RetrievalRepository" field="retrievalRepo"/>
-  <reference name="threadPool" interface="java.util.concurrent.ExecutorService" field="threadPool"/>
-</scr:component>

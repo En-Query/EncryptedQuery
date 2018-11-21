@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="org.enquery.encryptedquery.encryption.PrimeGenerator">
-  <implementation class="org.enquery.encryptedquery.encryption.PrimeGenerator"/>
-  <service>
-    <provide interface="org.enquery.encryptedquery.encryption.PrimeGenerator"/>
-  </service>
-  <reference name="modPowAbstraction" interface="org.enquery.encryptedquery.encryption.ModPowAbstraction" field="modPowAbstraction"/>
-  <reference name="randomProvider" interface="org.enquery.encryptedquery.utils.RandomProvider" field="randomProvider"/>
-</scr:component>
