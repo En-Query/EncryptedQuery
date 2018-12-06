@@ -713,7 +713,7 @@
 		<module>../health-status</module>
 		<module>../xml</module>
 		<module>../json</module>
-		<module>../pig</module>
+	<!--	<module>../pig</module> -->
 		<module>../flink</module>
 		<module>../standalone</module>
 		<module>../querier</module>

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Maven ignores
-/target/
+**/target/
 
 # IDE ignores
 /.settings/
