@@ -27,5 +27,6 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="src" path="/encryptedquery-xml"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

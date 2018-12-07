@@ -24,4 +24,6 @@ import org.enquery.encryptedquery.responder.ResponderProperties;
 public interface FlinkConfigurationProperties extends ResponderProperties {
 	String MAX_HITS_PER_SELECTOR = "maxHitsPerSelector";
 	String COLUMN_ENCRYPTION_PARTITION_COUNT = "column.encryption.partition.count";
+	String WINDOW_LENGTH = "stream.window.length";
+	String WINDOW_ITERATIONS = "stream.window.iterations";
 }

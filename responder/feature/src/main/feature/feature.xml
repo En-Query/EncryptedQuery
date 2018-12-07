@@ -18,6 +18,12 @@
 		<bundle>mvn:commons-codec/commons-codec/${commons-codec.version}</bundle>
 	</feature>
 
+	<feature name='encryptedquery-jackson'>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
+	</feature>
 
 	<feature name="encryptedquery-responder-core" version="${project.version}" description="Provides the EncryptedQuery Responder Core">
 
@@ -72,6 +78,7 @@
 		<feature version="${aries.jpa.version}">jpa</feature>
 		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
         <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+        <feature>encryptedquery-jackson</feature>
 				
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
  		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>

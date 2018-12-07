@@ -41,7 +41,7 @@ public class RowHashUdfTest {
 	static private MiniCluster cluster = MiniCluster.buildCluster();
 	private PigServer pigServer;
 
-	private static final Integer DATA_PARTITION_BITSIZE = 8;
+	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 9;
 
 	public static final int paillierBitSize = 384;
@@ -119,7 +119,7 @@ public class RowHashUdfTest {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
 				.newBuilder()
-				.dataPartitionBitSize(DATA_PARTITION_BITSIZE)
+				.dataChunkSize(DATA_CHUNK_SIZE)
 				.hashBitSize(HASH_BIT_SIZE)
 				.paillierBitSize(paillierBitSize)
 				.certainty(certainty)

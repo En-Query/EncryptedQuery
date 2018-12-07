@@ -30,12 +30,6 @@ export default class HomePage extends React.Component {
           <li>
             <Link to="/querier/querystatus">Query Status</Link>
           </li>
-
-          <li>Schedule Query</li>
-
-          <li>Query Schedules Status</li>
-
-          <li>Query Results</li>
         </ul>
 
         <hr />

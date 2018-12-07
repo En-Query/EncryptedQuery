@@ -10,7 +10,7 @@
 		<hashBitSize>9</hashBitSize>
 		<hashKey>8b09aa2930926e1d800f</hashKey>
 		<numBitsPerDataElement>0</numBitsPerDataElement>
-		<dataPartitionBitSize>8</dataPartitionBitSize>
+		<dataChunkSize>1</dataChunkSize>
 		<numPartitionsPerDataElement>0</numPartitionsPerDataElement>
 		<useExpLookupTable>false</useExpLookupTable>
 		<useHDFSLookupTable>false</useHDFSLookupTable>

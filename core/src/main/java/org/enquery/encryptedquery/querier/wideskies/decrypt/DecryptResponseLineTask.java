@@ -161,12 +161,12 @@ public class DecryptResponseLineTask implements Callable<ClearTextQueryResponse>
 	}
 
 	private Map<String, BigInteger> initializeSelectorMasks() {
-		final int dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+		final int dataChunkSize = queryInfo.getDataChunkSize();
 		final Map<String, BigInteger> result = new HashMap<>();
 		int selectorNum = 0;
 		for (final String selector : queryKey.getSelectors()) {
 			// 2^{selectorNum*dataPartitionBitSize}(2^{dataPartitionBitSize} - 1)
-			final BigInteger mask = TWO_BI.pow(selectorNum * dataPartitionBitSize).multiply((TWO_BI.pow(dataPartitionBitSize).subtract(BigInteger.ONE)));
+			final BigInteger mask = TWO_BI.pow(selectorNum * dataChunkSize*8).multiply((TWO_BI.pow(dataChunkSize*8).subtract(BigInteger.ONE)));
 			// logger.info("selector = " + selector + " mask = " + mask.toString(2));
 			result.put(selector, mask);
 			++selectorNum;

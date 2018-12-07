@@ -125,7 +125,7 @@ public class DataPartitionsReduceFunction implements
 		for (QueueRecord entry : values) {
 			addDataElement(entry);
 			recordCount++;
-			if ((recordCount % computeThreshold) == 0) {
+			if (recordCount % computeThreshold == 0) {
 				processColumns();
 			}
 		}
@@ -190,7 +190,7 @@ public class DataPartitionsReduceFunction implements
 			}
 
 			BigInteger column = columns.get(col);
-			column = (column.multiply(newColumn)).mod(nSquared);
+			column = column.multiply(newColumn).mod(nSquared);
 			columns.put(col, column);
 		}
 	}

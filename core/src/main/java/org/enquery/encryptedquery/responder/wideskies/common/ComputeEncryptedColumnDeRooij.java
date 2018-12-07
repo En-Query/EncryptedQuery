@@ -78,7 +78,7 @@ public class ComputeEncryptedColumnDeRooij implements ComputeEncryptedColumn {
 		this.modPowAbstraction = modPowAbstraction;
 		this.queryElements = queryElements;
 		this.NSquared = NSquared;
-		this.useMontgomery = new Boolean(config.getOrDefault(ResponderProperties.USE_MONTGOMERY, "false"));
+		this.useMontgomery = Boolean.valueOf(config.getOrDefault(ResponderProperties.USE_MONTGOMERY, "false"));
 		if (useMontgomery) {
 			mont = new MontgomeryReduction(NSquared);
 		} else {

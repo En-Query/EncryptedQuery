@@ -41,7 +41,7 @@ public class ColumnReduceFunction implements
 			if (column == null) {
 				column = entry.f0;
 			}
-			accumulator = (accumulator.multiply(entry.f1)).mod(nSquared);
+			accumulator = accumulator.multiply(entry.f1).mod(nSquared);
 		}
 		out.collect(Tuple2.of(column, accumulator));
 	}

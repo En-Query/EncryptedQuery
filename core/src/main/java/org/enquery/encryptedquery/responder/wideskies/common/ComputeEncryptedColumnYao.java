@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
+import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.utils.MontgomeryReduction;
 
@@ -32,12 +33,12 @@ public class ComputeEncryptedColumnYao implements ComputeEncryptedColumn {
 	private BigInteger[] hs;
 	private MontgomeryReduction mont;
 
-	public static void validateParameters(int dataPartitionBitSize) {
-		if (dataPartitionBitSize <= 0) {
-			throw new IllegalArgumentException("Yao responder method requires dataPartitionBitSize > 0, " + dataPartitionBitSize + " given");
+	public static void validateParameters(int dataChunkSize) {
+		if (dataChunkSize <= 0) {
+			throw new IllegalArgumentException("Yao responder method requires dataChunkSize > 0, " + dataChunkSize + " given");
 		}
-		if (dataPartitionBitSize > 16) {
-			throw new IllegalArgumentException("Yao responder method currently requires dataPartitionBitSize <= 16 to limit memory usage, " + dataPartitionBitSize + " given");
+		if (dataChunkSize > 2) {
+			throw new IllegalArgumentException("Yao responder method currently requires dataChunkSize <= 2 to limit memory usage, " + dataChunkSize + " given");
 		}
 	}
 
@@ -50,14 +51,14 @@ public class ComputeEncryptedColumnYao implements ComputeEncryptedColumn {
 		this.queryElements = queryElements;
 		this.NSquared = NSquared;
 
-		this.useMontgomery = new Boolean(config.getOrDefault(ResponderProperties.USE_MONTGOMERY, "false"));
+		this.useMontgomery = Boolean.valueOf(config.getOrDefault(ResponderProperties.USE_MONTGOMERY, "false"));
 		if (useMontgomery) {
 			mont = new MontgomeryReduction(NSquared);
 		} else {
 			mont = null;
 		}
 
-		this.b = Integer.valueOf(config.get(ResponderProperties.DATA_PARTITION_BIT_SIZE));
+		this.b = Integer.valueOf(config.get(QuerierProperties.DATA_CHUNK_SIZE));
 		validateParameters(b);
 
 		this.hs = new BigInteger[1 << b];

@@ -15,7 +15,7 @@
 			<ns2:hashBitSize xmlns:ns2="http://enquery.net/encryptedquery/query">9</ns2:hashBitSize>
 			<ns2:hashKey xmlns:ns2="http://enquery.net/encryptedquery/query">3e5bf440812460c4e6d5</ns2:hashKey>
 			<ns2:numBitsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numBitsPerDataElement>
-			<ns2:dataPartitionBitSize xmlns:ns2="http://enquery.net/encryptedquery/query">8</ns2:dataPartitionBitSize>
+			<ns2:dataChunkSize xmlns:ns2="http://enquery.net/encryptedquery/query">1</ns2:dataChunkSize>
 			<ns2:numPartitionsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numPartitionsPerDataElement>
 			<ns2:useExpLookupTable xmlns:ns2="http://enquery.net/encryptedquery/query">false</ns2:useExpLookupTable>
 			<ns2:useHDFSLookupTable xmlns:ns2="http://enquery.net/encryptedquery/query">false</ns2:useHDFSLookupTable>

@@ -15,39 +15,22 @@ class QuerySchedulesStatus extends React.Component {
 
     this.state = {
       dataSchemas: [],
-      queries: [],
+      queies: [],
       schedules: [],
       date: [],
-      status: [],
       type: [],
       results: [],
-      schedulesSelfUri: [],
-      processingMode: localStorage.getItem("processingMode"),
+      scheduleStatus: [],
+      scheduleSelfUri: [],
       dataSourceName: localStorage.getItem("dataSourceName")
     };
 
     //this.handleChange = this.handleChange.bind(this)
   }
 
-  /*
-    How can I retrieve the dataSourceName from each specific schedule?
-
-    Attempting to use only the selfUri's to fetch the data.
-  */
-
-  componentDidMount() {
-    this.interval = setInterval(() => this.getData(), 10000);
-    this.getData();
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.interval);
-  }
-
-  getData = () => {
+  componentDidMount = () => {
     var dataSourceName = localStorage.getItem("dataSourceName");
     var querySelfUri = localStorage.getItem("querySelfUri");
-    var processingMode = localStorage.getItem("processingMode");
     axios({
       method: "get",
       url: `${querySelfUri}`,
@@ -77,40 +60,67 @@ class QuerySchedulesStatus extends React.Component {
       })
       .then(response => {
         console.log(response);
-        this.setState({
-          schedules: response.data.data,
-          formatDate: response.data.data.startTime,
-          schedulesSelfUri: response.data.data[0].selfUri
-        });
-        localStorage.setItem("schedulesSelfUri", this.state.schedulesSelfUri);
-        var schedulesSelfUri = localStorage.getItem("schedulesSelfUri");
-        return axios({
-          method: "get",
-          url: `${schedulesSelfUri}`,
-          headers: {
-            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        this.setState(
+          {
+            schedules: response.data.data,
+            scheduleTime: response.data.data[0].startTime,
+            scheduleSelfUri: response.data.data[0].selfUri,
+            scheduleStatus: response.data.data[0].status
+          },
+          () => {
+            console.log(this.state.scheduleStatus);
+            console.log(this.state.schedulesSelfUri);
           }
-        });
-      })
-      .then(response => {
-        console.log(response);
-        this.setState({
-          dataSourceName: response.data.included[0].name
-        });
+        );
+        localStorage.setItem("scheduleSelfUri", this.state.scheduleSelfUri);
+        this.getUpdatedStatus();
       })
       .catch(error => console.log(error.response));
   };
 
-  handleButtonView = (status, schedulesSelfUri) => {
+  //prevent memory leak
+  componentWillUnmount() {
+    clearTimeout(this.timeout);
+  }
+
+  getUpdatedStatus = () => {
+    //fetch updated status,
+    var scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
+    axios({
+      method: "get",
+      url: `${scheduleSelfUri}`,
+      headers: {
+        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+      }
+    })
+      .then(response => {
+        if (response.data.data.status !== "Complete" && "Failed") {
+          this.timeout = setTimeout(() => this.getUpdatedStatus(), 20000);
+        }
+        console.log(response);
+        this.setState(
+          {
+            dataSourceName: response.data.included[3].name,
+            scheduleStatus: response.data.data.status
+          },
+          () => {
+            console.log(this.state.scheduleStatus);
+          }
+        );
+      })
+      .catch(error => console.log(error.response));
+  };
+
+  handleButtonView = (status, scheduleSelfUri) => {
     switch (status) {
       case `Pending`:
-        return <button className="btnNoAction"> No Action </button>;
+        return <button className="btnNoAction"> NO ACTION ... </button>;
       case `InProgress`:
         return <button> IN PROGRESS ... </button>;
       case `Complete`:
         return (
           <button
-            onClick={e => this.getDetails(e, schedulesSelfUri)}
+            onClick={e => this.getDetails(e, scheduleSelfUri)}
             type="button"
           >
             GET DETAILS
@@ -123,18 +133,19 @@ class QuerySchedulesStatus extends React.Component {
     }
   };
 
-  getDetails = async (e, schedulesSelfUri) => {
+  getDetails = async (e, scheduleSelfUri) => {
     //Handle when `GET DETAILS` button is clicked
     // ONLY when status = COMPLETED, goes to the query results page
     e.preventDefault();
-    await this.setState({ schedulesSelfUri });
-    console.log(this.state.schedulesSelfUri);
+    await this.setState({ scheduleSelfUri });
+    console.log(this.state.scheduleSelfUri);
     this.props.history.push(`/querier/queryresults`);
   };
 
   render() {
-    const { schedule, schedules } = this.state;
+    const { schedule, schedules, scheduleStatus } = this.state;
     const { match, location, history } = this.props;
+    const { match: { params: { scheduleSelfUri } } } = this.props;
 
     return (
       <div>
@@ -153,18 +164,15 @@ class QuerySchedulesStatus extends React.Component {
             {this.state.schedules.map(schedule => {
               return (
                 <tr>
-                  <td key={schedule.startTime}>
-                    {moment(schedule.startTime).format("llll")}
-                  </td>
-                  <td key={schedule.status}>{schedule.status}</td>
-                  <td key={schedule.type}>{schedule.type}</td>
+                  <td>{moment(schedule.startTime).format("llll")}</td>
+                  <td>{this.state.scheduleStatus}</td>
+                  <td>{schedule.type}</td>
                   <td> {this.state.dataSourceName} </td>
                   <td>
-                    {" "}
                     {this.handleButtonView(
-                      schedule.status,
-                      schedule.selfUi
-                    )}{" "}
+                      this.state.scheduleStatus,
+                      schedule.selfUri
+                    )}
                   </td>
                 </tr>
               );

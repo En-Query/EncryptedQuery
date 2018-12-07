@@ -70,7 +70,7 @@ public class ResponderTest extends JDBCTestBase {
 
 	private final Logger log = LoggerFactory.getLogger(ResponderTest.class);
 
-	private static final Integer DATA_PARTITION_BITSIZE = 16;
+	private static final Integer DATA_CHUNK_SIZE = 2;
 	private static final Integer HASH_BIT_SIZE = 9;
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
@@ -182,7 +182,7 @@ public class ResponderTest extends JDBCTestBase {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
 				.newBuilder()
-				.dataPartitionBitSize(DATA_PARTITION_BITSIZE)
+				.dataChunkSize(DATA_CHUNK_SIZE)
 				.hashBitSize(HASH_BIT_SIZE)
 				.paillierBitSize(paillierBitSize)
 				.certainty(certainty)

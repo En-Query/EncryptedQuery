@@ -73,7 +73,7 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 	private static final String DATA_SOURCE_NAME = "query-runner-mock";
 	private static final String SELECTOR = "A Cup of Java";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
-	private static final Integer DATA_PARTITION_BITSIZE = 8;
+	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 9;
 	public static final int BIT_SIZE = 384;
 	public static final int CERTAINTY = 128;
@@ -198,7 +198,7 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 
 		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
 				.newBuilder()
-				.dataPartitionBitSize(DATA_PARTITION_BITSIZE)
+				.dataChunkSize(DATA_CHUNK_SIZE)
 				.hashBitSize(HASH_BIT_SIZE)
 				.paillierBitSize(BIT_SIZE)
 				.certainty(CERTAINTY)

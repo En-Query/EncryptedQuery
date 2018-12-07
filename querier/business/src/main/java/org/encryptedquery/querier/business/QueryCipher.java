@@ -26,12 +26,12 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.QuerySchema;
+import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.transformation.JSONConverter;
 import org.enquery.encryptedquery.querier.data.transformation.QuerySchemaTypeConverter;
 import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
 import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
 import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -72,11 +72,11 @@ public class QueryCipher {
 			Map<String, String> parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
 
 			Properties querierProperties = EncryptionPropertiesBuilder.newBuilder()
-					.dataPartitionBitSize(Integer.valueOf(parameters.getOrDefault(ResponderProperties.DATA_PARTITION_BIT_SIZE, "8")))
-					.hashBitSize(Integer.valueOf(parameters.getOrDefault(ResponderProperties.HASH_BIT_SIZE, "12")))
-					.paillierBitSize(Integer.valueOf(parameters.getOrDefault(ResponderProperties.PAILLIER_BIT_SIZE, "384")))
-					.certainty(Integer.valueOf(parameters.getOrDefault(ResponderProperties.CERTAINTY, "128")))
-					.bitSet(Integer.valueOf(parameters.getOrDefault(ResponderProperties.BIT_SET, "8")))
+					.dataChunkSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.DATA_CHUNK_SIZE, "1")))
+					.hashBitSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, "12")))
+					.paillierBitSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.PAILLIER_BIT_SIZE, "384")))
+					.certainty(Integer.valueOf(parameters.getOrDefault(QuerierProperties.CERTAINTY, "128")))
+					.bitSet(Integer.valueOf(parameters.getOrDefault(QuerierProperties.BIT_SET, "8")))
 					.embedSelector(jpaQuery.getEmbedSelector())
 					.queryType(jpaQuery.getName())
 					.build();

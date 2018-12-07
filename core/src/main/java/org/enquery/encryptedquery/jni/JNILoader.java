@@ -45,7 +45,9 @@ public class JNILoader {
 			if (loaded.contains(library)) return;
 
 			Path source = Paths.get(library);
-			Path temp = Files.createTempFile(source.getFileName().toString(), ".so");
+			Path fileName = source.getFileName();
+			Validate.notNull(fileName, "'library' needs to be a file path, including file name.");
+			Path temp = Files.createTempFile(fileName.toString(), ".so");
 
 			tmpFile = temp.toFile();
 			tmpFile.deleteOnExit();

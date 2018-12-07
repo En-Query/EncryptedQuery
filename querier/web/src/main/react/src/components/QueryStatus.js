@@ -51,7 +51,7 @@ class QueryStatus extends React.Component {
 
   //prevent memory leak
   componentWillUnmount() {
-    clearInterval(this.interval);
+    clearTimeout(this.timeout);
   }
 
   updateQuerySchema = e => {
@@ -95,38 +95,52 @@ class QueryStatus extends React.Component {
     );
     if (querySchema) {
       const { id, name } = querySchema;
-      this.setState({
-        querySchemaId: id,
-        querySchemaName: name
-      });
-      axios({
-        method: "get",
-        url: `/querier/api/rest/dataschemas/${this.state
-          .selectedId}/queryschemas/${id}/queries/`,
-        headers: {
-          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+      this.setState(
+        {
+          querySchemaId: id,
+          querySchemaName: name
+        },
+        () => {
+          console.log(this.state.querySchemaId);
+          this.getQueryData();
         }
-      })
-        .then(response => {
-          console.log(response);
-          this.setState(
-            {
-              queries: response.data.data,
-              queryId: response.data.data[0].id,
-              queryName: response.data.data[0].name,
-              queryStatus: response.data.data[0].status,
-              querySelfUri: response.data.data[0].selfUri
-            },
-            () => {
-              console.log(this.state.queries);
-              console.log(this.state.queryId);
-              console.log(this.state.queryName);
-              console.log(this.state.querySelfUri);
-            }
-          );
-        })
-        .catch(error => console.log(error.response));
+      );
     }
+  };
+
+  getQueryData = () => {
+    axios({
+      method: "get",
+      url: `/querier/api/rest/dataschemas/${this.state
+        .selectedId}/queryschemas/${this.state.querySchemaId}/queries/`,
+      headers: {
+        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+      }
+    })
+      .then(response => {
+        // check if status is ENCRYPTED, will stop polling for upated status
+        if (response.data.data[0].status !== "Encrypted" && "Scheduled") {
+          this.timeout = setTimeout(() => this.getQueryData(), 10000);
+        }
+        console.log(response);
+        this.setState(
+          {
+            queries: response.data.data,
+            queryId: response.data.data[0].id,
+            queryName: response.data.data[0].name,
+            queryStatus: response.data.data[0].status,
+            querySelfUri: response.data.data[0].selfUri
+          },
+          () => {
+            console.log(this.state.queries);
+            console.log(this.state.queryId);
+            console.log(this.state.queryName);
+            console.log(this.state.queryStatus);
+            console.log(this.state.querySelfUri);
+          }
+        );
+      })
+      .catch(error => console.log(error.response));
   };
 
   handleButtonView = (status, querySelfUri) => {

@@ -72,7 +72,7 @@ public class ResponderTest {
 
 	private final Logger log = LoggerFactory.getLogger(ResponderTest.class);
 
-	private static final Integer DATA_PARTITION_BITSIZE = 8;
+	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 9;
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
@@ -82,7 +82,7 @@ public class ResponderTest {
 	private static final Path CDR_QUERY_FILE = Paths.get("target/test-classes/", "cdr5-query.xml");
 	private static final Path CDR_QUERY_KEY_FILE = Paths.get("target/test-classes/", "cdr5-query-key.xml");
 
-	public static final int paillierBitSize = 384;
+	public static final int paillierBitSize = 384;  
 	public static final int certainty = 128;
 	private static final String SELECTOR = "31";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
@@ -169,6 +169,51 @@ public class ResponderTest {
 		});
 	}
 
+	@Test
+	public void testXertaFile() throws Exception {
+
+		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
+		Path CDR_QUERY_FILE = Paths.get("target/test-classes/", "xerta-query.xml");
+		Path CDR_QUERY_KEY_FILE = Paths.get("target/test-classes/", "xerta-query-key.xml");
+
+		Responder responder = new Responder();
+		responder.setOutputFileName(RESPONSE_FILE_NAME);
+		responder.setInputDataFile(CDR_DATA_FILE);
+		responder.setQuery(loadQuery(CDR_QUERY_FILE));
+		responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
+
+		Response response = loadFile();
+		response.getQueryInfo().printQueryInfo();
+
+		log.info("# Response records: ", response.getResponseElements().size());
+
+		DecryptResponse dr = new DecryptResponse();
+		ExecutorService es = Executors.newCachedThreadPool();
+
+		ClearTextQueryResponse answer = dr.decrypt(es, response, loadQueryKey(CDR_QUERY_KEY_FILE));
+		log.info(answer.toString());
+
+		assertEquals(1, answer.selectorCount());
+
+		Selector selector = answer.selectorByName("Mnemonic");
+		assertNotNull(selector);
+
+		assertEquals(2, selector.hitCount());
+
+//		selector.forEachHits(hits -> {
+//			assertEquals("TC1", hits.getSelectorValue());
+//			assertEquals(1, hits.recordCount());
+//			hits.forEachRecord(hit -> {
+//				hit.forEachField(field -> {
+//					log.info("Field {}", field);
+//					if (field.getName().equals("Mnemonic")) {
+//						assertEquals("TC1", field.getValue());
+//					}
+//				});
+//			});
+//		});
+	}
+	
 	@SuppressWarnings("static-access")
 	private QueryKey loadQueryKey(Path fileName) throws FileNotFoundException, IOException, JAXBException {
 		QueryKeyTypeConverter qtc = new QueryKeyTypeConverter();
@@ -230,7 +275,7 @@ public class ResponderTest {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
 				.newBuilder()
-				.dataPartitionBitSize(DATA_PARTITION_BITSIZE)
+				.dataChunkSize(DATA_CHUNK_SIZE)
 				.hashBitSize(HASH_BIT_SIZE)
 				.paillierBitSize(paillierBitSize)
 				.certainty(certainty)

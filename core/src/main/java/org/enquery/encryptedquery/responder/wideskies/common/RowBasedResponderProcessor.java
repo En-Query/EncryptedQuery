@@ -46,7 +46,7 @@ public class RowBasedResponderProcessor implements Runnable, ResponderProperties
 	private boolean isRunning = true;
 	private final Query query;
 	private QueryInfo queryInfo = null;
-	private int dataPartitionBitSize = 8;
+	private int dataChunkSize = 1;
 	private Response response = null;
 	private long threadId = 0;
 	private long recordCount = 0;
@@ -80,7 +80,7 @@ public class RowBasedResponderProcessor implements Runnable, ResponderProperties
 		this.responseQueue = responseQueue;
 
 		queryInfo = query.getQueryInfo();
-		dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+		dataChunkSize = queryInfo.getDataChunkSize();
 
 		partitioner = new Partitioner();
 
@@ -139,7 +139,7 @@ public class RowBasedResponderProcessor implements Runnable, ResponderProperties
 	 */
 	public void addDataElement(QueueRecord qr) throws Exception {
 		List<Byte> inputData = qr.getParts();
-		List<Byte[]> hitValPartitions = partitioner.createPartitions(inputData, dataPartitionBitSize);
+		List<Byte[]> hitValPartitions = partitioner.createPartitions(inputData, dataChunkSize);
 
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters.get(rowIndex);
@@ -167,13 +167,13 @@ public class RowBasedResponderProcessor implements Runnable, ResponderProperties
 				// hitValPartitions.get(i).intValue());
 				exp = modPowAbstraction.modPow(rowQuery, BI, query.getNSquared());
 			}
-			column = (column.multiply(exp)).mod(query.getNSquared());
+			column = column.multiply(exp).mod(query.getNSquared());
 
 			columns.put(i + rowCounter, column);
 		}
 
 		// Update the rowCounter (next free column position) for the selector
-		rowColumnCounters.set(rowIndex, (rowCounter + hitValPartitions.size()));
+		rowColumnCounters.set(rowIndex, rowCounter + hitValPartitions.size());
 	}
 
 

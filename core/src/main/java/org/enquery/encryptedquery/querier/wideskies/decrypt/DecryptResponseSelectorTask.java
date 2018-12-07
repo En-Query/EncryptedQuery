@@ -79,20 +79,20 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 
 		ClearTextQueryResponse.Hits hits = new ClearTextQueryResponse.Hits(selectorValue);
 
-		int dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+		int dataChunkSize = queryInfo.getDataChunkSize();
 
 
 		logger.debug("Number of Columns = ( " + rElements.size() + " )");
 		logger.info("Processing selector value = {}", selectorValue);
 
 		final List<BigInteger> partitions = new ArrayList<>();
-		boolean zeroElement = makePartitions(dataPartitionBitSize, partitions);
+		boolean zeroElement = makePartitions(dataChunkSize, partitions);
 		if (zeroElement) {
 			// logger.warn("Partitions are all zeroes.");
 			return result;
 		}
 
-		processRecords(hits, dataPartitionBitSize, partitions);
+		processRecords(hits, dataChunkSize, partitions);
 
 		result.add(hits);
 
@@ -105,8 +105,8 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 		return result;
 	}
 
-	private void processRecords(final ClearTextQueryResponse.Hits hits, int dataPartitionBitSize, final List<BigInteger> partitions) throws PIRException {
-		final int bytesPerPartition = calcBytesPerPartition(dataPartitionBitSize);
+	private void processRecords(final ClearTextQueryResponse.Hits hits, int dataChunkSize, final List<BigInteger> partitions) throws PIRException {
+		final int bytesPerPartition = dataChunkSize;  //calcBytesPerPartition(dataPartitionBitSize);
 		final List<Byte> parts = makeParts(partitions, bytesPerPartition);
 		final List<Record> returnRecords = RecordExtractor.getQueryResponseRecords(queryInfo, parts, bytesPerPartition);
 		for (Record record : returnRecords) {
@@ -160,7 +160,7 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 		return result;
 	}
 
-	private boolean makePartitions(int dataPartitionBitSize, List<BigInteger> partitions) {
+	private boolean makePartitions(int dataChunkSize, List<BigInteger> partitions) {
 		boolean result = true;
 		for (int partNum = 0; partNum < rElements.size(); partNum++) {
 			// pull off the correct bits
@@ -173,7 +173,7 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 			// logger.info("colNum ( {} ) part ( {} )", partNum,
 			// Hex.encodeHexString(part.toByteArray()));
 
-			part = part.shiftRight(selectorIndex * dataPartitionBitSize);
+			part = part.shiftRight(selectorIndex * dataChunkSize*8);
 			partitions.add(part);
 
 			result = result && part.equals(BigInteger.ZERO);

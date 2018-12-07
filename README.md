@@ -1,6 +1,6 @@
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.0.0
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.0.1-SNAPSHOT
 
 ## Overview
 

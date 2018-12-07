@@ -87,10 +87,7 @@ public class EncryptQuery {
 		this.modPowAbstraction = modPowAbstraction;
 		this.paillierEncryption = paillierEncryption;
 		this.randomProvider = randomProvider;
-		if (this.threadPool == null) {
-			this.threadPool = threadPool;
-		}
-
+		this.threadPool = threadPool;
 	}
 
 
@@ -152,10 +149,10 @@ public class EncryptQuery {
 
 	/**
 	 * This should be called after all query elements have been added in order to generate the
-	 * expTable. For int exponentiation with BigIntegers, assumes that dataPartitionBitSize < 32.
+	 * expTable. For int exponentiation with BigIntegers.
 	 */
 	public void generateExpTable(Query query) {
-		int maxValue = (1 << query.getQueryInfo().getDataPartitionBitSize()) - 1;
+		int maxValue = (1 << query.getQueryInfo().getDataChunkSize()*8) - 1;
 
 		query.getQueryElements().values().parallelStream().forEach(new Consumer<BigInteger>() {
 			@Override
@@ -278,10 +275,10 @@ public class EncryptQuery {
 	 * @throws InterruptedException
 	 * @throws PIRException
 	 */
-	private SortedMap<Integer, BigInteger> parallelEncrypt(Map<Integer, Integer> selectorQueryVecMapping, int hashBitSize, int dataPartitionBitSize, Paillier paillier) throws InterruptedException, PIRException {
+	private SortedMap<Integer, BigInteger> parallelEncrypt(Map<Integer, Integer> selectorQueryVecMapping, int hashBitSize, int dataChunkSize, Paillier paillier) throws InterruptedException, PIRException {
 		int numElements = 1 << hashBitSize;
 
-		EncryptQueryTaskFactory factory = makeFactory(selectorQueryVecMapping, dataPartitionBitSize, paillier);
+		EncryptQueryTaskFactory factory = makeFactory(selectorQueryVecMapping, dataChunkSize, paillier);
 		CompletionService<SortedMap<Integer, BigInteger>> completionService = new ExecutorCompletionService<>(threadPool);
 
 		// Split the work across the requested number of threads
@@ -321,8 +318,9 @@ public class EncryptQuery {
 	 * @param paillier
 	 * @return
 	 */
-	private EncryptQueryTaskFactory makeFactory(Map<Integer, Integer> selectorQueryVecMapping, int dataPartitionBitSize, Paillier paillier) {
+	private EncryptQueryTaskFactory makeFactory(Map<Integer, Integer> selectorQueryVecMapping, int dataChunkSize, Paillier paillier) {
 		EncryptQueryTaskFactory result = null;
+		int dataPartitionBitSize = dataChunkSize * 8;
 		if (method.equals(FASTWITHJNI)) {
 			result = new EncryptQueryFixedBaseWithJNITaskFactory(dataPartitionBitSize, paillier, selectorQueryVecMapping, config, randomProvider.getSecureRandom());
 		} else if (method.equals(FAST)) {
@@ -337,6 +335,6 @@ public class EncryptQuery {
 	 * Performs the encryption with numThreads.
 	 */
 	private SortedMap<Integer, BigInteger> parallelEncrypt(Map<Integer, Integer> selectorQueryVecMapping, QueryInfo queryInfo, Paillier paillier) throws InterruptedException, PIRException {
-		return parallelEncrypt(selectorQueryVecMapping, queryInfo.getHashBitSize(), queryInfo.getDataPartitionBitSize(), paillier);
+		return parallelEncrypt(selectorQueryVecMapping, queryInfo.getHashBitSize(), queryInfo.getDataChunkSize(), paillier);
 	}
 }

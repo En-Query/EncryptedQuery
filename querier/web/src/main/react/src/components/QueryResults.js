@@ -35,10 +35,10 @@ class QueryResults extends React.Component {
   }
 
   getData() {
-    var schedulesSelfUri = localStorage.getItem("schedulesSelfUri");
+    var scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
     axios({
       method: "get",
-      url: `${schedulesSelfUri}`,
+      url: `${scheduleSelfUri}`,
       headers: {
         Accept: "application/vnd.encryptedquery.enclave+json; version=1"
       }
@@ -90,7 +90,7 @@ class QueryResults extends React.Component {
             resultType: response.data.data.type,
             retrievalsUri: response.data.data.retrievalsUri,
             includedData: response.data.included,
-            queryName: response.data.included[2].name,
+            queryName: response.data.included[1].name,
             dataSourceName: response.data.included[0].name,
             processingMode: response.data.included[0].processingMode,
             scheduleStartTime: response.data.included[3].startTime

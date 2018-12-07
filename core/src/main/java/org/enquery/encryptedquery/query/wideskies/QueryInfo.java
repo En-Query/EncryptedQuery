@@ -53,9 +53,9 @@ public class QueryInfo implements Serializable, Cloneable {
 	// Key for the keyed hash function
 	private String hashKey;
 
-	// number of bits for each partition of an incoming data
-	// element, must be < 32 right now
-	private int dataPartitionBitSize;
+	// number of bytes for each partition of an incoming data
+	// element
+	private int dataChunkSize;
 
 	private int numBitsPerDataElement;
 
@@ -114,8 +114,8 @@ public class QueryInfo implements Serializable, Cloneable {
 		return numPartitionsPerDataElement;
 	}
 
-	public int getDataPartitionBitSize() {
-		return dataPartitionBitSize;
+	public int getDataChunkSize() {
+		return dataChunkSize;
 	}
 
 	public boolean useExpLookupTable() {
@@ -139,7 +139,7 @@ public class QueryInfo implements Serializable, Cloneable {
 		queryInfo.put("hashKey", hashKey);
 		queryInfo.put("numBitsPerDataElement", numBitsPerDataElement);
 		queryInfo.put("numPartitionsPerDataElement", numPartitionsPerDataElement);
-		queryInfo.put("dataPartitionsBitSize", dataPartitionBitSize);
+		queryInfo.put("dataChunkSize", dataChunkSize);
 		queryInfo.put("useExpLookupTable", useExpLookupTable);
 		queryInfo.put("useHDFSExpLookupTable", useHDFSExpLookupTable);
 		queryInfo.put("embedSelector", embedSelector);
@@ -165,7 +165,7 @@ public class QueryInfo implements Serializable, Cloneable {
 		builder.append("\n      numSelectors (" + numSelectors + ") ");
 		builder.append("\n      hashBitSize (" + hashBitSize + ")");
 		builder.append("\n      hashKey (" + hashKey + ")");
-		builder.append("\n      dataPartitionBitSize (" + dataPartitionBitSize + ")");
+		builder.append("\n      dataChunkSize (" + dataChunkSize + ")");
 		builder.append("\n      Query Name (" + queryType + ")");
 		builder.append("\n      useExpLookupTable (" + useExpLookupTable + ")");
 		builder.append("\n      useHDFSLookupTable (" + useHDFSExpLookupTable + ")");
@@ -198,7 +198,7 @@ public class QueryInfo implements Serializable, Cloneable {
 			return false;
 		if (numBitsPerDataElement != queryInfo.numBitsPerDataElement)
 			return false;
-		if (dataPartitionBitSize != queryInfo.dataPartitionBitSize)
+		if (dataChunkSize != queryInfo.dataChunkSize)
 			return false;
 		if (numPartitionsPerDataElement != queryInfo.numPartitionsPerDataElement)
 			return false;
@@ -249,13 +249,12 @@ public class QueryInfo implements Serializable, Cloneable {
 	}
 
 	/**
-	 * Number of bits for each partition of an incoming data element, must be < 32 right now
+	 * Number of bits for each partition of an incoming data element
 	 * 
-	 * @param dataPartitionBitSize
+	 * @param dataChunkSize
 	 */
-	public void setDataPartitionBitSize(int dataPartitionBitSize) {
-		Validate.isTrue(dataPartitionBitSize < 32);
-		this.dataPartitionBitSize = dataPartitionBitSize;
+	public void setDataChunkSize(int dataChunkSize) {
+		this.dataChunkSize = dataChunkSize;
 	}
 
 	/**

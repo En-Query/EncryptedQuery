@@ -139,10 +139,10 @@ public class RecordExtractor {
 	private static int calcElementSize(Partitioner partitioner, QuerySchemaElement schemaElement, DataSchemaElement dataElement, Object element) throws PIRException {
 		int size = schemaElement.getSize();
 		if (element != null) {
+			element = element.toString().trim();
 			if (schemaElement.getLengthType().equalsIgnoreCase("variable")) {
 				if (dataElement.getDataType().equalsIgnoreCase("string")) {
 					size = partitioner.getByteSize(schemaElement, element.toString().length(), dataElement.getDataType());
-					element = element.toString().trim();
 				} else if (dataElement.getDataType().equalsIgnoreCase("bytearray")) {
 					size = partitioner.getByteSize(schemaElement, ConversionUtils.objectToByteArray(element).length, dataElement.getDataType());
 				}

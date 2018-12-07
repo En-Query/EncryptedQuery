@@ -54,7 +54,7 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 	private DataSchema dataSchema;
 	private Query query;
 	private int hashBitSize;
-	private int dataPartitionBitSize;
+	private int dataChunkSize;
 	private String key;
 	private boolean embedSelector;
 	private int maxHitsPerSelector;
@@ -106,7 +106,7 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 
 		loadAndValidateParams();
 
-		final RowHashMapFunction rowHash = new RowHashMapFunction(selectorFieldIndex, selectorFieldType, getRowTypeInfo(), embedSelector, querySchema, key, hashBitSize, dataPartitionBitSize);
+		final RowHashMapFunction rowHash = new RowHashMapFunction(selectorFieldIndex, selectorFieldType, getRowTypeInfo(), embedSelector, querySchema, key, hashBitSize, dataChunkSize);
 		final ColumnReduceFunction columnReducer = new ColumnReduceFunction(query.getNSquared());
 		final FileOutputFormat<Tuple2<Integer, BigInteger>> outputFormat = new ResponseFileOutputFormat(query.getQueryInfo());
 		final DataPartitionsReduceFunction partionReducer = new DataPartitionsReduceFunction(query.getQueryElements(), query.getNSquared(), config, hashBitSize);
@@ -151,7 +151,7 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 		dataSchema.validate();
 
 		hashBitSize = queryInfo.getHashBitSize();
-		dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+		dataChunkSize = queryInfo.getDataChunkSize();
 
 		// pass these params to the ComputeEncryptedColumn
 		config.put(FlinkConfigurationProperties.HASH_BIT_SIZE, Integer.toString(hashBitSize));

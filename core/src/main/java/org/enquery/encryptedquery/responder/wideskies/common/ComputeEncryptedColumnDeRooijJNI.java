@@ -22,13 +22,9 @@ import java.util.Map;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.jni.JNILoader;
 import org.enquery.encryptedquery.responder.ResponderProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ComputeEncryptedColumnDeRooijJNI implements ComputeEncryptedColumn {
 	private long hContext;
-
-	private static final Logger logger = LoggerFactory.getLogger(ComputeEncryptedColumnDeRooijJNI.class);
 
 	private native long derooijNew(byte[] NSquaredBytes, int maxRowIndex);
 

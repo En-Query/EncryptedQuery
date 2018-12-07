@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.entity.RetrievalStatus;
 import org.enquery.encryptedquery.querier.data.entity.json.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.json.DataSchemaResponse;
@@ -42,7 +43,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
@@ -217,11 +217,11 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		q.setName("Test Query " + ++queryCount);
 
 		Map<String, String> params = new HashMap<>();
-		params.put(ResponderProperties.DATA_PARTITION_BIT_SIZE, "8");
-		params.put(ResponderProperties.HASH_BIT_SIZE, "9");
-		params.put(ResponderProperties.PAILLIER_BIT_SIZE, "384");
-		params.put(ResponderProperties.CERTAINTY, "128");
-		params.put(ResponderProperties.BIT_SET, "32");
+		params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
+		params.put(QuerierProperties.HASH_BIT_SIZE, "9");
+		params.put(QuerierProperties.PAILLIER_BIT_SIZE, "384");
+		params.put(QuerierProperties.CERTAINTY, "128");
+		params.put(QuerierProperties.BIT_SET, "32");
 		q.setParameters(params);
 
 		List<String> selectorValues = new ArrayList<>();

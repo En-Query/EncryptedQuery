@@ -37,12 +37,39 @@ class ScheduleQuery extends React.Component {
       dataSourceSelfUri: [],
       dataSourceType: [],
       date: new Date(),
-      computeThreshold: 30000
+      computeThreshold: 30000,
+      parameterValues: []
     };
 
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
+
+  /*
+    The 3 methods below are for handling [K = V] pairs and adding them to the scheduling parameters.
+  */
+  // addParamterValues = e => {
+  //   e.stopPropagation();
+  //   e.preventDefault();
+  //   this.setState(
+  //     prevState({
+  //       parameterValues: [...prevState.parameterValues, ""]
+  //     })
+  //   );
+  // };
+
+  // removeParameterValues(index) {
+  //   this.setState({
+  //     parameterValues: this.state.parameterValues.filter((_, i) !== index)
+  //   });
+  // }
+
+  // handleParameterValueChange = index => ({ target: { value } }) => {
+  //   //copy array
+  //   const parameterValues = [...this.state.parameterValues];
+  //   parameterValues[index] = value;
+  //   this.setState({ parameterValues });
+  // };
 
   componentDidMount() {
     var querySelfUri = localStorage.getItem("querySelfUri");
@@ -260,9 +287,7 @@ class ScheduleQuery extends React.Component {
       },
       data: JSON.stringify({
         startTime: this.state.date,
-        parameters: {
-          computeEncryptionMethod: this.state.computeEncryptionMethod
-        },
+        //parameters: this.state.parameterValues,
         dataSource: {
           id: this.state.dataSourceId,
           selfUri: this.state.dataSourceSelfUri
@@ -285,7 +310,7 @@ class ScheduleQuery extends React.Component {
       dataSourceDescription,
       dataSourceId,
       dataSourceName,
-      dataSourceTpye,
+      dataSourceType,
       queries,
       queryStatus
     } = this.state;
@@ -337,7 +362,7 @@ class ScheduleQuery extends React.Component {
                     onChange={this.handleChange}
                     onChange={this.dataSchemaChange}
                   >
-                    <option value="">Choose a DataSource...</option>
+                    <option value="">Choose a DataSource ...</option>
                     {dataSources &&
                       dataSources.map(dataSource => {
                         return (
@@ -406,10 +431,40 @@ class ScheduleQuery extends React.Component {
             <fieldset>
               <legend>Parameters for Scheduling a Query</legend>
               <br />
-
-              <br />
-              <br />
+              <div>
+                <label>Parameter Values:</label>{" "}
+                <button type="button" onClick={this.addParamterValues}>
+                  Add
+                </button>
+                {this.state.parameterValues.map((value, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    value={value}
+                    placeholder="Enter [K = V] pair parameter"
+                    onChange={this.handleParameterValueChange(index)}
+                    required
+                  />
+                ))}
+                <ul>
+                  {this.state.parameterValues.map((value, index) => {
+                    return (
+                      <li key={index}>
+                        {value}
+                        <button
+                          type="button"
+                          onClick={this.removeParameterValues.bind(this, index)}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <br />
+              </div>
             </fieldset>
+            <br />
             <br />
 
             <div>

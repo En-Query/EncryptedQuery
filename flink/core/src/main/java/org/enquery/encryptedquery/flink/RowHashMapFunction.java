@@ -48,7 +48,7 @@ public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, 
 	private int hashBitSize;
 	private List<Byte> recordParts;
 
-	private final int dataPartitionBitSize;
+	private final int dataChunkSize;
 
 	transient private Partitioner partitioner;
 
@@ -60,7 +60,7 @@ public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, 
 			QuerySchema qschema,
 			String key,
 			int hashBitSize,
-			int dataPartitionBitSize) {
+			int dataChunkSize) {
 		this.selectorFieldIndex = selectorFieldIndex;
 		this.selectorFieldType = selectorFieldType;
 		this.key = key;
@@ -68,7 +68,7 @@ public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, 
 		this.embedSelector = embedSelector;
 		this.qschema = qschema;
 		this.rowTypeInfo = rowTypeInfo;
-		this.dataPartitionBitSize = dataPartitionBitSize;
+		this.dataChunkSize = dataChunkSize;
 
 		Validate.notNull(rowTypeInfo);
 		if (embedSelector) {
@@ -96,7 +96,7 @@ public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, 
 
 		recordParts = RecordPartitioner.partitionRecord(partitioner, qschema, recordData, embedSelector);
 		QueueRecord record = new QueueRecord(rowIndex, selectorValue, recordParts);
-		record.setHitValPartitions(partitioner.createPartitions(recordParts, dataPartitionBitSize));
+		record.setHitValPartitions(partitioner.createPartitions(recordParts, dataChunkSize));
 		return record;
 	}
 

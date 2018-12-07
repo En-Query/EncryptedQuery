@@ -135,7 +135,7 @@ public class PaillierEncryption {
 
 		// Verify the prime conditions are satisfied
 		BigInteger three = BigInteger.valueOf(3);
-		if ((p.compareTo(three) < 0) || (q.compareTo(three) < 0) || p.equals(q) || !p.isProbablePrime(primeCertainty) || !q.isProbablePrime(primeCertainty)) {
+		if (p.compareTo(three) < 0 || q.compareTo(three) < 0 || p.equals(q) || !p.isProbablePrime(primeCertainty) || !q.isProbablePrime(primeCertainty)) {
 			throw new IllegalArgumentException("p = " + p + " q = " + q + " do not satisfy primality constraints");
 		}
 
@@ -159,10 +159,11 @@ public class PaillierEncryption {
 	 * @param bitLength The bit length of the resulting modulus {@code N}.
 	 * @param certainty The probability that the new {@code p} and {@code q} represent prime
 	 *        numbers.
+	 * @throws PIRException
 	 * @throws IllegalArgumentException If the {@code certainty} is less than the system allowed
 	 *         lower bound.
 	 */
-	public Paillier make(int bitLength, int certainty) {
+	public Paillier make(int bitLength, int certainty) throws PIRException {
 		return make(bitLength, certainty, -1);
 	}
 
@@ -184,11 +185,12 @@ public class PaillierEncryption {
 	 * @param certainty The probability that the new {@code p} and {@code q} represent prime
 	 *        numbers.
 	 * @param ensureBitSet index of bit in {@code N} to ensure is set.
+	 * @throws PIRException
 	 * @throws IllegalArgumentException If the {@code certainty} is less than the system allowed
 	 *         lower bound, or the index of {@code ensureBitSet} is greater than the
 	 *         {@code bitLength}.
 	 */
-	public Paillier make(int bitLength, int certainty, int ensureBitSet) {
+	public Paillier make(int bitLength, int certainty, int ensureBitSet) throws PIRException {
 
 		if (certainty < primeCertainty) {
 			throw new IllegalArgumentException("Input certainty = " + certainty + " is less than allowed system lower bound = " + primeCertainty);
@@ -208,7 +210,7 @@ public class PaillierEncryption {
 	}
 
 
-	private void generateKeys(Paillier paillier, int certainty, int ensureBitSet) {
+	private void generateKeys(Paillier paillier, int certainty, int ensureBitSet) throws PIRException {
 		getKeys(paillier, certainty);
 
 		if (ensureBitSet > -1) {
@@ -220,19 +222,18 @@ public class PaillierEncryption {
 		}
 	}
 
-	private void getKeys(Paillier paillier, int certainty) {
+	private void getKeys(Paillier paillier, int certainty) throws PIRException {
 		if (paillier.getBitLength() >= 1024) {
 			// prime generation is not expected to fail, but if it does we keep trying until it
 			// succeeds
-			while (true) {
-				try {
-					BigInteger[] pq = primeGenerator.getPrimePairWithAuxiliaryPrimes(paillier.getBitLength(), certainty);
-					setBasePointsAndExponents(paillier, pq[0], pq[1], pq[2], pq[3]);
-
-					break;
-				} catch (PIRException e) {
-				}
-			}
+			// while (true) {
+			// try {
+			BigInteger[] pq = primeGenerator.getPrimePairWithAuxiliaryPrimes(paillier.getBitLength(), certainty);
+			setBasePointsAndExponents(paillier, pq[0], pq[1], pq[2], pq[3]);
+			// break;
+			// } catch (PIRException e) {
+			// }
+			// }
 		} else {
 			// Generate the primes
 			BigInteger[] pq = primeGenerator.getPrimePair(paillier.getBitLength(), certainty);
@@ -337,18 +338,18 @@ public class PaillierEncryption {
 		BigInteger pSquared = p.multiply(p);
 		// exponent and random base point for p^2
 		BigInteger maxExponent = p1;
-		while (true) {
+		BigInteger[] result = null;
+		while (result == null) {
 			BigInteger basePoint = new BigInteger(p.bitLength(), randomProvider.getSecureRandom());
-			if (basePoint.compareTo(BigInteger.ONE) <= 0 || basePoint.compareTo(p) >= 0) {
-				continue;
-			}
+			if (basePoint.compareTo(BigInteger.ONE) <= 0 || basePoint.compareTo(p) >= 0) continue;
+
 			basePoint = modPowAbstraction.modPow(basePoint, p, pSquared);
-			BigInteger tmp = modPowAbstraction.modPow(basePoint, div, pSquared); // base^((p-1)/p1)
-			if (tmp.compareTo(BigInteger.ONE) == 0) {
-				continue;
-			}
-			return new BigInteger[] {basePoint, maxExponent};
+			BigInteger tmp = modPowAbstraction.modPow(basePoint, div, pSquared);
+			if (tmp.compareTo(BigInteger.ONE) == 0) continue;
+
+			result = new BigInteger[] {basePoint, maxExponent};
 		}
+		return result;
 	}
 
 	/**
@@ -365,14 +366,14 @@ public class PaillierEncryption {
 		// Generate a random value in (Z/NZ)*. We generate the mod p and mod q portions separately.
 		final Random rnd = randomProvider.getSecureRandom();
 
-		BigInteger r1 = (new BigInteger(p.bitLength(), rnd)).mod(p);
+		BigInteger r1 = new BigInteger(p.bitLength(), rnd).mod(p);
 		while (r1.equals(BigInteger.ZERO) || r1.equals(BigInteger.ONE) || r1.mod(p).equals(BigInteger.ZERO) || r1.mod(q).equals(BigInteger.ZERO)) {
-			r1 = (new BigInteger(p.bitLength(), rnd)).mod(p);
+			r1 = new BigInteger(p.bitLength(), rnd).mod(p);
 		}
 
-		BigInteger r2 = (new BigInteger(q.bitLength(), rnd)).mod(q);
+		BigInteger r2 = new BigInteger(q.bitLength(), rnd).mod(q);
 		while (r2.equals(BigInteger.ZERO) || r2.equals(BigInteger.ONE) || r2.mod(p).equals(BigInteger.ZERO) || r2.mod(q).equals(BigInteger.ZERO)) {
-			r2 = (new BigInteger(q.bitLength(), rnd)).mod(q);
+			r2 = new BigInteger(q.bitLength(), rnd).mod(q);
 		}
 
 		return encrypt(paillier, m, r1, r2);
@@ -402,12 +403,12 @@ public class PaillierEncryption {
 		ChineseRemainder crtNSquared = new ChineseRemainder(pSquared, qSquared);
 
 		// E(m) = (1 + mN) * CRT(r1^p mod p^2, r2^q mod q^2)
-		BigInteger term1 = (m.multiply(N).add(BigInteger.ONE)).mod(NSquared);
+		BigInteger term1 = m.multiply(N).add(BigInteger.ONE).mod(NSquared);
 		BigInteger u = modPowAbstraction.modPow(r1, p, pSquared);
 		BigInteger v = modPowAbstraction.modPow(r2, q, qSquared);
 		BigInteger term2 = crtNSquared.combine(u, v, NSquared);
 
-		return (term1.multiply(term2)).mod(NSquared);
+		return term1.multiply(term2).mod(NSquared);
 	}
 
 	/**
@@ -433,8 +434,8 @@ public class PaillierEncryption {
 		BigInteger cModQSquared = c.mod(qSquared);
 		BigInteger xp = modPowAbstraction.modPow(cModPSquared, pMinusOne, pSquared);
 		BigInteger xq = modPowAbstraction.modPow(cModQSquared, qMinusOne, qSquared);
-		BigInteger yp = (xp.subtract(BigInteger.ONE)).divide(p);
-		BigInteger yq = (xq.subtract(BigInteger.ONE)).divide(q);
+		BigInteger yp = xp.subtract(BigInteger.ONE).divide(p);
+		BigInteger yq = xq.subtract(BigInteger.ONE).divide(q);
 		BigInteger zp = yp.multiply(wp).mod(p);
 		BigInteger zq = yq.multiply(wq).mod(q);
 		BigInteger d = crtN.combine(zp, zq, paillier.getN());

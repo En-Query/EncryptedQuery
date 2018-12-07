@@ -42,7 +42,7 @@ public interface QuerierProperties extends CoreConfigurationProperties {
 			NUMTHREADS,
 			EMBEDQUERYSCHEMA,
 			HASH_BIT_SIZE,
-			DATA_PARTITION_BIT_SIZE,
+			DATA_CHUNK_SIZE,
 			PAILLIER_BIT_SIZE,
 			BIT_SET,
 			CERTAINTY,
@@ -61,8 +61,8 @@ public interface QuerierProperties extends CoreConfigurationProperties {
 			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + HASH_BIT_SIZE);
 		}
 
-		if (!properties.containsKey(DATA_PARTITION_BIT_SIZE)) {
-			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + DATA_PARTITION_BIT_SIZE);
+		if (!properties.containsKey(DATA_CHUNK_SIZE)) {
+			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + DATA_CHUNK_SIZE);
 		}
 
 		if (!properties.containsKey(PAILLIER_BIT_SIZE)) {
@@ -80,14 +80,15 @@ public interface QuerierProperties extends CoreConfigurationProperties {
 			}
 		}
 
-		int dataPartitionBitSize = Integer.parseInt(properties.getProperty(DATA_PARTITION_BIT_SIZE));
-		if (dataPartitionBitSize > 3072) {
-			throw new PIRException("Encryption properties not valid. " + DATA_PARTITION_BIT_SIZE + " must be less than 3072.");
+		int dataChunkSize = Integer.parseInt(properties.getProperty(DATA_CHUNK_SIZE));
+		int paillierBitSize = Integer.parseInt(properties.getProperty(PAILLIER_BIT_SIZE));
+		if (dataChunkSize > (paillierBitSize / 8)) {
+			throw new PIRException("Encryption properties not valid. " + DATA_CHUNK_SIZE + " must be less than 3072.");
 		}
 
-		if ((dataPartitionBitSize % 8) != 0) {
-			throw new PIRException("Encryption properties not valid. " + DATA_PARTITION_BIT_SIZE + "  must be a multiple of 8.");
-		}
+//		if ((dataPartitionBitSize % 8) != 0) {
+//			throw new PIRException("Encryption properties not valid. " + DATA_CHUNK_SIZE + "  must be a multiple of 8.");
+//		}
 	}
 
 }

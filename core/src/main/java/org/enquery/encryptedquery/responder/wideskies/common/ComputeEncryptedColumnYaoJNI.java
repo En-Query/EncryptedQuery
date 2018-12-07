@@ -22,15 +22,10 @@ import java.util.Map;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.jni.JNILoader;
 import org.enquery.encryptedquery.responder.ResponderProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn, ResponderProperties {
 	// private static boolean libraryLoaded = false;
 	private long hContext;
-
-	private static final Logger logger = LoggerFactory.getLogger(ComputeEncryptedColumnYaoJNI.class);
-	// private final Map<Integer,BigInteger> queryElements;
 
 	private native long yaoNew(byte[] NSquaredBytes, int maxRowIndex, int b);
 
@@ -62,12 +57,12 @@ public class ComputeEncryptedColumnYaoJNI implements ComputeEncryptedColumn, Res
 
 		Double mri = Math.pow(2, Integer.valueOf(config.get(HASH_BIT_SIZE)));
 		int maxRowIndex = mri.intValue();
-		int dataPartitionBitSize = Integer.valueOf(config.get(DATA_PARTITION_BIT_SIZE));
-		validateParameters(dataPartitionBitSize);
+		int dataChunkSize = Integer.valueOf(config.get(DATA_CHUNK_SIZE));
+		validateParameters(dataChunkSize);
 
 		JNILoader.loadLibrary(config.get(JNI_LIBRARIES));
 
-		this.hContext = yaoNew(NSquared.toByteArray(), maxRowIndex, dataPartitionBitSize);
+		this.hContext = yaoNew(NSquared.toByteArray(), maxRowIndex, dataChunkSize);
 		if (0L == this.hContext) {
 			throw new NullPointerException("failed to allocate context from native code");
 		}

@@ -4,7 +4,6 @@ import { withRouter } from "react-router";
 
 import HomePage from "../routes/HomePage";
 import CreateQuerySchema from "./CreateQuerySchema";
-import RunParameters from "./RunParameters";
 import "../css/CreateQuery.css";
 
 import axios from "axios";
@@ -34,21 +33,23 @@ class CreateQuery extends React.Component {
       certainty: 128,
       hashBitSize: 15,
       paillierBitSize: 3072,
-      dataPartitionBitSize: 8,
+      dataChunkSize: 3,
       embedSelector: [],
-      selectorValues: [],
-      selectorField: []
+      selectorField: [],
+      selectorValue: "",
+      selectorValues: []
     };
 
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
-  addSelectorValues = e => {
+  addSelectorValue = e => {
     e.stopPropagation();
     e.preventDefault();
     this.setState(prevState => ({
-      selectorValues: [...prevState.selectorValues, ""]
+      selectorValues: [...prevState.selectorValues, prevState.selectorValue],
+      selectorValue: ""
     }));
   };
 
@@ -58,11 +59,9 @@ class CreateQuery extends React.Component {
     });
   }
 
-  handleSelectorValueChange = index => ({ target: { value } }) => {
+  handleSelectorValueChange = ({ target: { value } }) => {
     //makes separate copy of array.
-    const selectorValues = [...this.state.selectorValues];
-    selectorValues[index] = value;
-    this.setState({ selectorValues });
+    this.setState({ selectorValue: value });
   };
 
   componentDidMount() {
@@ -189,7 +188,7 @@ class CreateQuery extends React.Component {
       data: JSON.stringify({
         name: this.state.queryName,
         parameters: {
-          dataPartitionBitSize: this.state.dataPartitionBitSize,
+          dataChunkSize: this.state.dataChunkSize,
           hashBitSize: this.state.hashBitSize,
           paillierBitSize: this.state.paillierBitSize,
           bitSet: this.state.bitSet,
@@ -338,7 +337,7 @@ class CreateQuery extends React.Component {
               onChange={this.onChange}
               type="number"
               name="paillierBitSize"
-              min="0"
+              min="1024"
               max="3072"
               placeholder="3072"
               step="1024"
@@ -346,16 +345,16 @@ class CreateQuery extends React.Component {
             />
             <br />
             <br />
-            <label>dataPartitionBitSize:</label>
+            <label>dataChunkSize:</label>
             <input
-              value={this.state.dataPartitionBitSize}
+              value={this.state.dataChunkSize}
               onChange={this.onChange}
               type="number"
-              name="dataPartitionBitSize"
-              placeholder="8"
-              min="8"
-              step="8"
-              max="32"
+              name="dataChunkSize"
+              placeholder="1"
+              min="1"
+              step="1"
+              max="50"
               required
             />
             <br />
@@ -374,19 +373,16 @@ class CreateQuery extends React.Component {
             <br />
             <div>
               <label>Selector Values:</label>{" "}
-              <button type="button" onClick={this.addSelectorValues}>
+              <input
+                type="text"
+                value={this.state.selectorValue}
+                placeholder="Enter selector value"
+                onChange={this.handleSelectorValueChange}
+                required={!this.state.selectorValues.length}
+              />
+              <button type="button" onClick={this.addSelectorValue}>
                 Add
               </button>
-              {this.state.selectorValues.map((value, index) => (
-                <input
-                  key={index}
-                  type="text"
-                  value={value}
-                  placeholder="Enter slector values"
-                  onChange={this.handleSelectorValueChange(index)}
-                  required
-                />
-              ))}
               <ul>
                 {this.state.selectorValues.map((value, index) => {
                   return (

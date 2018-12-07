@@ -50,7 +50,7 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 
 	private final Query query;
 	private QueryInfo queryInfo = null;
-	private int dataPartitionBitSize = 8;
+	private int dataChunkSize = 8;
 	private Response response = null;
 	private long threadId = 0;
 	private long recordCount = 0;
@@ -81,7 +81,7 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 
 		this.NSquared = query.getNSquared();
 		queryInfo = query.getQueryInfo();
-		dataPartitionBitSize = queryInfo.getDataPartitionBitSize();
+		dataChunkSize = queryInfo.getDataChunkSize();
 		this.config = config;
 
 		String ct = config.get(ResponderProperties.COMPUTE_THRESHOLD);
@@ -186,7 +186,7 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 	 */
 	public void addDataElement(QueueRecord qr) throws Exception {
 		// Convert from byte data into partitions of data partition size.
-		List<Byte[]> hitValPartitions = partitioner.createPartitions(qr.getParts(), dataPartitionBitSize);
+		List<Byte[]> hitValPartitions = partitioner.createPartitions(qr.getParts(), dataChunkSize);
 
 		// For Debugging Only
 		// listPartitions(hitValPartitions);

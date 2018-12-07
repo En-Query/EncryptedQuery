@@ -146,7 +146,7 @@ public class QueryTypeConverter {
 	@Converter
 	public org.enquery.encryptedquery.xml.schema.QueryInfo toXMLQueryInfo(QueryInfo queryInfo) {
 		org.enquery.encryptedquery.xml.schema.QueryInfo result = new org.enquery.encryptedquery.xml.schema.QueryInfo();
-		result.setDataPartitionBitSize(queryInfo.getDataPartitionBitSize());
+		result.setDataChunkSize(queryInfo.getDataChunkSize());
 		result.setEmbedSelector(queryInfo.getEmbedSelector());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setHashKey(queryInfo.getHashKey());
@@ -171,7 +171,7 @@ public class QueryTypeConverter {
 		result.setIdentifier(uuid);
 		result.setNumSelectors(queryInfo.getNumSelectors());
 		result.setHashBitSize(queryInfo.getHashBitSize());
-		result.setDataPartitionBitSize(queryInfo.getDataPartitionBitSize());
+		result.setDataChunkSize(queryInfo.getDataChunkSize());
 		result.setQueryType(queryInfo.getQueryType());
 		result.setUseExpLookupTable(queryInfo.isUseExpLookupTable());
 		result.setEmbedSelector(queryInfo.isEmbedSelector());

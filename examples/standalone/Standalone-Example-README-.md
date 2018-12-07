@@ -177,7 +177,7 @@ GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/quer
 ```
 Step 5) Encrypte the Query.  Select `Encrypt Query` and update the URL with the data and query schema id's.  With this Post request the Body to defines the parameters used to encrypt the query.
  * Query name.  (This must be unique)
- * dataPartitionSize  This determines how many bytes to join together for each partition element.  dataPartitionSize is in bits and must be a multiple of 8.   dataPartitionSize should be either (8, 16, 24, 32)
+ * dataChunkSize  This determines how many bytes to join together for each partition element.  dataChunkSize defaults to 1
  * paillierBitSize.   Set this to 3072
  * bitSet.  Set this to 32
  * certainty.  Set this to 132
@@ -202,7 +202,7 @@ Step 5) Encrypte the Query.  Select `Encrypt Query` and update the URL with the 
         },
         "schedulesUri": "/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules",
         "parameters": {
-            "dataPartitionBitSize": "24",
+            "dataChunkSize": "3",
             "hashBitSize": "15",
             "paillierBitSize": "3072",
             "bitSet": "32",

@@ -26,20 +26,6 @@ import org.slf4j.LoggerFactory;
 
 public class ConversionUtils {
 
-	private static final Logger logger = LoggerFactory.getLogger(ConversionUtils.class);
-
-	// public static short bytesToShort(byte[] bytes) {
-	// return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getShort();
-	// }
-	//
-	// public static byte[] shortToByteArray(short value) {
-	//
-	// byte[] bytes = new byte[2];
-	// ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
-	// buffer.putShort(value);
-	// return buffer.array();
-	// }
-
 	public static byte[] shortToBytes(short value) {
 		return new byte[] {(byte) (value >> 8), (byte) value};
 	}

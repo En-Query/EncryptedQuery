@@ -59,9 +59,9 @@ public class EncryptionPropertiesBuilder implements QuerierProperties {
 		return this;
 	}
 
-	public EncryptionPropertiesBuilder dataPartitionBitSize(Integer dataPartitionBitSize) {
-		if (dataPartitionBitSize != null) {
-			properties.setProperty(DATA_PARTITION_BIT_SIZE, String.valueOf(dataPartitionBitSize));
+	public EncryptionPropertiesBuilder dataChunkSize(Integer dataChunkSize) {
+		if (dataChunkSize != null) {
+			properties.setProperty(DATA_CHUNK_SIZE, String.valueOf(dataChunkSize));
 		}
 		return this;
 	}
@@ -103,7 +103,7 @@ public class EncryptionPropertiesBuilder implements QuerierProperties {
 
 	private void setEncryptionDefaults(Properties properties) {
 		conditionalSetDetault(properties, HASH_BIT_SIZE, "12");
-		conditionalSetDetault(properties, DATA_PARTITION_BIT_SIZE, "8");
+		conditionalSetDetault(properties, DATA_CHUNK_SIZE, "1");
 		conditionalSetDetault(properties, PAILLIER_BIT_SIZE, "3072");
 		conditionalSetDetault(properties, CERTAINTY, "128");
 		conditionalSetDetault(properties, EMBEDSELECTOR, "true");

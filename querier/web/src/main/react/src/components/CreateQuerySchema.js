@@ -75,7 +75,7 @@ class CreateQuerySchema extends React.Component {
     // Can't find key somehow
   };
 
-  onChange = e => {
+  onSizeChange = e => {
     e.persist();
     const { fieldNames } = this.state;
     const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
@@ -118,8 +118,18 @@ class CreateQuerySchema extends React.Component {
   };
 
   fieldNamesChanged = newFieldNames => {
-    console.log("newFiledNames", newFieldNames);
-    this.setState({ fieldNames: newFieldNames });
+    console.log("newFieldNames", newFieldNames);
+    this.setState({
+      fieldNames: newFieldNames,
+      size: {
+        [newFieldNames]: 1,
+        ...this.state.size
+      },
+      maxArrayElements: {
+        [newFieldNames]: 1,
+        ...this.state.maxArrayElements
+      }
+    });
   };
 
   updateSelectorField = e => {
@@ -281,7 +291,7 @@ class CreateQuerySchema extends React.Component {
                 <label>Size:</label>
                 <input
                   value={this.state.size[lastCheckedFieldName] || 1}
-                  onChange={this.onChange}
+                  onChange={this.onSizeChange}
                   type="number"
                   name="size"
                   min="1"

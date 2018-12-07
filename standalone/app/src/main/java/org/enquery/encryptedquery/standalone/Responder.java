@@ -108,9 +108,12 @@ public class Responder implements StandaloneConfigurationProperties {
 		}
 
 		runParameters.put(HASH_BIT_SIZE, Integer.toString(query.getQueryInfo().getHashBitSize()));
-		runParameters.put(DATA_PARTITION_BIT_SIZE, Integer.toString(query.getQueryInfo().getDataPartitionBitSize()));
+		runParameters.put(DATA_CHUNK_SIZE, Integer.toString(query.getQueryInfo().getDataChunkSize()));
 
-		log.info("Configuration: " + runParameters);
+		log.info("Configuration:");
+		for (Map.Entry<String, String> entry : runParameters.entrySet()) {
+			log.info("  {} = {}", entry.getKey(), entry.getValue() );
+		}
 	}
 
 	public void run(Map<String, String> config) throws Exception {

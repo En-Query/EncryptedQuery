@@ -28,13 +28,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.sshd.common.util.io.IoUtils;
+import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryCollectionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QuerySchemaResponse;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -122,11 +122,11 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		q.setName("Test Query " + ++queryCount);
 
 		Map<String, String> params = new HashMap<>();
-		params.put(ResponderProperties.DATA_PARTITION_BIT_SIZE, "8");
-		params.put(ResponderProperties.HASH_BIT_SIZE, "9");
-		params.put(ResponderProperties.PAILLIER_BIT_SIZE, "384");
-		params.put(ResponderProperties.CERTAINTY, "128");
-		params.put(ResponderProperties.BIT_SET, "32");
+		params.put(QuerierProperties.DATA_CHUNK_SIZE, "8");
+		params.put(QuerierProperties.HASH_BIT_SIZE, "9");
+		params.put(QuerierProperties.PAILLIER_BIT_SIZE, "384");
+		params.put(QuerierProperties.CERTAINTY, "128");
+		params.put(QuerierProperties.BIT_SET, "32");
 		q.setParameters(params);
 
 		List<String> selectorValues = new ArrayList<>();

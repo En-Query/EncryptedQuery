@@ -339,14 +339,6 @@ public class Partitioner implements FieldTypes {
 		return bytes;
 	}
 
-	private void collectPartsFromBytes(List<BigInteger> parts, byte[] bytes) {
-		for (byte b : bytes) {
-			// Make sure that BigInteger treats the byte as 'unsigned' literal
-			parts.add(BigInteger.valueOf((long) b & 0xFF));
-		}
-	}
-
-
 	/**
 	 * Reconstructs the object from the partitions
 	 */
@@ -498,49 +490,21 @@ public class Partitioner implements FieldTypes {
 		if (numParts > parts.size()) {
 			throw new PIRException("Size of data (" + numParts + ") exceeds part size (" + parts.size() + ") !");
 		}
-		Boolean allNull = true;
 		for (int i = 0; i < (numParts - numberToSkip); ++i) {
 			if ((partsIndex + i + numberToSkip) >= parts.size()) {
-//				throw new PIRException("Index overflow for field: " + element.getName() + " Starting at position: " + (partsIndex + i + numberToSkip) +
-//						" for " + numParts + " parts Size: " + parts.size());
+				// throw new PIRException("Index overflow for field: " + element.getName() + "
+				// Starting at position: " + (partsIndex + i + numberToSkip) +
+				// " for " + numParts + " parts Size: " + parts.size());
 				logger.warn("Index Overflow for field {} i={} Starting Position={} numParts={} numberToSkip={} parts size={}",
-						element.getName(), i, (partsIndex + i + numberToSkip), numParts, numberToSkip, parts.size());
+						element.getName(), i, partsIndex + i + numberToSkip, numParts, numberToSkip, parts.size());
 				break;
 			} else {
 				result[i] = parts.get(partsIndex + i + numberToSkip).byteValue();
-				if (result[i] != 0x00) {
-					allNull = false;
-				}
 			}
-		}
-		if (allNull) {
-			// logger.info("Data all null for element {} !!", element.getName());
-			return result;
-		} else {
-			// logger.info("value in bytes: {}", Hex.encodeHexString(result));
 		}
 		return result;
 	}
 
-
-
-	/**
-	 * Calculate the number of bytes based on the dataPartitionBitSize. DataPartitionBitSize must be
-	 * a multiple of 8.
-	 * 
-	 * @param dataPartitionBitSize
-	 * @return
-	 * @throws PIRException
-	 */
-	public int getBytesPerPartition(int dataPartitionBitSize) throws PIRException {
-		int bytesPerPartition = 1;
-		if ((dataPartitionBitSize % 8) == 0) {
-			bytesPerPartition = dataPartitionBitSize / 8;
-		} else {
-			throw new PIRException("dataPartitionBitSize must be a multiple of 8. Actual value: " + dataPartitionBitSize);
-		}
-		return bytesPerPartition;
-	}
 
 	/**
 	 * Returns a List of Byte[]. The Byte array size is the number of bytes respresented by the
@@ -551,16 +515,16 @@ public class Partitioner implements FieldTypes {
 	 * @return
 	 * @throws PIRException
 	 */
-	public List<Byte[]> createPartitions(List<Byte> inputData, int dataPartitionBitSize) throws PIRException {
+	public List<Byte[]> createPartitions(List<Byte> inputData, int dataChunkSize) throws PIRException {
 		List<Byte[]> partitionedData = new ArrayList<>();
 
-		int bytesPerPartition = getBytesPerPartition(dataPartitionBitSize);
+		// int bytesPerPartition = getBytesPerPartition(dataPartitionBitSize);
 
-		if (bytesPerPartition > 1) {
-			byte[] tempByteArray = new byte[bytesPerPartition];
+		if (dataChunkSize > 1) {
+			byte[] tempByteArray = new byte[dataChunkSize];
 			int j = 0;
 			for (int i = 0; i < inputData.size(); i++) {
-				if (j < bytesPerPartition) {
+				if (j < dataChunkSize) {
 					tempByteArray[j] = inputData.get(i).byteValue();
 				} else {
 					Byte[] returnByte = new Byte[tempByteArray.length];
@@ -573,8 +537,8 @@ public class Partitioner implements FieldTypes {
 				}
 				j++;
 			}
-			if (j <= bytesPerPartition) {
-				while (j < bytesPerPartition) {
+			if (j <= dataChunkSize) {
+				while (j < dataChunkSize) {
 					tempByteArray[j] = new Byte("0");
 					j++;
 				}

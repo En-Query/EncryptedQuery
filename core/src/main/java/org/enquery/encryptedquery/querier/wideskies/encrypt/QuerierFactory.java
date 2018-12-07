@@ -98,7 +98,7 @@ public class QuerierFactory implements QuerierProperties {
 		int numSelectors = selectors.size();
 		int hashBitSize = Integer.parseInt(properties.getProperty(HASH_BIT_SIZE, "12"));
 		int bitSet = Integer.parseInt(properties.getProperty(BIT_SET, "32"));
-		int dataPartitionBitSize = Integer.parseInt(properties.getProperty(DATA_PARTITION_BIT_SIZE, "8"));
+		int dataChunkSize = Integer.parseInt(properties.getProperty(DATA_CHUNK_SIZE, "8"));
 		int paillierBitSize = Integer.parseInt(properties.getProperty(PAILLIER_BIT_SIZE, "3072"));
 		int certainty = Integer.parseInt(properties.getProperty(CERTAINTY, "128"));
 		boolean embedSelector = Boolean.valueOf(properties.getProperty(EMBEDSELECTOR, "true"));
@@ -112,7 +112,7 @@ public class QuerierFactory implements QuerierProperties {
 		queryInfo.setIdentifier(queryIdentifier);
 		queryInfo.setNumSelectors(numSelectors);
 		queryInfo.setHashBitSize(hashBitSize);
-		queryInfo.setDataPartitionBitSize(dataPartitionBitSize);
+		queryInfo.setDataChunkSize(dataChunkSize);
 		queryInfo.setQueryType(querySchema.getName());
 		queryInfo.setEmbedSelector(embedSelector);
 		queryInfo.setQuerySchema(querySchema);
@@ -120,10 +120,10 @@ public class QuerierFactory implements QuerierProperties {
 		// Check the number of selectors to ensure that 2^{numSelector*dataPartitionBitSize} < N
 		// For example, if the highest bit is set, the largest value is
 		// \floor{paillierBitSize/dataPartitionBitSize}
-		int exp = numSelectors * dataPartitionBitSize;
+		int exp = numSelectors * dataChunkSize * 8;
 		BigInteger val = (BigInteger.valueOf(2)).pow(exp);
 		if (val.compareTo(paillier.getN()) != -1) {
-			final String message = "The number of selectors = " + numSelectors + " must be such that " + "2^{numSelector*dataPartitionBitSize} < N = "
+			final String message = "The number of selectors = " + numSelectors + " must be such that " + "2^{numSelector*dataChunkSize*8} < N = "
 					+ paillier.getN().toString(2);
 			throw new PIRException(message);
 		}

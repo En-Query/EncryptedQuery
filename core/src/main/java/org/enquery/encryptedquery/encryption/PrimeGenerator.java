@@ -105,7 +105,7 @@ public class PrimeGenerator {
 		// step 4.4
 		BigInteger lowerBound;
 		if (!lowerBoundCache.containsKey(bitLength)) {
-			lowerBound = SQRT_2.multiply(BigDecimal.valueOf(2).pow((bitLength / 2) - 1)).toBigInteger();
+			lowerBound = SQRT_2.multiply(BigDecimal.valueOf(2).pow(bitLength / 2 - 1)).toBigInteger();
 			lowerBoundCache.put(bitLength, lowerBound);
 		} else {
 			lowerBound = lowerBoundCache.get(bitLength);
@@ -122,15 +122,12 @@ public class PrimeGenerator {
 
 			// FIPS 186-4 B.3.3, step 4.4
 			// 4.4: If p < (\sqrt(2))(2^(bitLength/2) – 1)), then go to step 4.2.
-			if (p.compareTo(lowerBound) > -1) {
-				// FIPS 186-4, step 4.5
-				if (passesMillerRabin(p, numRounds)) {
-					// We have winner
-					break;
-				}
+			// FIPS 186-4, step 4.5
+			if (p.compareTo(lowerBound) > -1 && passesMillerRabin(p, numRounds)) {
+				// We have winner
+				break;
 			}
 		}
-
 		return p;
 	}
 
@@ -156,7 +153,7 @@ public class PrimeGenerator {
 		// step 5.5
 		BigInteger lowerBound;
 		if (!lowerBoundCache.containsKey(bitLength)) {
-			lowerBound = SQRT_2.multiply(BigDecimal.valueOf(2).pow((bitLength / 2) - 1)).toBigInteger();
+			lowerBound = SQRT_2.multiply(BigDecimal.valueOf(2).pow(bitLength / 2 - 1)).toBigInteger();
 			lowerBoundCache.put(bitLength, lowerBound);
 		} else {
 			lowerBound = lowerBoundCache.get(bitLength);
@@ -184,13 +181,11 @@ public class PrimeGenerator {
 			// FIPS 186-4 B.3.3, step 5.4 & 5.5
 			// 5.4 If (|p – q| ≤ 2^((bitLength/2) – 100), then go to step 5.2
 			// 5.5: If q < (\sqrt(2))(2^(bitLength/2) – 1)), then go to step 5.2.
-			BigInteger absDiff = (p.subtract(q)).abs();
-			if ((q.compareTo(lowerBound) > -1) && (absDiff.compareTo(minimumDifference) > 0)) {
-				// FIPS 186-4, step 5.6
-				if (passesMillerRabin(q, numRounds)) {
-					// We have winner
-					break;
-				}
+			BigInteger absDiff = p.subtract(q).abs();
+			// FIPS 186-4, step 5.6
+			if (q.compareTo(lowerBound) > -1 && absDiff.compareTo(minimumDifference) > 0 && passesMillerRabin(q, numRounds)) {
+				// We have winner
+				break;
 			}
 		}
 		return q;
@@ -321,11 +316,11 @@ public class PrimeGenerator {
 			} else {
 				minimumDifference = minimumDifferenceCache.get(bitLength);
 			}
-			BigInteger absDiff = (p.subtract(q)).abs();
+			BigInteger absDiff = p.subtract(q).abs();
 			if (absDiff.compareTo(minimumDifference) <= 0) {
 				continue; // go to step 5
 			}
-			absDiff = (Xp.subtract(Xq)).abs();
+			absDiff = Xp.subtract(Xq).abs();
 			if (absDiff.compareTo(minimumDifference) <= 0) {
 				continue; // go to step 5
 			}

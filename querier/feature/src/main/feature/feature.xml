@@ -16,6 +16,13 @@
 		<bundle>mvn:commons-codec/commons-codec/${commons-codec.version}</bundle>
 	</feature>
 		
+	<feature name='encryptedquery-jackson'>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
+	</feature>
+		
     <feature name="encryptedquery-querier-core" version="${project.version}"
     	description="Provides the EncryptedQuery Querier Web Application">
     	
@@ -70,6 +77,7 @@
 		<feature version="${aries.jpa.version}">jpa</feature>
 		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
         <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+		<feature>encryptedquery-jackson</feature>
 				
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
  		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>
@@ -80,8 +88,6 @@
         <bundle>mvn:${project.groupId}/encryptedquery-xml/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}</bundle>
-
-
         <bundle>mvn:${project.groupId}/encryptedquery-querier-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-data/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-integration/${project.version}</bundle>

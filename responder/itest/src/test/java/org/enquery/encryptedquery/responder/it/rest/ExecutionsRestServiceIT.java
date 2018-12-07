@@ -172,7 +172,7 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 		assertEquals(expectedTime, actualTime);
 	}
 
-	private static final Integer DATA_PARTITION_BITSIZE = 8;
+	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 12;
 	public static final int paillierBitSize = 384;
 	public static final int certainty = 128;
@@ -189,7 +189,7 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 
 		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
 				.newBuilder()
-				.dataPartitionBitSize(DATA_PARTITION_BITSIZE)
+				.dataChunkSize(DATA_CHUNK_SIZE)
 				.hashBitSize(HASH_BIT_SIZE)
 				.paillierBitSize(paillierBitSize)
 				.certainty(certainty)
