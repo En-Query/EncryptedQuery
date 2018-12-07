@@ -1,0 +1,370 @@
+{
+	"info": {
+		"_postman_id": "3cc5c572-2034-4808-8f90-6bd733f11d15",
+		"name": "XETRA Example",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get DataSchemas",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Query Schema",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\":\"QS-XETRA\",\r\n    \"selectorField\":\"Mnemonic\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Mnemonic\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Currency\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"MaxPrice\",\r\n                \"lengthType\":\"fixed\",\r\n                \"size\":4,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"MinPrice\",\r\n                \"lengthType\":\"fixed\",\r\n                \"size\":4,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"TradingDate\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"SecurityType\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"SecurityDesc\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":1000,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Encrypte Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\":\"Q-XETRA-test\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":3,\r\n       \"hashBitSize\":15,\r\n       \"paillierBitSize\":3072,\r\n       \"bitSet\":32,\r\n       \"certainty\":128},\r\n  \"selectorValues\":[\r\n                    \"DBAN\",\r\n                    \"TC1\"\r\n                   ],\r\n  \"embedSelector\":\"true\"\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Generate Query Status",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries/2147483604",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries",
+						"2147483604"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Schedule Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"startTime\":\"2018-12-07T15:49:59.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":1700\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483611\r\n    }\r\n  \r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries/2147483604/schedules",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries",
+						"2147483604",
+						"schedules"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get DataSources",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/datasources",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"datasources"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Results",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries/2147483604/schedules/2147483607/results/2147483607/retrievals",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries",
+						"2147483604",
+						"schedules",
+						"2147483607",
+						"results",
+						"2147483607",
+						"retrievals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Result",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries/2147483604/schedules/2147483612/results",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries",
+						"2147483604",
+						"schedules",
+						"2147483612",
+						"results"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Decrypt Result",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483604/queryschemas/2147483602/queries/2147483604/schedules/2147483612/results/2147483609/retrievals/2147483610/decryptions",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483604",
+						"queryschemas",
+						"2147483602",
+						"queries",
+						"2147483604",
+						"schedules",
+						"2147483612",
+						"results",
+						"2147483609",
+						"retrievals",
+						"2147483610",
+						"decryptions"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

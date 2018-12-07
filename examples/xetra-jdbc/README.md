@@ -63,4 +63,11 @@ The above query takes care of presenting Trade date in a ISO-8601 format so it c
 	
 This will activate an additional Data Source that can be used in Querier UI to schedule Queries against the XETRA data set.
 
+This example uses direct REST calls to the querier to show examples of how those messages are defined.
+
+##### Importing the REST calls into postman
+Copy the /home/encryptedquery/examples/rest-collections/XETRA-Example-postman-collection.json to where it can be accessed by the Postman app.
+Start the Postman app and click on the Import button.  Select the `XETRA-Example-postman-collection.json` file to load.
+** Note: The examples in the collection use `192.168.200.58` for the querier server, substitute your servers IP or DNS name to connect to your querier installation.
+
 
