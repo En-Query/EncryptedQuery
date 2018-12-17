@@ -50,7 +50,7 @@ data.schema.name=Business Articles
 .jdbc.driver=org.mariadb.jdbc.Driver
 
 # URL to connect to the database
-.jdbc.url=jdbc:mariadb://192.168.200.74:3306/envieta?user=enquery&password=enquery
+.jdbc.url=jdbc:mariadb://192.168.200.74:3306/enquery?user=enquery&password=enquery
 
 # SQL query that selects the data to be queried
 .jdbc.query=SELECT id, complanyname, tickersymbol, articledate, articleURL, subject FROM businessarticles 
