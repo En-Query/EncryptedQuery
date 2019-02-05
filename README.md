@@ -1,14 +1,23 @@
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.0.1-SNAPSHOT
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.0
 
 ## Overview
 
-Encrypted Query is designed to allow a user to query a remote database without revealing the contents of the query or the results to the database server.  This is accomplished using techniques from Private Information Retrieval (PIR) with Paillier encryption. Encrypted Query has two distinct sides - the Querier and the Responder.  The Querier side prepares encrypted queries which are then submitted to the Responder side.  The Responder side accepts encrypted queries and executes them on some data source without being able to determine the criteria contained in the query, or the data that is returned. All records of the queried data source are always scanned during query execution. 
+Encrypted Query is designed to allow a user to query a remote database without revealing the contents of the query or the results from the database server.  This is accomplished using techniques from Private Information Retrieval (PIR) with Paillier encryption. Encrypted Query has two distinct sides - the Querier and the Responder.  The Querier prepares encrypted queries which are then submitted to the Responder.  The Responder accepts encrypted queries and executes them on selected data sources without revealing the criteria contained in the query, or the data that is returned. All records of the selected data source are scanned during query execution. 
 
+Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
-
+2.1
+ - Drop in Encryption.  Encryption/Decryption has been modularized to allow other drop in encryption schemes
+ - Streaming query execution.  Queries can now be executed against a Kafka stream.  Streams can be processed in a Tumbling windows fashion.   
+ - Larger chunk sizes for Paillier DeRooij encryption.  Chunk sizes used to be limited to 3.  Max chunk size for Paillier DeRooij is now ( (paillier-bit-size - 1) / 8 / number of targeted selectors )
+ - Native Libraries can now be built on Centos, Ubuntu, & Mac OS
+ - hashBitSize parameter is now set in the querier configuration.  Users no longer have to add it to the Encrypt Query REST call.
+ - Update JSON parsing allows nested json elements to be accessed.
+ 
+2.0
   - Separated the Querier and Responder into standalone Entities.  Allows you to separate the Encrypting/Decrypting of a query in an Enclave separating it from the Query Execution.   The Responder will be located where the data is and using REST interfaces to communicate between the Querier and Responder.
   - Basic UI to communicate with the Querier
   - Query files are in xml format

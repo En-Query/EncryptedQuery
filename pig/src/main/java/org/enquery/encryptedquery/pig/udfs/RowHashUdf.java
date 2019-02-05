@@ -22,7 +22,7 @@ import java.text.MessageFormat;
 import org.apache.commons.lang3.Validate;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
+import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.utils.KeyedHash;
 
 public class RowHashUdf extends AbstractUdf<Integer> implements PigTypes {

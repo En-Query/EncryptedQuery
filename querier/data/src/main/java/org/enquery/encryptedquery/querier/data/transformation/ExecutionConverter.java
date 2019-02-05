@@ -41,6 +41,10 @@ public class ExecutionConverter {
 	private static final QName OUT_QUERY_QNAME = new QName(EXECUTION_NS, "query");
 	private static final QName CONFIGURATION = new QName(EXECUTION_NS, "configuration");
 	private static final QName CONFIG_ENTRY = new QName(EXECUTION_NS, "entry");
+	private static final String QUERY_SCHEMA_VERSION_ATTRIB = "schemaVersion";
+
+	// needs to match version attribute in the XSD resource (most current version)
+	private static final String OUT_QUERY_CURRENT_XSD_VERSION = "2.0";
 
 	@Reference
 	private QueryRepository queryRepo;
@@ -123,6 +127,7 @@ public class ExecutionConverter {
 			Validate.isTrue(IN_QUERY_QNAME.equals(queryStart.getName()));
 
 			writer.add(eventFactory.createStartElement(OUT_QUERY_QNAME, null, null));
+			writer.add(eventFactory.createAttribute(QUERY_SCHEMA_VERSION_ATTRIB, OUT_QUERY_CURRENT_XSD_VERSION));
 			while (reader.hasNext()) {
 				XMLEvent event = reader.nextEvent();
 				if (event.isEndElement() && IN_QUERY_QNAME.equals(event.asEndElement().getName())) {

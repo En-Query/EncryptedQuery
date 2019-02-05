@@ -25,6 +25,7 @@ import org.apache.aries.jpa.template.JpaTemplate;
 import org.apache.aries.jpa.template.TransactionType;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
+import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -88,38 +89,96 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	 */
 	@Override
 	public DataSchema update(DataSchema ds) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(ds));
+		validateDataSchema(ds);
+		Validate.notNull(ds.getId());
+
+		return jpa.txExpr(TransactionType.Required,
+				em -> {
+					DataSchema prev = em.find(DataSchema.class, ds.getId());
+					Validate.notNull(prev, "Can't update non existing data schema: %s", ds.toString());
+
+					prev.setName(ds.getName());
+					prev.getFields().clear();
+					// let hibernate delete orphans first, to avoid constraint violation errors
+					em.flush();
+
+					for (DataSchemaField f : ds.getFields()) {
+						f.setDataSchema(prev);
+						prev.getFields().add(f);
+					}
+
+					return em.merge(prev);
+				});
 	}
 
 	@Override
-	public DataSchema add(DataSchema ds) {
-		Validate.notNull(ds);
-		Validate.isTrue(ds.getId() == null);
-		Validate.notBlank(ds.getName(), "Name is required.");
-		Validate.notNull(ds.getFields(), "Fields are required.");
-		Validate.isTrue(ds.getFields().size() > 0, "Need at least one field.");
-		log.info("Adding New Data Schema: {}", ds.toString());
+	public DataSchema add(DataSchema dataSchema) {
+		validateDataSchema(dataSchema);
+		Validate.isTrue(dataSchema.getId() == null);
+		jpa.tx(em -> {
+			em.persist(dataSchema);
+		});
+		return dataSchema;
+	}
+
+	private void validateDataSchema(DataSchema dataSchema) {
+		Validate.notNull(dataSchema);
+		Validate.notBlank(dataSchema.getName(), "Name is required.");
+		Validate.notNull(dataSchema.getFields(), "Fields are required.");
+		Validate.isTrue(dataSchema.getFields().size() > 0, "Need at least one field.");
+		log.info("Adding New Data Schema: {}", dataSchema.toString());
 		Validate.isTrue(
-				ds.getFields().stream().map(e -> e.getFieldName()).distinct().collect(Collectors.toList()).size() == ds.getFields().size(),
+				dataSchema.getFields().stream().map(e -> e.getFieldName()).distinct().collect(Collectors.toList()).size() == dataSchema.getFields().size(),
 				"No unique field names found.");
 
 		Validate.isTrue(
-				ds.getFields().stream().filter(e -> e.getDataSchema() != ds).collect(Collectors.toList()).size() == 0,
+				dataSchema.getFields().stream().filter(e -> e.getDataSchema() != dataSchema).collect(Collectors.toList()).size() == 0,
 				"At least one field not associated to the same parent data schema instance.");
 
 		Validate.isTrue(
-				ds.getFields().stream().filter(e -> e.getId() != null).collect(Collectors.toList()).isEmpty(),
+				dataSchema.getFields().stream().filter(e -> e.getId() != null).collect(Collectors.toList()).isEmpty(),
 				"At least one field id is not null.");
-
-		jpa.tx(em -> {
-			em.persist(ds);
-		});
-		return ds;
 	}
 
 	@Override
 	public void delete(String name) {
-		jpa.tx(em -> em.remove(findByName(name)));
+		jpa.tx(em -> {
+			DataSchema dataSchema = findByName(name);
+			if (dataSchema != null) {
+				em.remove(dataSchema);
+			}
+		});
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.responder.data.service.DataSchemaService#addOrUpdate(org.enquery.
+	 * encryptedquery.responder.data.entity.DataSchema)
+	 */
+	@Override
+	public DataSchema addOrUpdate(DataSchema dataSchema) {
+		validateDataSchema(dataSchema);
+
+		DataSchema[] result = {dataSchema};
+		jpa.tx(em -> {
+			DataSchema prev = findByName(dataSchema.getName());
+			if (prev != null) {
+				prev.getFields().clear();
+				prev = em.merge(prev);
+				em.flush();
+
+				for (DataSchemaField f : dataSchema.getFields()) {
+					f.setDataSchema(prev);
+					prev.getFields().add(f);
+				}
+				result[0] = em.merge(prev);
+			} else {
+				em.persist(dataSchema);
+			}
+		});
+		return result[0];
 	}
 
 }

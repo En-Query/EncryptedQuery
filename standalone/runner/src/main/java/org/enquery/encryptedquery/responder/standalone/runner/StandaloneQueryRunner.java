@@ -26,13 +26,18 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.core.CoreConfigurationProperties;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.business.ChildProcessLogger;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
@@ -59,17 +64,17 @@ public class StandaloneQueryRunner implements QueryRunner {
 	private String dataSchemaName;
 	private Path dataSourceFilePath;
 	private Path runDir;
-	private String encryptionMethodClass;
-	private String modPowAbstractionClass;
 	private String javaOptions;
-	private QueryTypeConverter queryTypeConverter;
 	private int numberOfThreads;
 	private int maxQueueSize;
 	private long computeThreshold;
-	private String jniLibryPath;
 
 	@Reference
 	private ExecutorService threadPool;
+	@Reference
+	private QueryTypeConverter queryTypeConverter;
+	@Reference
+	private CryptoSchemeRegistry cryptoRegistry;
 
 	@Activate
 	void activate(final Config config) {
@@ -95,12 +100,6 @@ public class StandaloneQueryRunner implements QueryRunner {
 		runDir = Paths.get(config._run_directory());
 		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
 
-		encryptionMethodClass = config._column_encryption_class_name();
-		Validate.notBlank(encryptionMethodClass);
-
-		modPowAbstractionClass = config._mod_pow_class_name();
-		Validate.notBlank(modPowAbstractionClass);
-
 		javaPath = Paths.get(config._java_path());
 		Validate.isTrue(Files.exists(javaPath), "Does not exists: " + javaPath);
 
@@ -110,12 +109,9 @@ public class StandaloneQueryRunner implements QueryRunner {
 
 		javaOptions = config._java_options();
 
-		queryTypeConverter = new QueryTypeConverter();
-
 		numberOfThreads = config._number_of_threads();
 		maxQueueSize = config._max_queue_size();
 		computeThreshold = config._compute_threshold();
-		jniLibryPath = config._jni_library_path();
 	}
 
 	@Override
@@ -139,16 +135,17 @@ public class StandaloneQueryRunner implements QueryRunner {
 	}
 
 	@Override
-	public void run(Map<String, String> parameters, Query query, String outputFileName, OutputStream stdOutput) {
+	public void run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
+
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
-		log.info("Output File: {}", outputFileName);
 		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
+
 		Path workingTempDir = null;
 		try {
 			workingTempDir = Files.createTempDirectory(runDir, "stand-alone-");
 			Path queryFile = createQueryFile(workingTempDir, query);
-			Path configFile = createConfigFile(workingTempDir, parameters);
+			Path configFile = createConfigFile(workingTempDir, parameters, query);
 
 			List<String> arguments = new ArrayList<>();
 			arguments.add(javaPath.toString());
@@ -196,25 +193,30 @@ public class StandaloneQueryRunner implements QueryRunner {
 	}
 
 
-	private Path createConfigFile(Path dir, Map<String, String> parameters) throws FileNotFoundException, IOException {
+	private Path createConfigFile(Path dir, Map<String, String> parameters, Query query) throws FileNotFoundException, IOException {
 		Path result = dir.resolve("config.properties");
-
+        int maxHitsPerSelector = 1000;
+        
 		Properties p = new Properties();
 
-		p.put(StandaloneConfigurationProperties.COLUMN_ENCRYPTION_CLASS_NAME, encryptionMethodClass);
-		p.put(StandaloneConfigurationProperties.MOD_POW_CLASS_NAME, modPowAbstractionClass);
+		if (parameters != null) {
+			if (parameters.containsKey(ResponderProperties.MAX_HITS_PER_SELECTOR)) {
+				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+			}
+		}
+		p.put(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 		p.put(StandaloneConfigurationProperties.PROCESSING_THREADS, Integer.toString(numberOfThreads));
 		p.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, Integer.toString(maxQueueSize));
 		p.put(StandaloneConfigurationProperties.COMPUTE_THRESHOLD, Long.toString(computeThreshold));
 
-		if (jniLibryPath != null) {
-			p.put("jni.library.path", jniLibryPath);
-		}
-
-		if (parameters != null) {
-			parameters.forEach((k, v) -> {
-				p.put(k, v);
-			});
+		// Pass the CryptoScheme configuration to the external application,
+		// the external application needs to instantiate the CryptoScheme whit these parameters
+		final String schemeId = query.getQueryInfo().getCryptoSchemeId();
+		CryptoScheme cryptoScheme = cryptoRegistry.cryptoSchemeByName(schemeId);
+		Validate.notNull(cryptoScheme, "CryptoScheme not found for id: %s", schemeId);
+		p.setProperty(CoreConfigurationProperties.CRYPTO_SCHEME_CLASS_NAME, cryptoScheme.getClass().getName());
+		for (Entry<String, String> entry : cryptoScheme.configurationEntries()) {
+			p.setProperty(entry.getKey(), entry.getValue());
 		}
 
 		try (OutputStream os = new FileOutputStream(result.toFile())) {

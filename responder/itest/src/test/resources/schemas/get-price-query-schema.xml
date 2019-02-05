@@ -6,6 +6,9 @@
 	<field>
 		<name>price</name>
 	</field>
+	<field>
+		<name>title</name>
+	</field>
 	<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema">
 		<name>Books</name>
 		<field> 

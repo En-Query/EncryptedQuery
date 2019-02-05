@@ -36,7 +36,7 @@ import javax.persistence.TemporalType;
 public class Execution {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "exe_seq")
 	private Integer id;
 
 	@Column(nullable = false, name = "received_ts")
@@ -68,6 +68,9 @@ public class Execution {
 	@ManyToOne()
 	@JoinColumn(name = "dataschema_id")
 	private DataSchema dataSchema;
+
+	@Column(name = "output_file_path")
+	private String outputFilePath;
 
 	public Integer getId() {
 		return id;
@@ -184,6 +187,14 @@ public class Execution {
 	 */
 	public void setQueryLocation(String queryLocation) {
 		this.queryLocation = queryLocation;
+	}
+
+	public String getOutputFilePath() {
+		return outputFilePath;
+	}
+
+	public void setOutputFilePath(String outputFilePath) {
+		this.outputFilePath = outputFilePath;
 	}
 
 }

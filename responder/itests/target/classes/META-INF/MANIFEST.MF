@@ -1,8 +1,0 @@
-Manifest-Version: 1.0
-Bnd-LastModified: 1542296748749
-Bundle-ManifestVersion: 2
-Bundle-Name: EncryptedQuery :: Responder :: Integration Tests
-Bundle-SymbolicName: encryptedquery-responder-itests
-Bundle-Version: 1.0.0.201811151545
-Created-By: 1.8.0_144 (Oracle Corporation)
-Tool: Bnd-4.0.0.201805111645

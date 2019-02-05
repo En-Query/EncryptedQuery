@@ -2,7 +2,7 @@ package org.enquery.encryptedquery.xml.transformation;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.TreeMap;
 
@@ -18,34 +18,60 @@ import javax.xml.validation.SchemaFactory;
 
 import org.apache.camel.Converter;
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
+import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.xml.schema.ObjectFactory;
 import org.enquery.encryptedquery.xml.schema.Response;
 import org.enquery.encryptedquery.xml.schema.ResultSet;
 import org.enquery.encryptedquery.xml.schema.ResultSet.Result;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.xml.sax.SAXException;
 
-@Converter
+@Component(service = ResponseTypeConverter.class)
 public class ResponseTypeConverter {
 
 	private static final String XSD_PATH = "/org/enquery/encryptedquery/xml/schema/response.xsd";
+	// needs to match version attribute in the XSD resource (most current version)
+	private static final BigDecimal CURRENT_XSD_VERSION = new BigDecimal("2.0");
 
-	private QueryTypeConverter qtc;
+	@Reference
+	private CryptoSchemeRegistry schemeRegistry;
+	@Reference
+	private QueryTypeConverter queryConverter;
+
 	private Schema xmlSchema;
 	private JAXBContext jaxbContext;
 	private ObjectFactory objectFactory;
 
-	public ResponseTypeConverter(QueryTypeConverter qtc) {
-		this.qtc = qtc;
-		initSchemas();
+	@Activate
+	public void initialize() {
+		initializeSchemas();
+		Validate.notNull(schemeRegistry);
+		Validate.notNull(queryConverter);
 	}
 
-	public ResponseTypeConverter() {
-		qtc = new QueryTypeConverter();
-		initSchemas();
+	public CryptoSchemeRegistry getSchemeRegistry() {
+		return schemeRegistry;
 	}
 
-	private void initSchemas() {
+	public void setSchemeRegistry(CryptoSchemeRegistry schemeRegistry) {
+		this.schemeRegistry = schemeRegistry;
+	}
+
+
+	public QueryTypeConverter getQueryConverter() {
+		return queryConverter;
+	}
+
+	public void setQueryConverter(QueryTypeConverter queryConverter) {
+		this.queryConverter = queryConverter;
+	}
+
+	private void initializeSchemas() {
 		SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 
 		URL resource = getClass().getResource(XSD_PATH);
@@ -76,11 +102,12 @@ public class ResponseTypeConverter {
 	}
 
 	@Converter
-	public org.enquery.encryptedquery.xml.schema.Response toXML(org.enquery.encryptedquery.response.wideskies.Response response) {
+	public org.enquery.encryptedquery.xml.schema.Response toXML(org.enquery.encryptedquery.data.Response response) {
 		Validate.notNull(response);
 
 		final Response result = new org.enquery.encryptedquery.xml.schema.Response();
-		result.setQueryInfo(qtc.toXMLQueryInfo(response.getQueryInfo()));
+		result.setSchemaVersion(CURRENT_XSD_VERSION);
+		result.setQueryInfo(queryConverter.toXMLQueryInfo(response.getQueryInfo()));
 
 		response.getResponseElements()
 				.stream()
@@ -89,7 +116,7 @@ public class ResponseTypeConverter {
 					resultSet.forEach((col, val) -> {
 						Result entry = new Result();
 						entry.setColumn(col);
-						entry.setValue(val);
+						entry.setValue(val.toBytes());
 						rs.getResult().add(entry);
 					});
 					result.getResultSet().add(rs);
@@ -98,23 +125,23 @@ public class ResponseTypeConverter {
 		return result;
 	}
 
-	@Converter
-	public org.enquery.encryptedquery.response.wideskies.Response toCore(org.enquery.encryptedquery.xml.schema.Response response) {
+	public org.enquery.encryptedquery.data.Response toCore(org.enquery.encryptedquery.xml.schema.Response response) {
 		Validate.notNull(response);
 
-		final QueryInfo queryInfo = qtc.fromXMLQueryInfo(response.getQueryInfo());
+		final QueryInfo queryInfo = queryConverter.fromXMLQueryInfo(response.getQueryInfo());
 
-		final org.enquery.encryptedquery.response.wideskies.Response result = new org.enquery.encryptedquery.response.wideskies.Response(
-				queryInfo);
+		final org.enquery.encryptedquery.data.Response result = //
+				new org.enquery.encryptedquery.data.Response(queryInfo);
+
+		final CryptoScheme scheme = schemeRegistry.cryptoSchemeByName(queryInfo.getCryptoSchemeId());
 
 		response.getResultSet()
 				.stream()
 				.forEach(resultSet -> {
-					TreeMap<Integer, BigInteger> map = new TreeMap<>();
-
+					TreeMap<Integer, CipherText> map = new TreeMap<>();
 					resultSet.getResult()
 							.stream()
-							.forEach(r -> map.put(r.getColumn(), r.getValue()));
+							.forEach(r -> map.put(r.getColumn(), scheme.cipherTextFromBytes(r.getValue())));
 
 					result.addResponseElements(map);
 				});

@@ -1,48 +1,76 @@
 .btnCreate {
-    padding: 10px 24px;
-    -webkit-transition-duration: 0.4s; /* Safari */
-    transition-duration: 0.4s;    
+  padding: 10px 24px;
+  -webkit-transition-duration: 0.4s; /* Safari */
+  transition-duration: 0.4s;
 }
 
 .btnCreate:hover {
-    padding: 10px 24px;
-    background-color: #4CAF50;
-    color: white;
+  padding: 10px 24px;
+  background-color: #4caf50;
+  color: white;
 }
 
 .btnCancel {
-    padding: 10px 24px;
-    -webkit-transition-duration: 0.4s; /* Safari */
-    transition-duration: 0.4s;
+  padding: 10px 24px;
+  -webkit-transition-duration: 0.4s; /* Safari */
+  transition-duration: 0.4s;
 }
 
 .btnCancel:hover {
-    padding: 10px 24px;
-    background-color: #ff0000;
-    color: white;
+  padding: 10px 24px;
+  background-color: #ff0000;
+  color: white;
 }
 
-.select-boxes {     
-    display: flex;
-    width: 100%;
-    flex-direction: column;
+.CreateQuery-selectboxes {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
 }
 
-.select-boxes div {
+.CreateQuery-selectboxes div {
   margin-bottom: 10px;
+  margin-top: 10px;
   display: flex;
 }
 
-.select-boxes label {
-  min-width: 200px;
+.CreateQuery-selectboxes label {
+  min-width: 425px;
 }
 
-.select-boxes input {
+.CreateQuery-selectboxes input {
   flex-grow: 1;
-  max-width: 300px;
+  max-width: 250px;
 }
 
-.select-boxes select {
+.CreateQuery-selectboxes select {
   flex-grow: 1;
-  max-width: 300px;
+  max-width: 258px;
+}
+
+.CreateQuery-runParams {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.CreateQuery-runParams div {
+  margin-bottom: 10px;
+  margin-top: 10px;
+  display: flex;
+}
+
+.CreateQuery-runParams label {
+  flex-grow: 1;
+  max-width: 200px;
+}
+
+.CreateQuery-runParams input {
+  flex-grow: 1;
+  max-width: 200px;
+}
+
+.CreateQuery-runParams select {
+  flex-grow: 1;
+  max-width: 208px;
 }

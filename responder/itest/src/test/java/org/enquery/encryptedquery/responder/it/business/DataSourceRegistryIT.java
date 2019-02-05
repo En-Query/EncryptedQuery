@@ -25,8 +25,8 @@ import javax.inject.Inject;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
-import org.enquery.encryptedquery.responder.it.QueryRunnerConfigurator;
-import org.enquery.encryptedquery.responder.it.ThrowingPredicate;
+import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
+import org.enquery.encryptedquery.responder.it.util.ThrowingPredicate;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class DataSourceRegistryIT extends AbstractResponderItest {
 	public void addAndList() throws Exception {
 		Assert.assertEquals(0, dsRegistry.list().size());
 
-		QueryRunnerConfigurator conf = new QueryRunnerConfigurator(confAdmin);
+		FlinkJdbcRunnerConfigurator conf = new FlinkJdbcRunnerConfigurator(confAdmin);
 		conf.create(DATA_SOURCE_NAME, BOOKS_DATA_SCHEMA_NAME, DESCRIPTION);
 
 		waitUntilQueryRunnerCountAtLeast(dummy -> dsRegistry.list().size() >= 1);

@@ -37,6 +37,11 @@ public class ResultXMLExtractor implements Closeable {
 	private static final QName PAYLOAD = new QName(RESULT_NS, "payload");
 	private static final QName EXECUTION = new QName(RESULT_NS, "execution");
 	private static final QName RESPONSE = new QName(RESPONSE_NS, "response");
+	private static final String SCHEMA_VERSION_ATTRIB = "schemaVersion";
+
+	// needs to match the version attribute in the response.xsd
+	private static final String CURRENT_RESPONSE_VERSION = "2.0";
+
 
 	private ExecutorService threadPool;
 	private int resultId;
@@ -176,6 +181,7 @@ public class ResultXMLExtractor implements Closeable {
 				writer.add(XMLFactories.eventFactory.createStartDocument());
 				writer.add(XMLFactories.eventFactory.createIgnorableSpace("\n"));
 				writer.add(XMLFactories.eventFactory.createStartElement(RESPONSE, null, null));
+				writer.add(XMLFactories.eventFactory.createAttribute(SCHEMA_VERSION_ATTRIB, CURRENT_RESPONSE_VERSION));
 				while (reader.hasNext()) {
 					XMLEvent event = reader.nextEvent();
 					if (event.isEndElement() &&

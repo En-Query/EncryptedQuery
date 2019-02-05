@@ -1,0 +1,11 @@
+Import-Package: \
+	org.enquery.encryptedquery.encryption.impl,\
+	*
+	
+Bundle-NativeCode: native/linux-x86-64/libresponder.so;\
+			native/linux-x86-64/libquerygen.so;\
+			native/linux-x86-64/libgmp.so;\
+			osname=Linux;\
+ 			processor=x86-64,\
+ 			*
+

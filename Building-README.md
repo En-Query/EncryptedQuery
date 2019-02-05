@@ -14,11 +14,14 @@ The overall project structure is as:
 | flink/core			| Flink Core module, base classes, data source agnostic.| 
 | flink/jdbc			| Implementation of Flink query with JDBC data sources.| 
 | flink/jdbc-runner		| Runner for Flink-JDBC. 							| 
-| flink/kafka			| Implementation of Flink query with Kafka data sources. Upcoming.| 
+| flink/kafka			| Implementation of Flink query with Kafka data sources. | 
+| flink/kafka-runner	| Runner for Flink-Kafka. | 
 | health-status			| System health monitoring for both Responder and Querier servers.|
 | jpa					| General purpose JPA related classes. |
 | json					| General purpose JSON related classes. |
 | pig					| Pig query execution. |
+| paillier-encryption   | Paillier Encryption Module |
+| null-encryption       | Null Encryption Module |
 | querier				| Querier server parent POM.  |
 | querier/business  	| Querier server business logic. |
 | querier/data      	| Querier server data access and transformation. |
@@ -51,15 +54,19 @@ The overall project structure is as:
 
 [Download] the application from GitHub
 
-To build without native libraries:
-
-    mvn clean install
-
 Encrypted Query includes native C libraries that can be used for improved performance. To build with native libraries you should build on the the same platform you are planning to deploy and run Encrypted Query:
+
+The application must be built using the Native libraries or using previously compiled native libraries.  The 1st build must include the native libraries.
+
+To build with native libraries:
 
     mvn clean install -P native-libs
 
-The native libraries are optional, but recommended.  Building with native libraries is time consuming, but you only need to do it once, as the produced artifacts are installed in the local Maven Repository for later use.  With Maven, you also have the option to deploy the built artifacts into a remote Maven Repository.  Refer to Maven documentation for more information.  Keep in mind that building native libraries requires _gcc_ and _make_ to be installed in the build system.
+To build when the native libraries have already been built
+       
+    mvn clean install -P with-precompiled-native-libs
+
+The native libraries only need to be built once.  The produced artifacts are installed in the local Maven Repository for later use.  With Maven, you also have the option to deploy the built artifacts into a remote Maven Repository.  Refer to Maven documentation for more information.  Keep in mind that building native libraries requires _gcc_ and _make_ to be installed in the build system.
 
 The build process runs unit tests in the various modules, but it does not run the integration tests, it only compiles them.  Running of integration tests is covered in a separate document.
 

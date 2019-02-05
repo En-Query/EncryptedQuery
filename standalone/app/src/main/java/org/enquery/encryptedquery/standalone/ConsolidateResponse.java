@@ -16,19 +16,32 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import java.math.BigInteger;
-import java.util.Map.Entry;
+import java.security.PublicKey;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.enquery.encryptedquery.query.wideskies.Query;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ConsolidateResponse {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConsolidateResponse.class);
+
+	private final CryptoScheme crypto;
+
+	/**
+	 * 
+	 */
+	public ConsolidateResponse(CryptoScheme crypto) {
+		Validate.notNull(crypto);
+		this.crypto = crypto;
+	}
 
 	/**
 	 * This method consolidates the responses from the queue into a single response
@@ -37,41 +50,40 @@ public class ConsolidateResponse {
 	 * @param query
 	 * @return
 	 */
-	public static Response consolidateResponse(ConcurrentLinkedQueue<Response> queue, Query query) {
+	public Response consolidateResponse(ConcurrentLinkedQueue<Response> queue, QueryInfo queryInfo) {
+		Validate.notNull(queue);
+		Validate.notNull(queryInfo);
 
-		Response response = new Response(query.getQueryInfo());
-		TreeMap<Integer, BigInteger> columns = new TreeMap<>();
+		final Response result = new Response(queryInfo);
+		final Map<Integer, CipherText> columns = new TreeMap<>();
+		final PublicKey publicKey = queryInfo.getPublicKey();
 
 		Response nextResponse;
-		int consolidateCounter = 0;
+		int count = 0;
 		logger.info("Consolidating Response");
 		try {
 			while ((nextResponse = queue.poll()) != null) {
-				for (TreeMap<Integer, BigInteger> nextItem : nextResponse.getResponseElements()) {
-					logger.debug("Consolidate {} response", consolidateCounter);
-
-					for (Entry<Integer, BigInteger> entry : nextItem.entrySet()) {
-
-						if (!columns.containsKey(entry.getKey())) {
-							columns.put(entry.getKey(), BigInteger.valueOf(1));
-						}
-						BigInteger column = columns.get(entry.getKey());
-
-						column = (column.multiply(entry.getValue())).mod(query.getNSquared());
-
-						columns.put(entry.getKey(), column);
-
-					}
-				}
-				consolidateCounter++;
+				collect(columns, publicKey, nextResponse);
+				count++;
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Exception consolidating response.", e);
 		}
-		response.addResponseElements(columns);
-		logger.info("Combined {} response files into one", consolidateCounter);
+		result.addResponseElements(columns);
+		logger.info("Combined {} response files into one", count);
+		return result;
+	}
 
-		return response;
+	private void collect(final Map<Integer, CipherText> columns, final PublicKey publicKey, Response response) {
+		for (Map<Integer, CipherText> nextItem : response.getResponseElements()) {
+			nextItem.forEach((k, v) -> {
+				CipherText column = columns.get(k);
+				if (column != null) {
+					v = crypto.computeCipherAdd(publicKey, column, v);
+				}
+				columns.put(k, v);
+			});
+		}
 	}
 
 }

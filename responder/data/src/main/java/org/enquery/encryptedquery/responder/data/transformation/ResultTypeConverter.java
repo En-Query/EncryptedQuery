@@ -72,6 +72,9 @@ public class ResultTypeConverter {
 	private static final QName PAYLOAD = new QName(RESULT_NS, "payload");
 	private static final QName EXECUTION = new QName(RESULT_NS, "execution");
 	private static final QName RESPONSE = new QName(RESPONSE_NS, "response");
+	private static final String SCHEMA_VERSION_ATTRIB = "schemaVersion";
+	// needs to match version attribute in the XSD resource (most current version)
+	private static final String RESPONSE_CURRENT_XSD_VERSION = "2.0";
 
 	@Reference
 	private ResultRepository resultRepo;
@@ -112,7 +115,9 @@ public class ResultTypeConverter {
 		Validate.notNull(execution);
 		Validate.notNull(registry);
 
-		log.info("Converting {} to XML ResultResources.", jpaResults);
+		if (log.isDebugEnabled()) {
+			log.debug("Converting {} to XML ResultResources.", jpaResults);
+		}
 
 		ResultResources resultResource = new ResultResources();
 		resultResource.getResultResource().addAll(jpaResults.stream().map(
@@ -234,6 +239,7 @@ public class ResultTypeConverter {
 
 			writer.add(eventFactory.createIgnorableSpace("\n"));
 			writer.add(eventFactory.createStartElement(PAYLOAD, null, null));
+			writer.add(eventFactory.createAttribute(SCHEMA_VERSION_ATTRIB, RESPONSE_CURRENT_XSD_VERSION));
 			while (reader.hasNext()) {
 				XMLEvent event = reader.nextEvent();
 				if (event.isEndElement() &&

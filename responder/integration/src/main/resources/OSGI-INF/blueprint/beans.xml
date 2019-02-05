@@ -102,4 +102,7 @@
 	<reference id="resultConverter"
 		interface="org.enquery.encryptedquery.responder.data.transformation.ResultTypeConverter"
 		ext:proxy-method="classes"/>		
+		
+	<reference id="streamingResultsCollector"
+		interface="org.enquery.encryptedquery.responder.business.results.StreamingResultCollector"/>
 </blueprint>

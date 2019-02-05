@@ -19,8 +19,6 @@ package org.encryptedquery.querier.business;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -29,10 +27,10 @@ import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.transformation.JSONConverter;
 import org.enquery.encryptedquery.querier.data.transformation.QuerySchemaTypeConverter;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.utils.PIRException;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -50,9 +48,16 @@ public class QueryCipher {
 	private final ConcurrentMap<Integer, Instant> inProgess = new ConcurrentHashMap<>(16);
 
 	@Reference
-	private QuerierFactory querierFactory;
-	@Reference
 	private QuerySchemaTypeConverter querySchemaConverter;
+	@Reference
+	private EncryptQuery encryptQuery;
+
+	private Integer hashBitSize;
+
+	@Activate
+	public void activate(Map<String, String> config) {
+		hashBitSize = Integer.parseInt(config.getOrDefault(QuerierProperties.HASH_BIT_SIZE, "12"));
+	}
 
 	public Querier run(org.enquery.encryptedquery.querier.data.entity.jpa.Query jpaQuery) throws PIRException, InterruptedException {
 		Instant alreadyEncryptingSince = null;
@@ -65,31 +70,28 @@ public class QueryCipher {
 				return null;
 			}
 
-			logger.info("Starting to encrypt query {}.", jpaQuery);
 			QuerySchema querySchema = querySchemaConverter.toCoreQuerySchema(jpaQuery.getQuerySchema());
 
+			logger.info("Starting to encrypt query {}.", jpaQuery);
 			logger.info("Encrypting query with the following parameters: {}", jpaQuery.getParameters());
-			Map<String, String> parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
-
-			Properties querierProperties = EncryptionPropertiesBuilder.newBuilder()
-					.dataChunkSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.DATA_CHUNK_SIZE, "1")))
-					.hashBitSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, "12")))
-					.paillierBitSize(Integer.valueOf(parameters.getOrDefault(QuerierProperties.PAILLIER_BIT_SIZE, "384")))
-					.certainty(Integer.valueOf(parameters.getOrDefault(QuerierProperties.CERTAINTY, "128")))
-					.bitSet(Integer.valueOf(parameters.getOrDefault(QuerierProperties.BIT_SET, "8")))
-					.embedSelector(jpaQuery.getEmbedSelector())
-					.queryType(jpaQuery.getName())
-					.build();
 
 			List<String> selectors = JSONConverter.toList(jpaQuery.getSelectorValues());
 			Validate.notNull(selectors, "No selector values, aborting query generation. At least one selector required.");
 
 			logger.info("Generating query with {} selector values", selectors.size());
-			UUID queryIdentifier = UUID.randomUUID();
-			Querier querier = querierFactory.createQuerier(querySchema, queryIdentifier, selectors, querierProperties);
+
+			// TODO: get from JPA Query record as individual fields, we should move away from
+			// generic maps
+			Map<String, String> parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
+			boolean embedSelector = jpaQuery.getEmbedSelector();
+			int dataChunkSize = Integer.valueOf(parameters.getOrDefault(QuerierProperties.DATA_CHUNK_SIZE, "1"));
+			if (parameters.containsKey(QuerierProperties.HASH_BIT_SIZE)) {
+				hashBitSize = Integer.parseInt(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, hashBitSize.toString()));
+			}
+			Querier querier = encryptQuery.encrypt(querySchema, selectors, embedSelector, dataChunkSize, hashBitSize);
+
 			logger.info("Finished encrypting query {}.", jpaQuery);
-			logger.info("Querier selector value count {}, query exptable size {}", querier.getQueryKey().getSelectors().size(), querier.getQuery().getExpTable().size());
-			logger.info("Query expFileBasedLookup size {}", querier.getQuery().getExpFileBasedLookup().size());
+			logger.info("Querier selector value count {}", querier.getQueryKey().getSelectors().size());
 			return querier;
 		} finally {
 			if (alreadyEncryptingSince == null)

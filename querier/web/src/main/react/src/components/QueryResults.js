@@ -15,18 +15,14 @@ class QueryResults extends React.Component {
       queryScheduleStatus: [],
       queryScheduleType: [],
       queryScheduleDate: [],
-      time: [],
-      user: [],
       querySchedules: [],
       results: {},
       includedData: []
     };
-
-    //this.handleChange = this.handleChange.bind(this)
   }
 
   componentDidMount() {
-    this.interval = setInterval(() => this.getData(), 5000);
+    this.interval = setInterval(() => this.getData(), 7000);
     this.getData();
   }
 
@@ -34,8 +30,9 @@ class QueryResults extends React.Component {
     clearInterval(this.interval);
   }
 
-  getData() {
-    var scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
+  getData = () => {
+    const scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
+    console.log(scheduleSelfUri);
     axios({
       method: "get",
       url: `${scheduleSelfUri}`,
@@ -49,7 +46,7 @@ class QueryResults extends React.Component {
           resultsUri: response.data.data.resultsUri
         });
         localStorage.setItem(`resultsUri`, this.state.resultsUri);
-        var resultsUri = localStorage.getItem("resultsUri");
+        const resultsUri = localStorage.getItem("resultsUri");
         return axios({
           method: "get",
           url: `${resultsUri}`,
@@ -70,99 +67,18 @@ class QueryResults extends React.Component {
             console.log(this.state.resultsSelfUri);
           }
         );
-        localStorage.setItem("resultsSelfUri", this.state.resultsSelfUri);
-        var resultsSelfUri = localStorage.getItem("resultsSelfUri");
-        return axios({
-          method: "get",
-          url: `${resultsSelfUri}`,
-          headers: {
-            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-          }
-        });
       })
-      .then(response => {
-        console.log(response);
-        this.setState(
-          {
-            resultStatus: response.data.data.status,
-            resultId: response.data.data.id,
-            startTime: response.data.data.startTime,
-            resultType: response.data.data.type,
-            retrievalsUri: response.data.data.retrievalsUri,
-            includedData: response.data.included,
-            queryName: response.data.included[1].name,
-            dataSourceName: response.data.included[0].name,
-            processingMode: response.data.included[0].processingMode,
-            scheduleStartTime: response.data.included[3].startTime
-          },
-          () => {
-            console.log(this.state.queryName);
-            console.log(this.state.retrievalsUri);
-            console.log(this.state.includedData);
-            console.log(this.state.dataSourceName);
-            console.log(this.state.processingMode);
-            console.log(this.state.scheduleStartTime);
-          }
-        );
-        localStorage.setItem("retrievalsUri", this.state.retrievalsUri);
-      })
-      .catch(error => console.log(error.response));
-  }
-
-  handleChange = e => {
-    e.preventDefault();
+      .catch(error => console.log(error));
   };
 
-  getDownload = e => {
-    //Handle download action
-    var resultsUri = localStorage.getItem("retrievalsUri");
-    axios({
-      method: "post",
-      url: `${resultsUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({
-          downloadResult: response.data.data,
-          retrievalSelfUri: response.data.data.selfUri,
-          decryptionsUri: response.data.data.decryptionsUri
-        });
-        localStorage.setItem("retrievalSelfUri", this.state.retrievalSelfUri);
-        localStorage.setItem("decryptionsUri", this.state.decryptionsUri);
-        this.props.history.push(`/querier/queryresults`);
-      })
-      .catch(error => console.log(error.response));
-  };
-
-  getDecrypted = e => {
-    //Handle Decrypt action
-    var retrievalSelfUri = localStorage.getItem("retrievalSelfUri");
-    var decryptionsUri = localStorage.getItem("decryptionsUri");
-    axios({
-      method: "post",
-      url: `${decryptionsUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({
-          decryptedResponse: response.data.data
-        });
-        this.props.history.push(`/querier/queryresults`);
-      })
-      .catch(error => console.log(error.repsonse));
-  };
-
-  handleButtonView = status => {
+  handleButtonView = (status, resultsSelfUri) => {
     switch (status) {
       case `Ready`:
         return (
-          <button onClick={this.getDownload} type="button">
+          <button
+            onClick={e => this.getDownload(e, resultsSelfUri)}
+            type="button"
+          >
             DOWNLOAD
           </button>
         );
@@ -183,6 +99,106 @@ class QueryResults extends React.Component {
     }
   };
 
+  getDownload = async (e, resultsSelfUri) => {
+    //handle download action
+    console.log(this.state.resultsSelfUri);
+    e.preventDefault();
+    await this.setState({ resultsSelfUri });
+    localStorage.setItem("resultSelfUri", this.state.resultsSelfUri);
+    const resultSelfUri = localStorage.getItem("resultSelfUri");
+    axios({
+      method: "get",
+      url: `${resultsSelfUri}`,
+      headers: {
+        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+      }
+    })
+      .then(response => {
+        console.log(response);
+        const scheduleInfo = response.data.included.filter(
+          element => element.type === "Schedule"
+        );
+        const scheduleStartTime = scheduleInfo.map(function(included) {
+          return included["startTime"];
+        });
+        console.log("This is the date", scheduleStartTime);
+        const resultQueryInfo = response.data.included.filter(
+          element => element.type === "Query"
+        );
+        const queryName = resultQueryInfo.map(function(included) {
+          return included["name"];
+        });
+        const resultDataSourceInfo = response.data.included.filter(
+          element => element.type === "DataSource"
+        );
+        const dataSourceName = resultDataSourceInfo.map(function(included) {
+          return included["name"];
+        });
+        const dataSourceMode = resultDataSourceInfo.map(function(included) {
+          return included["processingMode"];
+        });
+
+        this.setState(
+          {
+            resultStatus: response.data.data.status,
+            resultId: response.data.data.id,
+            startTime: response.data.data.startTime,
+            resultType: response.data.data.type,
+            retrievalsUri: response.data.data.retrievalsUri,
+            includedData: response.data.included,
+            queryName: queryName,
+            dataSourceName: dataSourceName,
+            dataSourceMode: dataSourceMode,
+            scheduleStartTime: scheduleStartTime
+          },
+          () => {
+            console.log(this.state.queryName);
+            console.log(this.state.retrievalsUri);
+            console.log(this.state.includedData);
+            console.log(this.state.dataSourceName);
+            console.log(this.state.dataSourceMode);
+            console.log(this.state.scheduleStartTime);
+          }
+        );
+        localStorage.setItem("retrievalsUri", this.state.retrievalsUri);
+        const retrievalSelfUri = localStorage.getItem("retrievalsUri");
+        console.log(retrievalSelfUri);
+        return axios({
+          method: "post",
+          url: `${retrievalSelfUri}`,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+          }
+        });
+      })
+      .then(response => {
+        console.log(response);
+        this.setState({
+          decryptionsUri: response.data.data.decryptionsUri
+        });
+        localStorage.setItem("decryptionsUri", this.state.decryptionsUri);
+        this.props.history.push(`/querier/queryresults`);
+      })
+      .catch(error => console.log(error));
+  };
+
+  getDecrypted = e => {
+    //Handle Decrypt action
+    const decryptionsUri = localStorage.getItem("decryptionsUri");
+    axios({
+      method: "post",
+      url: `${decryptionsUri}`,
+      headers: {
+        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+      }
+    })
+      .then(response => {
+        console.log(response);
+        this.props.history.push(`/querier/queryresults`);
+      })
+      .catch(error => console.log(error));
+  };
+
   render() {
     const {
       results,
@@ -193,48 +209,56 @@ class QueryResults extends React.Component {
       queryName,
       user,
       includedData,
-      querySchedules
+      querySchedules,
+      scheduleStartTime,
+      dataSourceMode,
+      dataSourceName
     } = this.state;
     const { match, location, history } = this.props;
 
     return (
       <div>
         <HomePage />
+        {queryName && (
+          <div>
+            <fieldset>
+              <legend> Query Information </legend>
+              <br />
+              <div className="queryInformation">
+                <div>
+                  <label>Query Name:</label>
+                  <input value={queryName} />
+                </div>
+                <br />
 
-        <fieldset>
-          <legend> Query Information </legend>
-          <br />
-          <div className="queryInformation">
-            <div>
-              <label>Query Name:</label>
-              <input value={this.state.queryName} />
-            </div>
-            <br />
-
-            <div>
-              <label>Data Source:</label>
-              <input value={this.state.dataSourceName} />
-            </div>
-            <br />
-            <div>
-              <label>Batch or Streaming:</label>
-              <input value={this.state.processingMode} />
-            </div>
-            <br />
-            <div>
-              <label>Schedule Info:</label>
-              <input />
-            </div>
-            <br />
+                <div>
+                  <label>Data Source:</label>
+                  <input value={dataSourceName} />
+                </div>
+                <br />
+                <div>
+                  <label>Batch or Streaming:</label>
+                  <input value={dataSourceMode} />
+                </div>
+                <br />
+                <div>
+                  <label>Schedule Info:</label>
+                  <input
+                    value={moment(scheduleStartTime[0]).format("llll")}
+                  />{" "}
+                  />
+                </div>
+                <br />
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
+        )}
         <br />
         <br />
 
         <table id="results">
           <caption> Retrievals + Results </caption>
           <tr>
-            <th>Date/Time</th>
             <th>result_ID</th>
             <th>Processing Mode</th>
             <th>Type</th>
@@ -244,12 +268,11 @@ class QueryResults extends React.Component {
           {Object.values(results).map(result => {
             return (
               <tr>
-                <td>{moment(this.state.scheduleStartTime).format("llll")}</td>
                 <td key={result.id}>{result.id}</td>
-                <td> {this.state.processingMode} </td>
+                <td> {this.state.dataSourceMode} </td>
                 <td key={result.type}>{result.type}</td>
                 <td key={result.status}>{result.status}</td>
-                <td> {this.handleButtonView(result.status)}</td>
+                <td> {this.handleButtonView(result.status, result.selfUri)}</td>
               </tr>
             );
           })}

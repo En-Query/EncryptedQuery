@@ -35,8 +35,8 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
 

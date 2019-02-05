@@ -38,8 +38,8 @@ public class SampleData {
 
 	private int dataSourceCount;
 	private int dataSchemaCount;
-	private int querySchemaCount;
-	private int queryCount;
+	// private int querySchemaCount;
+	// private int queryCount;
 
 
 	public DataSource createDataSource(DataSchema dataSchema) {

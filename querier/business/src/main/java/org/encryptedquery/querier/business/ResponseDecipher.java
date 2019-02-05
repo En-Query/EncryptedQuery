@@ -19,29 +19,25 @@ package org.encryptedquery.querier.business;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
+import org.enquery.encryptedquery.data.QueryKey;
+import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval;
 import org.enquery.encryptedquery.querier.data.service.QueryRepository;
 import org.enquery.encryptedquery.querier.data.service.ResultRepository;
 import org.enquery.encryptedquery.querier.data.service.RetrievalRepository;
-import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QueryKey;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.xml.transformation.QueryKeyTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,34 +61,12 @@ public class ResponseDecipher {
 	private QueryRepository queryRepo;
 	@Reference
 	private ExecutorService threadPool;
-
+	@Reference
 	private ResponseTypeConverter responseConverter;
-	private DecryptResponse responseDecrypter;
+	@Reference
 	private QueryKeyTypeConverter queryKeyConverter;
-
-	@Activate
-	void activate(Map<String, String> config) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-		responseConverter = new ResponseTypeConverter();
-		responseDecrypter = new DecryptResponse();
-		responseDecrypter.setExecutionService(threadPool);
-		responseDecrypter.activate();
-		queryKeyConverter = new QueryKeyTypeConverter();
-	}
-
-	@Deactivate
-	void deactivate() {
-		if (threadPool != null) {
-			threadPool.shutdown();
-			try {
-				boolean terminated = threadPool.awaitTermination(10, TimeUnit.MINUTES);
-				if (!terminated) {
-					threadPool.shutdownNow();
-				}
-			} catch (InterruptedException e) {
-				// ok if we are shutting down
-			}
-		}
-	}
+	@Reference
+	private DecryptResponse responseDecrypter;
 
 	public ClearTextQueryResponse run(org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval jpaRetrieval)
 			throws IOException, JAXBException, InterruptedException, PIRException, ClassNotFoundException, InstantiationException, IllegalAccessException {
@@ -112,7 +86,8 @@ public class ResponseDecipher {
 			QueryKey queryKey = loadQueryKey(jpaRetrieval);
 
 			ClearTextQueryResponse result = responseDecrypter.decrypt(response, queryKey);
-			log.info("Finished deciphering  {}. Result: {}", jpaRetrieval.getId(), result);
+//			log.info("Finished deciphering  {}. Result: {}", jpaRetrieval.getId(), result);
+			log.info("Finished deciphering  {}.", jpaRetrieval.getId());
 			return result;
 		} finally {
 			if (alreadyEncryptingSince == null)
@@ -120,7 +95,6 @@ public class ResponseDecipher {
 		}
 	}
 
-	@SuppressWarnings("static-access")
 	private QueryKey loadQueryKey(Retrieval jpaRetrieval) throws IOException, JAXBException {
 		final Integer queryId = jpaRetrieval.getResult().getSchedule().getQuery().getId();
 

@@ -1,0 +1,11 @@
+Import-Package: \
+	org.enquery.encryptedquery.encryption.impl,\
+	*
+	
+Bundle-NativeCode: native/darwin/libresponder.dylib;\
+			native/darwin/libquerygen.dylib;\
+			native/darwin/libgmp.dylib;\
+			osname=MacOSX;\
+ 			processor=x86-64,\
+ 			*
+

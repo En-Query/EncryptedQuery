@@ -34,7 +34,7 @@ public class KeyedHash {
 	private static final Logger logger = LoggerFactory.getLogger(KeyedHash.class);
 
 	/**
-	 * Hash method that uses the java String hashCode()
+	 * Hash method that uses the MD5
 	 */
 	public static int hash(String key, int bitSize, String input) {
 		int fullHash = 0;

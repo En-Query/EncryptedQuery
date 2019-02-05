@@ -21,7 +21,7 @@ import static org.junit.Assert.assertNotNull;
 
 import javax.inject.Inject;
 
-import org.enquery.encryptedquery.responder.it.QueryRunnerConfigurator;
+import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
 import org.enquery.encryptedquery.xml.schema.DataSource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -66,7 +66,7 @@ public class DataSourceRestServiceIT extends BaseRestServiceItest {
 		assertEquals(0, dataSources.getDataSourceResource().size());
 
 		// Now add a QueryRunner, service should return one data source for it
-		QueryRunnerConfigurator runnerConfigurator = new QueryRunnerConfigurator(confAdmin);
+		FlinkJdbcRunnerConfigurator runnerConfigurator = new FlinkJdbcRunnerConfigurator(confAdmin);
 		runnerConfigurator.create(DATA_SOURCE_NAME, BOOKS_DATA_SCHEMA_NAME, DESCRIPTION);
 
 		// give enough time for the QueryRunner to be registered

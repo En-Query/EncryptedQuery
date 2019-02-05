@@ -19,7 +19,11 @@
 				<dbms type="mysql"/>
 			</not>
 		</preConditions>
-		<createSequence sequenceName="ids_sequence"/>
+		<createSequence sequenceName="dschema_seq" startValue="1"/>
+		<createSequence sequenceName="dschema_field_seq" startValue="1"/>
+		<createSequence sequenceName="dsource_seq" startValue="1"/>
+		<createSequence sequenceName="exe_seq" startValue="1"/>
+		<createSequence sequenceName="result_seq"  startValue="1"/>
 	</changeSet>
 
     <changeSet id="2" author="asoto">
@@ -148,6 +152,13 @@
 			baseColumnNames="execution_id" 
 			referencedTableName="executions"
 			referencedColumnNames="id" />
+	</changeSet>
+	
+	
+	<changeSet id="6" author="asoto">
+		<addColumn tableName="executions">
+			<column name="output_file_path" type="${uri.type}"/>
+		</addColumn>
 	</changeSet>
 	
 </databaseChangeLog>

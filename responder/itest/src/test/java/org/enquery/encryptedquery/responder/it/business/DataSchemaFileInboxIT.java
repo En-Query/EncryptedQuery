@@ -61,10 +61,6 @@ public class DataSchemaFileInboxIT extends AbstractResponderItest {
 	@Filter(timeout = 60_000, value = "(camel.context.name=data-import)")
 	private CamelContext restContext;
 
-	// @Before
-	// public void init() throws SQLException {
-	// truncateTables();
-	// }
 
 	@Configuration
 	public Option[] configuration() {
@@ -106,5 +102,45 @@ public class DataSchemaFileInboxIT extends AbstractResponderItest {
 		assertTrue(!Files.exists(Paths.get(INBOX_DIR, ".processed", fileName)));
 		DataSchema ds = dataSchemaService.findByName(name);
 		assertNull(ds);
+	}
+
+	@Test
+	public void fileUpdated() throws Exception {
+		assertEquals(0, dataSchemaService.list().size());
+		final String name = "simple-schema";
+		installDataSchema(name + ".xml");
+
+		DataSchema ds = dataSchemaService.findByName(name);
+		assertNotNull(ds);
+		assertEquals(name, ds.getName());
+		assertEquals(1, ds.getFields().size());
+		DataSchemaField field = ds.getFields().get(0);
+		assertNotNull(field);
+		assertEquals(ds, field.getDataSchema());
+		assertEquals("FieldName", field.getFieldName());
+		assertEquals("Integer", field.getDataType());
+		assertEquals(false, field.getIsArray());
+
+		// now update the same data schema
+		installDataSchema("simple-schema-update.xml");
+
+		ds = dataSchemaService.findByName(name);
+		assertNotNull(ds);
+		assertEquals(name, ds.getName());
+		assertEquals(2, ds.getFields().size());
+		field = ds.getFields().get(0);
+		assertNotNull(field);
+		assertEquals(ds, field.getDataSchema());
+		assertEquals("FieldName", field.getFieldName());
+		assertEquals("String", field.getDataType());
+		assertEquals(false, field.getIsArray());
+
+
+		field = ds.getFields().get(1);
+		assertNotNull(field);
+		assertEquals(ds, field.getDataSchema());
+		assertEquals("NewFieldName", field.getFieldName());
+		assertEquals("Integer", field.getDataType());
+		assertEquals(false, field.getIsArray());
 	}
 }

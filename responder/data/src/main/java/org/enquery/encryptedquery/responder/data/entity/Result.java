@@ -34,7 +34,7 @@ import javax.persistence.TemporalType;
 public class Result {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "result_seq")
 	private Integer id;
 
 	@OneToOne()

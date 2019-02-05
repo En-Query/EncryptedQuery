@@ -29,7 +29,7 @@ import javax.persistence.Table;
 public class DataSourceId {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dsource_seq")
 	private Integer id;
 
 	@Column(name = "name", nullable = false, unique = true)

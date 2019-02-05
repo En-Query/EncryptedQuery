@@ -24,42 +24,22 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 		description = "Allows for the instantiation of Flink-Kafka Runners through OSGi configuration.")
 public @interface Config {
 
-	@AttributeDefinition(name = "Name",
+	@AttributeDefinition(name = "name",
 			required = true,
 			description = "Short name of this query runner. This name is used "
 					+ "to identify the DataSource to the Querier component"
 					+ "so queries can be submitted using this name for execution.")
 	String name();
 
-	@AttributeDefinition(name = "Description",
+	@AttributeDefinition(name = "description",
 			required = true,
 			description = "Description of this query runner for display to the end user. ")
 	String description();
-
-	@AttributeDefinition(name = "type",
-			required = true,
-			description = "Type: Batch or Streaming.")
-	String type();
 
 	@AttributeDefinition(name = "data.schema.name",
 			required = false,
 			description = "Name of the DataSchema describing the fields and partitioners.")
 	String data_schema_name();
-
-	@AttributeDefinition(name = ".column.encryption.class.name",
-			required = true,
-			description = "Class name of the encryption method to be used.")
-	String _column_encryption_class_name();
-
-	@AttributeDefinition(name = ".mod.pow.class.name",
-			required = true,
-			description = "Class name of the Modulus Power method to be used.")
-	String _mod_pow_class_name();
-
-	@AttributeDefinition(name = ".jni.library.path",
-			required = false,
-			description = "Comma separated list of native libraries to load. Optional.")
-	String _jni_library_path();
 
 	@AttributeDefinition(name = ".computer.threshold",
 			required = false,
@@ -71,70 +51,59 @@ public @interface Config {
 			description = "Number of Flink concurrent tasks assigned to execute this query.  Defaults to Flinks configured default.")
 	String _flink_parallelism();
 
-	@AttributeDefinition(name = ".column.encryption.partition.count",
-			required = false,
-			description = "How many partitions to create for column encryption. Defaults to 1.")
-	String _column_encryption_partition_count();
-
-	@AttributeDefinition(name = "kafka.brokers",
+	@AttributeDefinition(name = ".kafka.brokers",
 			required = true,
 			description = "List of Kafka Brokers to connect to.")
 	String _kafka_brokers();
 
-	@AttributeDefinition(name = "kafka.topic",
+	@AttributeDefinition(name = ".kafka.topic",
 			required = true,
 			description = "Kafka topic to injest data from.")
 	String _kafka_topic();
 
-	@AttributeDefinition(name = "kafka.groupId",
+	@AttributeDefinition(name = ".kafka.groupId",
 			required = false,
 			description = "Kafka Group Id.")
 	String _kafka_groupId();
 
-	@AttributeDefinition(name = "kafka.force.from.start",
-			required = true,
-			description = "Injest data from beginning of kafka topic (true or false)")
+	@AttributeDefinition(name = ".kafka.force.from.start",
+			required = false,
+			description = "Ingest data from beginning of kafka topic (true or false)")
 	String _kafka_force_from_start();
 
-	@AttributeDefinition(name = "kafka.offset.location",
-			required = true,
+	@AttributeDefinition(name = ".kafka.offset.location",
+			required = false,
 			description = "Offset Location to start reading data from")
 	String _kafka_offset_location();
-	
-	@AttributeDefinition(name = "stream.window.length",
-			required = true,
-			description = "Amount of time to stream data before processing and return a result")
-	String _stream_window_length();
-	
-	@AttributeDefinition(name = "stream.window.iterations",
-			required = true,
-			description = "Number of window iterations to capture streaming data.  Set to 0 for continuous streaming processing.")
-	String _stream_window_iterations();
 
-	@AttributeDefinition(name = "Flink Installation Directory",
+	@AttributeDefinition(name = ".stream.window.length.seconds",
+			required = true,
+			description = "Amount of time to stream data before processing and return a result. In seconds.")
+	String _stream_window_length_seconds();
+
+	@AttributeDefinition(name = ".stream.runtime.seconds",
+			required = false,
+			description = "Number of seconds to run.  If not specified, or <= 0, run indefinetely.")
+	String _stream_runtime_seconds();
+
+	@AttributeDefinition(name = ".flink.install.dir",
 			required = true,
 			description = "Directory where Flink runtime is installed.")
 	String _flink_install_dir() default "/opt/flink";
 
-	@AttributeDefinition(name = "Additional Flink Argumments",
+	@AttributeDefinition(name = ".additional.flink.arguments",
 			required = false,
 			description = "Additional arguments to be passed to Flink 'run' command when executing the query.")
 	String _additional_flink_arguments();
 
 	@AttributeDefinition(name = ".jar.file.path",
 			required = true,
-			description = "Path to the flink-jdbc jar file.  This is the jar file implementing the query execution.")
+			description = "Path to the encryptedquery-flink-kafka jar file.  This is the jar file implementing the query execution.")
 	String _jar_file_path();
 
-	@AttributeDefinition(name = "Run Directory",
+	@AttributeDefinition(name = ".run.directory",
 			required = true,
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
-
-
-	@AttributeDefinition(name = "Maximum number of hits per selector.",
-			required = false,
-			description = "Optional, default is 100. Must be positive integer > 0.")
-	String _max_hits_per_selector();
 }

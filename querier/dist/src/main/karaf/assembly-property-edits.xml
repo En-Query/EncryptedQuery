@@ -13,11 +13,23 @@
             <key>log4j2.logger.camel.level</key>
             <value>WARN</value>
         </edit>
-        <edit >
+        <edit>
         	<file>org.ops4j.pax.web.cfg</file>
-        	<operation>extend</operation>
+        	<operation>put</operation>
         	<key>org.osgi.service.http.port</key>
         	<value>8182</value>
+        </edit>
+        <edit>
+            <file>org.ops4j.pax.logging.cfg</file>
+            <operation>put</operation>
+        	<key>log4j2.logger.Hibernate.name</key>
+        	<value>org.hibernate</value>
+        </edit>
+        <edit>
+            <file>org.ops4j.pax.logging.cfg</file>
+            <operation>put</operation>
+        	<key>log4j2.logger.Hibernate.level</key>
+        	<value>ERROR</value>
         </edit>
     </edits>
 </property-edits>

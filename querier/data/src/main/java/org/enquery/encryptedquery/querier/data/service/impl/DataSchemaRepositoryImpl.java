@@ -17,10 +17,8 @@
 package org.enquery.encryptedquery.querier.data.service.impl;
 
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.aries.jpa.template.JpaTemplate;
@@ -142,80 +140,27 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 	}
 
 	@Override
-	public DataSchema addOrUpdate(DataSchema ds) {
-		Validate.notNull(ds);
-		Validate.notNull(ds.getFields());
+	public DataSchema addOrUpdate(DataSchema dataSchema) {
+		Validate.notNull(dataSchema);
+		Validate.notNull(dataSchema.getFields());
 
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
-					if (ds.getId() != null) return update(ds);
-					DataSchema prev = findByName(ds.getName());
-					if (prev != null) {
-						copy(prev, ds);
-						return update(prev);
-					} else {
-						return add(ds);
-					}
-				});
-	}
+		DataSchema[] result = {dataSchema};
+		jpa.tx(em -> {
+			DataSchema prev = findByName(dataSchema.getName());
+			if (prev != null) {
+				prev.getFields().clear();
+				prev = em.merge(prev);
+				em.flush();
 
-	/**
-	 * Deep copy without overriding destination IDs
-	 * 
-	 * @param dest
-	 * @param source
-	 */
-	private void copy(DataSchema dest, DataSchema source) {
-		dest.setName(source.getName());
-
-		List<DataSchemaField> addedFields = new ArrayList<>();
-
-		// find updated and added fields
-		for (DataSchemaField srcField : source.getFields()) {
-			DataSchemaField destField = findField(dest.getFields(), srcField);
-			if (destField == null) {
-				addedFields.add(srcField);
+				for (DataSchemaField f : dataSchema.getFields()) {
+					f.setDataSchema(prev);
+					prev.getFields().add(f);
+				}
+				result[0] = em.merge(prev);
 			} else {
-				log.info("Updating: " + destField);
-				copy(destField, srcField);
+				em.persist(dataSchema);
 			}
-		}
-
-		// remove deleted fields
-		Iterator<DataSchemaField> destFldIter = dest.getFields().iterator();
-		while (destFldIter.hasNext()) {
-			DataSchemaField destField = destFldIter.next();
-			DataSchemaField srcField = findField(source.getFields(), destField);
-			if (srcField == null) {
-				log.info("Removing: " + destField);
-				destFldIter.remove();
-			}
-		}
-
-		// add new fields
-		for (DataSchemaField srcField : addedFields) {
-			Validate.isTrue(srcField.getId() == null, "new field should not have id");
-			DataSchemaField destField = new DataSchemaField();
-			copy(destField, srcField);
-			destField.setDataSchema(dest);
-			dest.getFields().add(destField);
-			log.info("Adding: " + destField);
-		}
-	}
-
-	private void copy(DataSchemaField destField, DataSchemaField srcField) {
-		destField.setDataType(srcField.getDataType());
-		destField.setFieldName(srcField.getFieldName());
-		destField.setIsArray(srcField.getIsArray());
-		destField.setPosition(srcField.getPosition());
-	}
-
-	private DataSchemaField findField(List<DataSchemaField> list, DataSchemaField field) {
-		return list
-				.stream()
-				.filter(f -> field.getFieldName().equals(f.getFieldName()))
-				.findFirst()
-				.orElse(null);
+		});
+		return result[0];
 	}
 }

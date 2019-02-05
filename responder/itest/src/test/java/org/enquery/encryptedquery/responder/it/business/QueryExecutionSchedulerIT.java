@@ -28,19 +28,16 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
 
 import javax.inject.Inject;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.sshd.common.util.io.IoUtils;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.business.execution.QueryExecutionScheduler;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
@@ -84,13 +81,15 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 	@Inject
 	private ConfigurationAdmin confAdmin;
 	@Inject
-	private QuerierFactory querierFactory;
+	private EncryptQuery querierFactory;
 	@Inject
 	private QueryExecutionScheduler scheduler;
 	@Inject
 	private ExecutionRepository executionRepository;
 	@Inject
 	private ResultRepository resultRepository;
+	@Inject
+	private QueryTypeConverter converter = new QueryTypeConverter();
 
 	private Querier querier;
 	private Query query;
@@ -159,7 +158,6 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 		ex.setDataSourceName(DATA_SOURCE_NAME);
 		ex = executionRepository.add(ex);
 
-		QueryTypeConverter converter = new QueryTypeConverter();
 		org.enquery.encryptedquery.xml.schema.Query xmlQuery = converter.toXMLQuery(query);
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -196,15 +194,13 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
 
-		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-				.newBuilder()
-				.dataChunkSize(DATA_CHUNK_SIZE)
-				.hashBitSize(HASH_BIT_SIZE)
-				.paillierBitSize(BIT_SIZE)
-				.certainty(CERTAINTY)
-				.embedSelector(true)
-				.queryType(queryType)
-				.build();
-		return querierFactory.createQuerier(querySchema, UUID.randomUUID(), selectors, baseTestEncryptionProperties);
+		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
+		// .newBuilder()
+		// .dataChunkSize(DATA_CHUNK_SIZE)
+		// .hashBitSize(HASH_BIT_SIZE)
+		// .certainty(CERTAINTY)
+		// .embedSelector(true)
+		// .build();
+		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

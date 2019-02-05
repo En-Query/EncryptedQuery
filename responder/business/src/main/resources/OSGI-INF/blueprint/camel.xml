@@ -38,7 +38,7 @@
 		</cm:default-properties>
 	</cm:property-placeholder>
 
-	<reference id="dataSchemaService"
+	<reference id="respository"
 		interface="org.enquery.encryptedquery.responder.data.service.DataSchemaService" />
 	
 	<camelContext xmlns="http://camel.apache.org/schema/blueprint" id="data-import" trace="true">
@@ -61,7 +61,7 @@
 
 			<convertBodyTo type="org.enquery.encryptedquery.responder.data.entity.DataSchema"/>
 			
-			<bean ref="dataSchemaService" method="add"/>
+			<bean ref="respository" method="addOrUpdate"/>
 		</route>
 	</camelContext>
 

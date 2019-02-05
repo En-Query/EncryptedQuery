@@ -26,14 +26,20 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.CoreConfigurationProperties;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.business.ChildProcessLogger;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
@@ -56,36 +62,30 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 
 	private String name;
 	private String description;
-	private String brokers;
-	private String topic;
-	private String groupId;
+	private String kafkaBrokers;
+	private String kafkaTopic;
+	private String kafkaGroupId;
 	private Boolean forceFromStart;
 	private String offsetLocation;
-	private Integer windowLength;
-	private Integer windowIterations;
+	private Integer windowLengthInSeconds;
+	private Long runTimeInSeconds;
 	private String dataSchemaName = null;
 	private String additionalFlinkArguments;
 	private Path programPath;
 	private Path jarPath;
 	private Path runDir;
-	private String encryptionMethodClass;
-	private String modPowAbstractionClass;
-	private String jniLibraryPath;
 	private Integer flinkParallelism;
 	private Integer computeThreshold;
-	private Map<String, String> runParameters;
 	private Integer columnEncryptionPartitionCount;
 
 	@Reference
 	private DataSchemaService dss;
 	@Reference
 	private ExecutorService threadPool;
-
-	private DataSourceType type;
-
+	@Reference
 	private QueryTypeConverter queryTypeConverter;
-
-	private Integer maxHitsPerSelector;
+	@Reference
+	private CryptoSchemeRegistry cryptoRegistry;
 
 	@Activate
 	void activate(final Config config) {
@@ -100,9 +100,10 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 				name,
 				description);
 
-		brokers = config._kafka_brokers();
-		topic = config._kafka_topic();
-		groupId = config._kafka_groupId();
+		kafkaBrokers = config._kafka_brokers();
+		kafkaTopic = config._kafka_topic();
+		kafkaGroupId = config._kafka_groupId();
+
 		if (config._kafka_force_from_start() != null) {
 			forceFromStart = Boolean.valueOf(config._kafka_force_from_start());
 		}
@@ -110,21 +111,20 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		dataSchemaName = config.data_schema_name();
 		additionalFlinkArguments = config._additional_flink_arguments();
 
-		if (config._stream_window_length() != null) {
-			windowLength = Integer.valueOf(config._stream_window_length());
-			Validate.isTrue(windowLength > 0);
+		if (config._stream_window_length_seconds() != null) {
+			windowLengthInSeconds = Integer.valueOf(config._stream_window_length_seconds());
 		}
 
-		if (config._stream_window_iterations() != null) {
-			windowIterations = Integer.valueOf(config._stream_window_iterations());
+		if (config._stream_runtime_seconds() != null) {
+			runTimeInSeconds = Long.valueOf(config._stream_runtime_seconds());
 		}
 
-		Validate.notBlank(brokers, "Kafka Brokers cannot be blank.");
-		Validate.notBlank(topic, "Kafka topic cannot be blank.");
+		Validate.notBlank(kafkaBrokers, "Kafka Brokers cannot be blank.");
+		Validate.notBlank(kafkaTopic, "Kafka topic cannot be blank.");
+		Validate.notBlank(kafkaGroupId, "Kafka Group Id cannot be blank.");
 
-		//TODO: validation for forceFromStart and offsetLocation
+		// TODO: validation for forceFromStart and offsetLocation
 
-		
 		Validate.notBlank(dataSchemaName, "DataSchema name cannot be blank.");
 		Validate.notBlank(config._flink_install_dir(), "Flink install dir cannot be blank.");
 		Validate.notBlank(config._jar_file_path(), "Flink jar path cannot be blank.");
@@ -139,14 +139,6 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		runDir = Paths.get(config._run_directory());
 		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
 
-		encryptionMethodClass = config._column_encryption_class_name();
-		Validate.notBlank(encryptionMethodClass);
-
-		modPowAbstractionClass = config._mod_pow_class_name();
-		Validate.notNull(modPowAbstractionClass);
-
-		jniLibraryPath = config._jni_library_path();
-
 		if (config._flink_parallelism() != null) {
 			flinkParallelism = Integer.valueOf(config._flink_parallelism());
 		}
@@ -155,20 +147,6 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			computeThreshold = Integer.valueOf(config._compute_threshold());
 		}
 
-		Validate.notBlank(config.type(), "Type is required.");
-		this.type = DataSourceType.valueOf(config.type());
-
-		queryTypeConverter = new QueryTypeConverter();
-
-		if (config._max_hits_per_selector() != null) {
-			maxHitsPerSelector = Integer.parseInt(config._max_hits_per_selector());
-			Validate.isTrue(maxHitsPerSelector > 0);
-		}
-
-		if (config._column_encryption_partition_count() != null) {
-			columnEncryptionPartitionCount = Integer.parseInt(config._column_encryption_partition_count());
-			Validate.isTrue(columnEncryptionPartitionCount > 0);
-		}
 	}
 
 	@Override
@@ -187,26 +165,32 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 	}
 
 	@Override
-	public void run(Map<String, String> parameters, Query query, String outputFileName, OutputStream stdOutput) {
+	public void run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
 		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
 
-		this.runParameters = parameters;
 		if (parameters != null) {
 			for (Map.Entry<String, String> entry : parameters.entrySet()) {
 				log.info(entry.getKey() + "/" + entry.getValue());
 			}
-		}
 
+			if (parameters.containsKey(FlinkConfigurationProperties.KAFKA_GROUP_ID)) {
+				String groupId = parameters.get(FlinkConfigurationProperties.KAFKA_GROUP_ID);
+				if (groupId.length() > 0) {
+					kafkaGroupId = groupId;
+				}
+			}
+		}
 
 		Path workingTempDir = null;
 		try {
+			
 			workingTempDir = Files.createTempDirectory(runDir, "flink-kafka");
 			Path kafkaConProps = createKafkaConnectionPropertyFile(workingTempDir);
 			Path queryFile = createQueryFile(workingTempDir, query);
-			Path configFile = createConfigFile(workingTempDir, query);
+			Path configFile = createConfigFile(workingTempDir, query, parameters);
 
 			List<String> arguments = new ArrayList<>();
 			arguments.add(programPath.toString());
@@ -214,6 +198,9 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			if (additionalFlinkArguments != null) {
 				arguments.add(additionalFlinkArguments);
 			}
+
+			// detached mode: do not wait for completion
+			arguments.add("-d");
 
 			if (flinkParallelism != null) {
 				arguments.add("-p");
@@ -260,17 +247,33 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		}
 	}
 
-	private Path createConfigFile(Path dir, Query query) throws FileNotFoundException, IOException {
+	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters) throws FileNotFoundException, IOException {
 		Path result = Paths.get(dir.toString(), "config.properties");
-
+        int maxHitsPerSelector = 1000;
+        int windowLengthInSeconds = 60;
+        if (this.windowLengthInSeconds != null) {
+        	windowLengthInSeconds = this.windowLengthInSeconds;
+        }
+        
 		Properties p = new Properties();
 
-		p.setProperty(FlinkConfigurationProperties.MOD_POW_CLASS_NAME, modPowAbstractionClass);
-		p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_CLASS_NAME, encryptionMethodClass);
-
-		if (jniLibraryPath != null) {
-			p.setProperty(FlinkConfigurationProperties.JNI_LIBRARIES, jniLibraryPath);
+		if (parameters != null) {
+			if (parameters.containsKey(ResponderProperties.MAX_HITS_PER_SELECTOR)) {
+				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+			}
+			
+			if (parameters.containsKey(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS)) {
+				windowLengthInSeconds = Integer.parseInt(parameters.get(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS));
+			}
+            
+			if (parameters.containsKey(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS)) {
+				runTimeInSeconds = Long.parseLong(parameters.get(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS));
+			}
 		}
+		
+		p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
+		p.setProperty(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS, Integer.toString(windowLengthInSeconds));
+		p.setProperty(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS, Long.toString(runTimeInSeconds));
 
 		if (columnEncryptionPartitionCount != null) {
 			p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT, Integer.toString(columnEncryptionPartitionCount));
@@ -280,24 +283,14 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			p.setProperty(FlinkConfigurationProperties.COMPUTE_THRESHOLD, computeThreshold.toString());
 		}
 
-		if (maxHitsPerSelector != null) {
-			p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, maxHitsPerSelector.toString());
-		}
-
-		if (windowLength != null) {
-			p.setProperty(FlinkConfigurationProperties.WINDOW_LENGTH, windowLength.toString());
-		}
-
-		if (windowIterations != null) {
-			p.setProperty(FlinkConfigurationProperties.WINDOW_ITERATIONS, windowIterations.toString());
-		}
-
-		if (runParameters != null) {
-			runParameters.forEach((k, v) -> {
-				if (v != null) {
-					p.setProperty(k, v);
-				}
-			});
+		// Pass the CryptoScheme configuration to the external application,
+		// the external application needs to instantiate the CryptoScheme whit these parameters
+		final String schemeId = query.getQueryInfo().getCryptoSchemeId();
+		CryptoScheme cryptoScheme = cryptoRegistry.cryptoSchemeByName(schemeId);
+		Validate.notNull(cryptoScheme, "CryptoScheme not found for id: %s", schemeId);
+		p.setProperty(CoreConfigurationProperties.CRYPTO_SCHEME_CLASS_NAME, cryptoScheme.getClass().getName());
+		for (Entry<String, String> entry : cryptoScheme.configurationEntries()) {
+			p.setProperty(entry.getKey(), entry.getValue());
 		}
 
 		try (OutputStream os = new FileOutputStream(result.toFile())) {
@@ -315,15 +308,18 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 	}
 
 	private Path createKafkaConnectionPropertyFile(Path dir) throws IOException {
-		Path result = Paths.get(dir.toString(), "jdbc.properties");
+		Path result = Paths.get(dir.toString(), "kafka.properties");
 
 		Properties p = new Properties();
-		p.setProperty("kafka.brokers", this.brokers);
-		p.setProperty("kafka.topic", this.topic);
-		p.setProperty("kafka.groupId", this.groupId);
-		p.setProperty("kafka.forceFromStart", this.forceFromStart.toString());
-		p.setProperty("kafka.offsetLocation", this.offsetLocation);
+		p.setProperty(KafkaConfigurationProperties.BROKERS, this.kafkaBrokers);
+		p.setProperty(KafkaConfigurationProperties.TOPIC, this.kafkaTopic);
+		p.setProperty(KafkaConfigurationProperties.GROUP_ID, this.kafkaGroupId);
+		p.setProperty(KafkaConfigurationProperties.FORCE_FROM_START, this.forceFromStart.toString());
 
+		if (offsetLocation != null) {
+			p.setProperty(KafkaConfigurationProperties.OFFSET, this.offsetLocation);
+		}
+		
 		try (OutputStream os = new FileOutputStream(result.toFile())) {
 			p.store(os, "Automatically generated by: " + this.getClass());
 		}
@@ -332,6 +328,6 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 
 	@Override
 	public DataSourceType getType() {
-		return type;
+		return DataSourceType.Streaming;
 	}
 }

@@ -21,9 +21,6 @@ import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ConversionUtils {
 
 	public static byte[] shortToBytes(short value) {
@@ -147,19 +144,4 @@ public class ConversionUtils {
 				| ((long) bytes[4] & 0xff) << 24 | ((long) bytes[5] & 0xff) << 16 | ((long) bytes[6] & 0xff) << 8 | (long) bytes[7] & 0xff;
 	}
 
-	/**
-	 * Convert Byte[] object to byte[]
-	 * 
-	 * @param oBytes
-	 * @return byte[]
-	 */
-	public static byte[] toPrimitives(Byte[] oBytes) {
-
-		byte[] bytes = new byte[oBytes.length];
-		for (int i = 0; i < oBytes.length; i++) {
-			bytes[i] = oBytes[i];
-		}
-		return bytes;
-
-	}
 }

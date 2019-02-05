@@ -20,6 +20,10 @@ public class QueryXMLStreamer implements Runnable {
 	private static final QName OUT_QUERY_QNAME = new QName(OUT_QUERY_NS, "query");
 	private static final String IN_QUERY_NS = "http://enquery.net/encryptedquery/execution";
 	private static final QName IN_QUERY_QNAME = new QName(IN_QUERY_NS, "query");
+	private static final String OUT_QUERY_SCHEMA_VERSION_ATTRIB = "schemaVersion";
+
+	// needs to match version attribute in the XSD resource (most current version)
+	private static final String OUT_QUERY_CURRENT_XSD_VERSION = "2.0";
 
 	private OutputStream outputStream;
 	private XMLEventReader reader;
@@ -49,6 +53,7 @@ public class QueryXMLStreamer implements Runnable {
 				if (isQueryStart(event)) {
 					++inQuery;
 					writer.add(eventFactory.createStartElement(OUT_QUERY_QNAME, null, null));
+					writer.add(eventFactory.createAttribute(OUT_QUERY_SCHEMA_VERSION_ATTRIB, OUT_QUERY_CURRENT_XSD_VERSION));
 				} else if (isQueryEnd(event)) {
 					--inQuery;
 					writer.add(eventFactory.createEndElement(OUT_QUERY_QNAME, null));

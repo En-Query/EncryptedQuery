@@ -34,13 +34,19 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
 import org.enquery.encryptedquery.utils.FileIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class App {
+
+	private static final Logger log = LoggerFactory.getLogger(App.class);
 
 	private String brokers;
 	private String topic;
 	private String groupId;
+
 	private Boolean forceFromStart;
 	private String offsetLocation;
 	private Path queryFileName;
@@ -96,6 +102,7 @@ public class App {
 
 		outputFileName = Paths.get(getValue(outputFileNameOption));
 		Validate.isTrue(!Files.exists(outputFileName), "Output file %s exists. Delete first.", outputFileName);
+		Files.createDirectories(outputFileName);
 
 		loadKafkaProperties();
 
@@ -130,25 +137,32 @@ public class App {
 		return commandLine.getOptionValue(opt.getOpt());
 	}
 
-
 	private void loadKafkaProperties() throws FileNotFoundException, IOException {
 		Properties p = new Properties();
 		try (InputStream is = new FileInputStream(getValue(kafkaConnectionPropertyFileOption))) {
 			p.load(is);
 		}
-		brokers = p.getProperty("kafka.brokers");
+		brokers = p.getProperty(KafkaConfigurationProperties.BROKERS);
 		Validate.notBlank(brokers);
 
-		topic = p.getProperty("kafka.topic");
+		topic = p.getProperty(KafkaConfigurationProperties.TOPIC);
 		Validate.notBlank(topic);
 
-		groupId = p.getProperty("kafka.groupId");
-//		Validate.notBlank(groupId);
-		
-		offsetLocation = p.getProperty("offset.location");
-		if (p.containsKey("force.from.start")) {
-			forceFromStart = Boolean.valueOf(p.getProperty("force.from.start"));
+		groupId = p.getProperty(KafkaConfigurationProperties.GROUP_ID);
+		// Validate.notBlank(groupId);
+
+		offsetLocation = p.getProperty(KafkaConfigurationProperties.OFFSET);
+		if (offsetLocation != null) {
+			forceFromStart = false;
+		} else {
+			forceFromStart = Boolean.valueOf(p.getProperty(KafkaConfigurationProperties.FORCE_FROM_START));
 		}
+		log.info("Kafka Properties: ");
+		log.info("   Brokers: {}", brokers);
+		log.info("   Topic: {}", topic);
+		log.info("   groupId: {}", groupId);
+		log.info("   OffsetLocation: {}", offsetLocation);
+		log.info("   forceFromStart: {}", forceFromStart);
 	}
 
 }

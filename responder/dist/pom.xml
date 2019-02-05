@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.1.0</version>
 	</parent>
 	
 	<artifactId>encryptedquery-responder-dist</artifactId>
@@ -112,14 +112,14 @@
 							</pluginExecutors>
 						</configuration>
 					</execution>
-					<execution>
+					<!-- <execution>
 						<id>iter-native-libs</id>
 						<phase>package</phase>
 						<goals>
 							<goal>iterator</goal>
 						</goals>
 						<configuration>
-							<!-- iterate over the folders under environments -->
+							iterate over the folders under environments
 							<folder>${project.build.directory}/environments/</folder>
 							<pluginExecutors>
 								<pluginExecutor>
@@ -132,7 +132,7 @@
 										<artifactItems>
 											<artifactItem>
 												<groupId>org.enquery.encryptedquery</groupId>
-												<artifactId>encryptedquery-core</artifactId>
+												<artifactId>encryptedquery-paillier-encryption</artifactId>
 												<version>${project.version}</version>
 												<classifier>native-libs</classifier>
 												<type>tar.gz</type>
@@ -144,7 +144,7 @@
 								</pluginExecutor>
 							</pluginExecutors>
 						</configuration>
-					</execution>
+					</execution> -->
 					<execution>
 						<id>iter-gen-assemblies</id>
 						<phase>package</phase>

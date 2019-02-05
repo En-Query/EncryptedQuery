@@ -27,7 +27,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.1.0</version>
 	</parent>
 
 	<artifactId>encryptedquery-responder-data</artifactId>
@@ -55,6 +55,7 @@
 			</exclusions>
 		</dependency>
 		<dependency>
+			<!-- JPA entity manager and transaction support -->
 			<groupId>org.apache.aries.jpa</groupId>
 			<artifactId>org.apache.aries.jpa.api</artifactId>
 			<scope>compile</scope>
@@ -66,6 +67,7 @@
 			</exclusions>
 		</dependency>
 		<dependency>
+			<!-- needed for jdbc hook that runs Liquibase -->
 			<groupId>org.ops4j.pax.jdbc</groupId>
 			<artifactId>pax-jdbc-pool-common</artifactId>
 			<exclusions>
@@ -136,21 +138,23 @@
 			<artifactId>slf4j-log4j12</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-paillier-encryption</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
 		
 	</dependencies>
 
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>biz.aQute.bnd</groupId>
-				<artifactId>bnd-maven-plugin</artifactId>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<executions>
 					<execution>
-						<!-- get the Flink-JDBC application jar so we can run it -->
+						<!-- need XML schemas for unit tests -->
 						<id>download-xml-schemas</id>
 						<phase>generate-test-resources</phase>
 						<goals>

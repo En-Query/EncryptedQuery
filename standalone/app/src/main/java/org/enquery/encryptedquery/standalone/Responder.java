@@ -42,18 +42,22 @@ import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.Partitioner;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.json.JSONStringConverter;
-import org.enquery.encryptedquery.query.wideskies.Query;
-import org.enquery.encryptedquery.responder.wideskies.common.ColumnBasedResponderProcessor;
-import org.enquery.encryptedquery.responder.wideskies.common.QueueRecord;
-import org.enquery.encryptedquery.responder.wideskies.common.RecordPartitioner;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.responder.QueueRecord;
+import org.enquery.encryptedquery.responder.RecordPartitioner;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.utils.KeyedHash;
+import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Responder implements StandaloneConfigurationProperties {
+public class Responder {
 
 	private static final Logger log = LoggerFactory.getLogger(Responder.class);
 	private DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
@@ -69,8 +73,7 @@ public class Responder implements StandaloneConfigurationProperties {
 	// selector has
 	private HashMap<Integer, Integer> rowIndexCounter = new HashMap<>();
 
-	// Log how many records exceeded the
-	// maxHitsPerSelector
+	// Log how many records exceeded the maxHitsPerSelector limit
 	private HashMap<Integer, Integer> rowIndexOverflowCounter = new HashMap<>();
 
 	private List<ArrayBlockingQueue<QueueRecord>> newRecordQueues = new ArrayList<>();
@@ -88,6 +91,8 @@ public class Responder implements StandaloneConfigurationProperties {
 	private long selectorNullCount;
 	private AtomicLong lineNumber;
 	private List<Future<Response>> futures;
+	private CryptoScheme crypto;
+	private List<String> querySchemaElementNames;
 
 	public Responder() {}
 
@@ -95,24 +100,25 @@ public class Responder implements StandaloneConfigurationProperties {
 		return ProcessingUtils.getPercentComplete(recordCounter, responderProcessors);
 	}
 
-	private void configure(Map<String, String> config) throws ClassNotFoundException {
+	private void configure(Map<String, String> config) throws Exception {
 		Validate.notNull(config);
 		runParameters.putAll(config);
 
-		if (runParameters.containsKey(PROCESSING_THREADS)) {
-			numberOfProcessorThreads = Integer.valueOf(runParameters.get(PROCESSING_THREADS));
+		if (runParameters.containsKey(StandaloneConfigurationProperties.PROCESSING_THREADS)) {
+			numberOfProcessorThreads = Integer.valueOf(runParameters.get(StandaloneConfigurationProperties.PROCESSING_THREADS));
 		}
-		if (runParameters.containsKey(MAX_QUEUE_SIZE)) {
-			String mqs = runParameters.get(MAX_QUEUE_SIZE).toString();
+		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_QUEUE_SIZE)) {
+			String mqs = runParameters.get(StandaloneConfigurationProperties.MAX_QUEUE_SIZE).toString();
 			maxQueueSize = Integer.parseInt(mqs);
 		}
+		
+		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
+			maxHitsPerSelector = Integer.parseInt(runParameters.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)); 
+		}
 
-		runParameters.put(HASH_BIT_SIZE, Integer.toString(query.getQueryInfo().getHashBitSize()));
-		runParameters.put(DATA_CHUNK_SIZE, Integer.toString(query.getQueryInfo().getDataChunkSize()));
-
-		log.info("Configuration:");
+		log.info("Standalone Query Configuration:");
 		for (Map.Entry<String, String> entry : runParameters.entrySet()) {
-			log.info("  {} = {}", entry.getKey(), entry.getValue() );
+			log.info("  {} = {}", entry.getKey(), entry.getValue());
 		}
 	}
 
@@ -125,7 +131,7 @@ public class Responder implements StandaloneConfigurationProperties {
 
 		configure(config);
 
-		log.info("Running Standalone Query '{}' on file '{}'.", query.getQueryInfo().getQueryType(), inputDataFile);
+		log.info("Running Standalone Query '{}' on file '{}'.", query.getQueryInfo().getQueryName(), inputDataFile);
 
 		initialize();
 		processFile();
@@ -145,11 +151,16 @@ public class Responder implements StandaloneConfigurationProperties {
 			}
 		}
 
-
-		log.info("Imported {} records for processing", numFormat.format(recordCounter));
-		if (rowIndexOverflowCounter.size() > 0) {
-			for (int i : rowIndexOverflowCounter.keySet()) {
-				log.info("rowIndex {} exceeded max Hits {} by {}", i, maxHitsPerSelector, rowIndexOverflowCounter.get(i));
+		if (log.isInfoEnabled()) {
+			log.info("Imported {} records for processing", numFormat.format(recordCounter));
+			if (rowIndexOverflowCounter.size() > 0) {
+				log.warn("{} Row Hashs overflowed because of MaxHitsPerSelector.  Increase MaxHitsPerSelector to reduce this if resources allow.", rowIndexOverflowCounter.size());
+				if (log.isDebugEnabled()) {
+					for (int i : rowIndexOverflowCounter.keySet()) {
+						log.debug("rowIndex {} exceeded max Hits {} by {}", i, maxHitsPerSelector,
+								rowIndexOverflowCounter.get(i));
+					}
+				}
 			}
 		}
 	}
@@ -183,15 +194,24 @@ public class Responder implements StandaloneConfigurationProperties {
 	}
 
 	private void processLine(String line) {
-		Map<String, Object> jsonData = JSONStringConverter.toStringObjectMap(line);
+		Map<String, Object> jsonData = null;
 		try {
-			jsonData = JSONStringConverter.toStringObjectMap(line);
+			jsonData = JSONStringConverter.toStringObjectMapFromList(querySchemaElementNames, line);
 		} catch (Exception e) {
 			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
 			return;
 		}
-		processRow(jsonData);
-		lineNumber.incrementAndGet();
+
+		if (jsonData != null && jsonData.size() > 0) {
+			processRow(jsonData);
+			lineNumber.incrementAndGet();
+		} else if (jsonData.size() < 1) {
+			log.warn("jsonData has no data, input line: {}", line);
+			return;
+		} else {
+			log.warn("jsonData is null, input line: {}", line);
+			return;
+		}
 	}
 
 	private void processRow(Map<String, Object> jsonData) {
@@ -218,7 +238,7 @@ public class Responder implements StandaloneConfigurationProperties {
 			// If we are not over the max hits value add the record to the
 			// appropriate queue
 			if (rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-				List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, query.getQueryInfo().getQuerySchema(), jsonData, query.getQueryInfo().getEmbedSelector());
+				List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, query.getQueryInfo(), jsonData);
 				QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
 				int whichQueue = rowIndex % numberOfProcessorThreads;
 				// log.info("Hash {} going to queue {} with {} bytes", rowIndex, whichQueue,
@@ -239,13 +259,11 @@ public class Responder implements StandaloneConfigurationProperties {
 		}
 	}
 
-	private void initialize() throws ClassNotFoundException, InstantiationException, IllegalAccessException, InterruptedException {
+	private void initialize() throws Exception {
 		selectorNullCount = 0;
 		lineNumber = new AtomicLong(0);
-
-		log.info("Based on {} Processor Thread(s), maxQueueSize {}",
-				numberOfProcessorThreads,
-				numFormat.format(maxQueueSize));
+		crypto = CryptoSchemeFactory.make(runParameters);
+		querySchemaElementNames = query.getQueryInfo().getQuerySchema().getElementNames();
 
 		// Create a Queue for each thread
 		for (int i = 0; i < numberOfProcessorThreads; i++) {
@@ -255,9 +273,11 @@ public class Responder implements StandaloneConfigurationProperties {
 		// Initialize & Start Processing Threads
 		executionService = Executors.newFixedThreadPool(numberOfProcessorThreads);
 		for (int i = 0; i < numberOfProcessorThreads; i++) {
-			ColumnBasedResponderProcessor processor = new ColumnBasedResponderProcessor(newRecordQueues.get(i),
+			ColumnBasedResponderProcessor processor = new ColumnBasedResponderProcessor(
+					newRecordQueues.get(i),
 					responseQueue,
 					query,
+					crypto,
 					runParameters,
 					partitioner);
 
@@ -273,8 +293,26 @@ public class Responder implements StandaloneConfigurationProperties {
 	private void outputResponse() throws FileNotFoundException, IOException, JAXBException {
 		log.info("Writing response to file: '{}'", outputFileName);
 
-		Response outputResponse = ConsolidateResponse.consolidateResponse(responseQueue, query);
+		ConsolidateResponse aggregator = new ConsolidateResponse(crypto);
+		Response outputResponse = aggregator.consolidateResponse(responseQueue, query.getQueryInfo());
+
+		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId == null) return null;
+				if (schemeId.equals(crypto.name())) return crypto;
+				return null;
+			}
+		};
+
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(registry);
+		queryConverter.initialize();
+
 		ResponseTypeConverter converter = new ResponseTypeConverter();
+		converter.setQueryConverter(queryConverter);
+		converter.setSchemeRegistry(registry);
+		converter.initialize();
 
 		try (OutputStream output = new FileOutputStream(outputFileName.toFile())) {
 			org.enquery.encryptedquery.xml.schema.Response xml = converter.toXML(outputResponse);

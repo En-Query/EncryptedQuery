@@ -4,6 +4,7 @@ These examples will provide the user with a base upon which to build new queries
 
 The Standalone example will query a Phone Data flat file searching for specific Caller numbers.
 The Xetra example will use Flink to query trading data searching for records using a specific Mnemonic.
+The Pcap example has both a standalone data source and a Kafka Streaming source.
 
 ## Running the examples
 

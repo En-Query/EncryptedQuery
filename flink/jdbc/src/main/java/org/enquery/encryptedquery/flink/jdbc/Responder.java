@@ -18,10 +18,8 @@ package org.enquery.encryptedquery.flink.jdbc;
 
 import java.sql.ResultSet;
 
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.jdbc.JDBCInputFormat;
-import org.apache.flink.types.Row;
 import org.enquery.encryptedquery.flink.BaseQueryExecutor;
 
 public class Responder extends BaseQueryExecutor {
@@ -54,8 +52,11 @@ public class Responder extends BaseQueryExecutor {
 		this.connectionUrl = connectionUrl;
 	}
 
-	@Override
-	protected DataSet<Row> initSource(ExecutionEnvironment env) {
+	public void run() throws Exception {
+		initializeCommon();
+		initializeBatch();
+
+		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 		JDBCInputFormat inputBuilder = JDBCInputFormat.buildJDBCInputFormat()
 				.setDrivername(driverClassName)
 				.setDBUrl(connectionUrl)
@@ -64,6 +65,6 @@ public class Responder extends BaseQueryExecutor {
 				.setResultSetType(ResultSet.TYPE_SCROLL_INSENSITIVE)
 				.finish();
 
-		return env.createInput(inputBuilder);
+		run(env, env.createInput(inputBuilder));
 	}
 }

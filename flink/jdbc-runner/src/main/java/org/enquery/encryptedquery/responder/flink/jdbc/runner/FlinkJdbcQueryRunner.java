@@ -26,14 +26,19 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.CoreConfigurationProperties;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.business.ChildProcessLogger;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
@@ -59,29 +64,25 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	private String driverClassName;
 	private String connectionUrl;
 	private String sqlQuery;
-	private String dataSchemaName = null;
+	private String dataSchemaName;
 	private String additionalFlinkArguments;
 	private Path programPath;
 	private Path jarPath;
 	private Path runDir;
-	private String encryptionMethodClass;
-	private String modPowAbstractionClass;
-	private String jniLibraryPath;
 	private Integer flinkParallelism;
 	private Integer computeThreshold;
-	private Map<String, String> runParameters;
 	private Integer columnEncryptionPartitionCount;
 
 	@Reference
 	private DataSchemaService dss;
 	@Reference
 	private ExecutorService threadPool;
-
+	@Reference
+	private QueryTypeConverter queryTypeConverter;
+	@Reference
+	private CryptoSchemeRegistry cryptoRegistry;
 	private DataSourceType type;
 
-	private QueryTypeConverter queryTypeConverter;
-
-	private Integer maxHitsPerSelector;
 
 	@Activate
 	void activate(final Config config) {
@@ -119,14 +120,6 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 		runDir = Paths.get(config._run_directory());
 		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
 
-		encryptionMethodClass = config._column_encryption_class_name();
-		Validate.notBlank(encryptionMethodClass);
-
-		modPowAbstractionClass = config._mod_pow_class_name();
-		Validate.notNull(modPowAbstractionClass);
-
-		jniLibraryPath = config._jni_library_path();
-
 		if (config._flink_parallelism() != null) {
 			flinkParallelism = Integer.valueOf(config._flink_parallelism());
 		}
@@ -137,13 +130,6 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 
 		Validate.notBlank(config.type(), "Type is required.");
 		this.type = DataSourceType.valueOf(config.type());
-
-		queryTypeConverter = new QueryTypeConverter();
-
-		if (config._max_hits_per_selector() != null) {
-			maxHitsPerSelector = Integer.parseInt(config._max_hits_per_selector());
-			Validate.isTrue(maxHitsPerSelector > 0);
-		}
 
 		if (config._column_encryption_partition_count() != null) {
 			columnEncryptionPartitionCount = Integer.parseInt(config._column_encryption_partition_count());
@@ -167,26 +153,18 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	}
 
 	@Override
-	public void run(Map<String, String> parameters, Query query, String outputFileName, OutputStream stdOutput) {
+	public void run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
 		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
-
-		this.runParameters = parameters;
-		if (parameters != null) {
-			for (Map.Entry<String, String> entry : parameters.entrySet()) {
-				log.info(entry.getKey() + "/" + entry.getValue());
-			}
-		}
-
 
 		Path workingTempDir = null;
 		try {
 			workingTempDir = Files.createTempDirectory(runDir, "flink-jdbc");
 			Path jdbcConProps = createJDBCConnectionPropertyFile(workingTempDir);
 			Path queryFile = createQueryFile(workingTempDir, query);
-			Path configFile = createConfigFile(workingTempDir, query);
+			Path configFile = createConfigFile(workingTempDir, query, parameters);
 
 			List<String> arguments = new ArrayList<>();
 			arguments.add(programPath.toString());
@@ -240,37 +218,46 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 		}
 	}
 
-	private Path createConfigFile(Path dir, Query query) throws FileNotFoundException, IOException {
+	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters) throws FileNotFoundException, IOException {
 		Path result = Paths.get(dir.toString(), "config.properties");
+		int maxHitsPerSelector = 1000;
 
 		Properties p = new Properties();
 
-		p.setProperty(FlinkConfigurationProperties.MOD_POW_CLASS_NAME, modPowAbstractionClass);
-		p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_CLASS_NAME, encryptionMethodClass);
-
-		if (jniLibraryPath != null) {
-			p.setProperty(FlinkConfigurationProperties.JNI_LIBRARIES, jniLibraryPath);
+		if (parameters != null) {
+			if (parameters.containsKey(ResponderProperties.MAX_HITS_PER_SELECTOR)) {
+				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+			}
 		}
+		p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 
 		if (columnEncryptionPartitionCount != null) {
-			p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT, Integer.toString(columnEncryptionPartitionCount));
+			p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT,
+					Integer.toString(columnEncryptionPartitionCount));
 		}
 
 		if (computeThreshold != null) {
 			p.setProperty(FlinkConfigurationProperties.COMPUTE_THRESHOLD, computeThreshold.toString());
 		}
 
-		if (maxHitsPerSelector != null) {
-			p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, maxHitsPerSelector.toString());
+		// Pass the CryptoScheme configuration to the external application,
+		// the external application needs to instantiate the CryptoScheme whit these parameters
+		final String schemeId = query.getQueryInfo().getCryptoSchemeId();
+		CryptoScheme cryptoScheme = cryptoRegistry.cryptoSchemeByName(schemeId);
+		Validate.notNull(cryptoScheme, "CryptoScheme not found for id: %s", schemeId);
+		p.setProperty(CoreConfigurationProperties.CRYPTO_SCHEME_CLASS_NAME, cryptoScheme.getClass().getName());
+		for (Entry<String, String> entry : cryptoScheme.configurationEntries()) {
+			p.setProperty(entry.getKey(), entry.getValue());
 		}
 
-		if (runParameters != null) {
-			runParameters.forEach((k, v) -> {
-				if (v != null) {
-					p.setProperty(k, v);
-				}
-			});
-		}
+		StringBuilder sb = new StringBuilder();
+		p.forEach((k, v) -> {
+			sb.append("\n");
+			sb.append(k);
+			sb.append("=");
+			sb.append(v);
+		});
+		log.info("Running with configuration: {}", sb.toString());
 
 		try (OutputStream os = new FileOutputStream(result.toFile())) {
 			p.store(os, "Automatically generated by: " + this.getClass());

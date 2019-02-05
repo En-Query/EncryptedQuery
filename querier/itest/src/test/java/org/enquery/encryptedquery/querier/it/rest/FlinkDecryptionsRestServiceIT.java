@@ -41,6 +41,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
+// @Ignore
 public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 
 	@Test
@@ -78,7 +79,6 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 		assertEquals(1, counters[0]);
 	}
 
-
 	@Test
 	public void create() throws Exception {
 		Retrieval fullRetrieval = submitQueryAndRetrieveResult();
@@ -98,7 +98,7 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 		assertEquals(created.getRetrieval().getSelfUri(), listed.getRetrieval().getSelfUri());
 		assertNotNull(created.getStatus());
 
-		tryUntilTrue(60,
+		tryUntilTrue(90,
 				2_000,
 				"Timed out waiting for DecryptionStatus.Complete",
 				uri -> retrieveDecryption(uri).getData().getStatus() == DecryptionStatus.Complete,
@@ -110,6 +110,7 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 		assertEquals(created.getRetrieval().getId(), retrieved.getRetrieval().getId());
 		assertEquals(created.getRetrieval().getSelfUri(), retrieved.getRetrieval().getSelfUri());
 		assertEquals(DecryptionStatus.Complete, retrieved.getStatus());
+		
 
 		validateClearTextResponse(retrieved, "title", "A Cup of Java", "author", "Kumar");
 	}

@@ -23,8 +23,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.xml.datatype.DatatypeFactory;
@@ -35,9 +33,8 @@ import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.commons.io.IOUtils;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -63,7 +60,9 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 
 	@Inject
 	@Filter(timeout = 60_000)
-	private QuerierFactory querierFactory;
+	private EncryptQuery querierFactory;
+	@Inject
+	private QueryTypeConverter queryConverter;
 
 	private static final String DATA_SOURCE_NAME = "test-name";
 
@@ -82,11 +81,9 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 
 		installBooksDataSchema();
 		booksDataSchema = retrieveDataSchemaByName("Books");
-		installDataSource(DATA_SOURCE_NAME, booksDataSchema.getDataSchema().getName());
-
+		installFlinkJdbcDataSource(DATA_SOURCE_NAME, booksDataSchema.getDataSchema().getName());
 		DataSourceResources dataSources = retrieveDataSources(booksDataSchema.getDataSourcesUri());
-		assertEquals(1, dataSources.getDataSourceResource().size());
-		dataSourceResource = dataSources.getDataSourceResource().get(0);
+		dataSourceResource = dataSources.getDataSourceResource().stream().filter(ds -> DATA_SOURCE_NAME.equals(ds.getDataSource().getName())).findFirst().get();
 	}
 
 	@Test
@@ -174,11 +171,10 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 
 	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 12;
-	public static final int paillierBitSize = 384;
+	public static final int modulusBitSize = 384;
 	public static final int certainty = 128;
 	private static final String SELECTOR = "A Cup of Java";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
-	private QueryTypeConverter queryConverter = new QueryTypeConverter();;
 
 	private Querier createQuerier() throws Exception {
 		byte[] bytes = IOUtils.resourceToByteArray("/schemas/get-price-query-schema.xml",
@@ -187,19 +183,19 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(bytes);
 
-		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-				.newBuilder()
-				.dataChunkSize(DATA_CHUNK_SIZE)
-				.hashBitSize(HASH_BIT_SIZE)
-				.paillierBitSize(paillierBitSize)
-				.certainty(certainty)
-				.embedSelector(true)
-				.queryType("Test")
-				.build();
+		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
+		// .newBuilder()
+		// .dataChunkSize(DATA_CHUNK_SIZE)
+		// .hashBitSize(HASH_BIT_SIZE)
+		// // .modulusBitSize(modulusBitSize)
+		// .certainty(certainty)
+		// .embedSelector(true)
+		// .build();
+		//
+		// return querierFactory.encrypt(querySchema,
+		// SELECTORS,
+		// baseTestEncryptionProperties);
 
-		return querierFactory.createQuerier(querySchema,
-				UUID.randomUUID(),
-				SELECTORS,
-				baseTestEncryptionProperties);
+		return querierFactory.encrypt(querySchema, SELECTORS, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

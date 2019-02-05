@@ -81,7 +81,7 @@ public class SchemaLoader {
 		}
 	}
 
-	public org.enquery.encryptedquery.xml.schema.QuerySchema loadQSchema(Path file) throws JAXBException, FileNotFoundException, IOException {
+	public QuerySchema loadQSchema(Path file) throws JAXBException, FileNotFoundException, IOException {
 		Validate.notNull(file);
 		Validate.isTrue(Files.isRegularFile(file));
 
@@ -91,7 +91,7 @@ public class SchemaLoader {
 		}
 	}
 
-	private org.enquery.encryptedquery.xml.schema.QuerySchema toXMLQuerySchema(InputStream fis) throws JAXBException {
+	private QuerySchema toXMLQuerySchema(InputStream fis) throws JAXBException {
 		Unmarshaller jaxbUnmarshaller = queryJaxbContext.createUnmarshaller();
 		jaxbUnmarshaller.setSchema(querySchemaXMLSchema);
 		StreamSource source = new StreamSource(fis);
@@ -134,12 +134,12 @@ public class SchemaLoader {
 		Validate.notNull(file);
 		Validate.isTrue(Files.isRegularFile(file), "File not found: " + file);
 
-		final org.enquery.encryptedquery.xml.schema.QuerySchema xmlQS = loadQSchema(file);
+		final QuerySchema xmlQS = loadQSchema(file);
 
 		return convertQuerySchema(xmlQS);
 	}
 
-	private org.enquery.encryptedquery.data.QuerySchema convertQuerySchema(final org.enquery.encryptedquery.xml.schema.QuerySchema xmlQS) {
+	private org.enquery.encryptedquery.data.QuerySchema convertQuerySchema(final QuerySchema xmlQS) {
 		final org.enquery.encryptedquery.data.QuerySchema result = new org.enquery.encryptedquery.data.QuerySchema();
 		result.setName(xmlQS.getName());
 		result.setSelectorField(xmlQS.getSelectorField());
@@ -174,7 +174,7 @@ public class SchemaLoader {
 	public org.enquery.encryptedquery.data.QuerySchema loadQuerySchema(byte[] bytes) throws JAXBException {
 		Validate.notNull(bytes);
 
-		final org.enquery.encryptedquery.xml.schema.QuerySchema xmlQS = loadXMLQuerySchema(bytes);
+		final QuerySchema xmlQS = loadXMLQuerySchema(bytes);
 
 		return convertQuerySchema(xmlQS);
 	}

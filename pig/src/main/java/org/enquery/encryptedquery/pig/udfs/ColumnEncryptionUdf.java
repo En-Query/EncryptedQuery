@@ -17,7 +17,6 @@
 package org.enquery.encryptedquery.pig.udfs;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
@@ -26,19 +25,22 @@ import org.apache.pig.data.DataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.enquery.encryptedquery.encryption.ModPowAbstraction;
+import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.ColumnProcessor;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.responder.ResponderProperties;
-import org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumn;
 
-public class ColumnEncryptionUdf extends AbstractUdf<BigInteger> implements PigTypes, ResponderProperties {
-	transient private ComputeEncryptedColumn cec;
+public class ColumnEncryptionUdf extends AbstractUdf<CipherText> implements PigTypes, ResponderProperties {
+	transient private ColumnProcessor cec;
+	transient private CryptoScheme scheme;
+
 
 	public ColumnEncryptionUdf(String queryFileName, String configFileName) {
 		super(queryFileName, configFileName);
 	}
 
 	@Override
-	public BigInteger exec(Tuple input) throws IOException {
+	public CipherText exec(Tuple input) throws IOException {
 		if (input == null || input.size() == 0) return null;
 		initializeQueryParams();
 		return encryptColumn(input);
@@ -47,31 +49,37 @@ public class ColumnEncryptionUdf extends AbstractUdf<BigInteger> implements PigT
 	@SuppressWarnings("unchecked")
 	private void initializeQueryParams() throws IOException {
 		initializeQuery(q -> {
-			Map<Integer, BigInteger> queryElements = q.getQueryElements();
-			BigInteger nSquared = q.getNSquared();
-			try {
-				String cecClassName = systemConfig.get(COLUMN_ENCRYPTION_CLASS_NAME);
-				Validate.notEmpty(cecClassName, "Missing or invalid property " + COLUMN_ENCRYPTION_CLASS_NAME);
+			Map<Integer, CipherText> queryElements = q.getQueryElements();
 
-				Class<ComputeEncryptedColumn> cecClass;
-				cecClass = (Class<ComputeEncryptedColumn>) Class.forName(cecClassName);
-				cec = cecClass.newInstance();
+			// TODO: initialize ColumnProcessor and Scheme
 
-				String modPowClassName = systemConfig.get(MOD_POW_CLASS_NAME);
-				Validate.notEmpty(modPowClassName, "Missing or invalid property " + MOD_POW_CLASS_NAME);
+			// BigInteger nSquared = q.getNSquared();
+			// try {
+			// String cecClassName = systemConfig.get(COLUMN_ENCRYPTION_CLASS_NAME);
+			// Validate.notEmpty(cecClassName, "Missing or invalid property " +
+			// COLUMN_ENCRYPTION_CLASS_NAME);
+			//
+			// Class<ComputeEncryptedColumn> cecClass;
+			// cecClass = (Class<ComputeEncryptedColumn>) Class.forName(cecClassName);
+			// cec = cecClass.newInstance();
+			//
+			// String modPowClassName = systemConfig.get(MOD_POW_CLASS_NAME);
+			// Validate.notEmpty(modPowClassName, "Missing or invalid property " +
+			// MOD_POW_CLASS_NAME);
+			// Class<ModPowAbstraction> modPowClass = (Class<ModPowAbstraction>)
+			// Class.forName(modPowClassName);
+			// ModPowAbstraction modPowAbstraction = modPowClass.newInstance();
 
-				Class<ModPowAbstraction> modPowClass = (Class<ModPowAbstraction>) Class.forName(modPowClassName);
-				ModPowAbstraction modPowAbstraction = modPowClass.newInstance();
-
-				cec.initialize(queryElements, nSquared, modPowAbstraction, systemConfig);
-			} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-				throw new RuntimeException("Error initializing ComputeEncryptedColumn", e);
-			}
+			// cec.initialize(queryElements, nSquared, modPowAbstraction, systemConfig);
+			// } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e)
+			// {
+			// throw new RuntimeException("Error initializing ComputeEncryptedColumn", e);
+			// }
 		});
 	}
 
 
-	private BigInteger encryptColumn(Tuple input) throws ExecException, FrontendException {
+	private CipherText encryptColumn(Tuple input) throws ExecException, FrontendException {
 		Validate.isTrue(input.size() == 1, "Wrong input, expects a single field of type BAG.");
 		Validate.isTrue(org.apache.pig.data.DataType.BAG == input.getType(0), "Wrong input, expects a single field of type BAG.");
 
@@ -79,7 +87,7 @@ public class ColumnEncryptionUdf extends AbstractUdf<BigInteger> implements PigT
 			addEntry(tuple);
 		}
 
-		return cec.computeColumnAndClearData();
+		return cec.compute();
 	}
 
 	private void addEntry(Tuple tuple) throws ExecException {
@@ -90,8 +98,8 @@ public class ColumnEncryptionUdf extends AbstractUdf<BigInteger> implements PigT
 		final int rowHash = (int) tuple.get(0);
 		byte[] ba = new byte[1];
 		ba[0] = tuple.getType(1);
-		BigInteger bi = new BigInteger(1, ba);
-		cec.insertDataPart(rowHash, bi);
+		// BigInteger bi = new BigInteger(1, ba);
+		cec.insert(rowHash, ba);
 	}
 
 	@Override

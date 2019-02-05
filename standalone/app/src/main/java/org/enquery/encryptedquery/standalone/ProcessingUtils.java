@@ -19,8 +19,6 @@ package org.enquery.encryptedquery.standalone;
 import java.text.DecimalFormat;
 import java.util.List;
 
-import org.enquery.encryptedquery.responder.wideskies.common.ColumnBasedResponderProcessor;
-import org.enquery.encryptedquery.responder.wideskies.common.RowBasedResponderProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,14 +48,14 @@ public class ProcessingUtils {
 	 * @param processors List of processing threads
 	 * @return long number of records processed
 	 */
-	public static long recordsProcessedRowBased(List<RowBasedResponderProcessor> processors) {
-		long recordsProcessed = 0;
-		for (RowBasedResponderProcessor processor : processors) {
-			recordsProcessed += (processor).getRecordsProcessed();
-		}
-		logger.debug("Records Processed so far {}", numFormat.format(recordsProcessed));
-		return recordsProcessed;
-	}
+	// public static long recordsProcessedRowBased(List<RowBasedResponderProcessor> processors) {
+	// long recordsProcessed = 0;
+	// for (RowBasedResponderProcessor processor : processors) {
+	// recordsProcessed += (processor).getRecordsProcessed();
+	// }
+	// logger.debug("Records Processed so far {}", numFormat.format(recordsProcessed));
+	// return recordsProcessed;
+	// }
 
 	/**
 	 * Returns the Percent of records processed based on how many have been loaded into the queues
@@ -80,14 +78,15 @@ public class ProcessingUtils {
 	 * 
 	 * @return int Percent Complete
 	 */
-	public static int getPercentCompleteRowBased(long recordsLoaded, List<RowBasedResponderProcessor> processors) {
-		long counter = ProcessingUtils.recordsProcessedRowBased(processors);
-		if (recordsLoaded != 0) {
-			double pct = Math.round(((double) counter / (double) recordsLoaded) * 100.0);
-			logger.debug("RL {} / RP {} / % {}", recordsLoaded, counter, pct);
-			return (int) pct;
-		} else {
-			return 0;
-		}
-	}
+	// public static int getPercentCompleteRowBased(long recordsLoaded,
+	// List<RowBasedResponderProcessor> processors) {
+	// long counter = ProcessingUtils.recordsProcessedRowBased(processors);
+	// if (recordsLoaded != 0) {
+	// double pct = Math.round(((double) counter / (double) recordsLoaded) * 100.0);
+	// logger.debug("RL {} / RP {} / % {}", recordsLoaded, counter, pct);
+	// return (int) pct;
+	// } else {
+	// return 0;
+	// }
+	// }
 }

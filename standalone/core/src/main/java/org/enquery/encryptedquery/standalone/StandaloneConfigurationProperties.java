@@ -16,13 +16,12 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import org.enquery.encryptedquery.responder.ResponderProperties;
-
 /**
  * Properties constants for the Stand Alone Executor
  */
-public interface StandaloneConfigurationProperties extends ResponderProperties {
-	String MAX_QUEUE_SIZE = "max.queue.size";
-	String PROCESSING_THREADS = "thread.count";
-	String COMPUTE_THRESHOLD = "compute.threshold";
+public interface StandaloneConfigurationProperties {
+	String MAX_QUEUE_SIZE = "standalone.max.queue.size";
+	String PROCESSING_THREADS = "standalone.thread.count";
+	String COMPUTE_THRESHOLD = "standalone.compute.threshold";
+	String MAX_HITS_PER_SELECTOR = "standalone.max.hits.per.selector";
 }

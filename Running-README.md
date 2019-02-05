@@ -31,15 +31,6 @@ type=Batch
 # Name of the DataSchema describing the fields
 data.schema.name=Business Articles
 
-# Class name of the Encryption Method
-.column.encryption.class.name=org.enquery.encryptedquery.responder.wideskies.common.ComputeEncryptedColumnDeRooijJNI
-
-# Class name of the ???
-.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
-
-# JNI Library File
-.jni.library.path=/opt/enquery/native-libs/libresponder.so
-
 # Compute Threshold
 .responder.computeThreshold=30000
 
@@ -50,7 +41,7 @@ data.schema.name=Business Articles
 .jdbc.driver=org.mariadb.jdbc.Driver
 
 # URL to connect to the database
-.jdbc.url=jdbc:mariadb://192.168.200.74:3306/enquery?user=enquery&password=enquery
+.jdbc.url=jdbc:mariadb://192.168.200.74:3306/envieta?user=enquery&password=enquery
 
 # SQL query that selects the data to be queried
 .jdbc.query=SELECT id, complanyname, tickersymbol, articledate, articleURL, subject FROM businessarticles 
@@ -59,13 +50,13 @@ data.schema.name=Business Articles
 .flink.install.dir=/opt/flink
 
 # Path to the flink-jdbc jar file.  This is the jar file implementing the query execution.
-.jar.file.path=/opt/enquery/app-lib/encryptedquery-flink-jdbc-1.0.0-SNAPSHOT.jar
+.jar.file.path=/opt/enquery/app-lib/encryptedquery-flink-jdbc-2.1.0.jar
 
 # Path to a directory to use as the parent directory to store temporary files during the execution of the query.
 .run.directory=/opt/enquery/jobs/flink
 ```
 
-If the Data Source is for a flat file to be queried using the Standalone method then remove `.jdbc`  and `.flink` entries, change the .jar.file.path to `/opt/enquery/app-lib/encryptedquery-standalone-app-2.0.0.jar` and the run folder to `/opt/enquery/jobs/standalone` and add the following parameters:
+If the Data Source is for a flat file to be queried using the Standalone method then remove `.jdbc`  and `.flink` entries, change the .jar.file.path to `/opt/enquery/app-lib/encryptedquery-standalone-app-2.1.0.jar` and the run folder to `/opt/enquery/jobs/standalone` and add the following parameters:
 ```
 # Location of Data File
 data.source.file=/opt/enquery/sampledata/cdr10M.json
@@ -134,6 +125,6 @@ Each field in the datasource must be described in the data schema.  The dataType
 .jdbc.query=SELECT id, companyname, tickersymbol, articledate, articleURL, subject FROM businessarticles
 ```
 
-After you create a data schema for the data source place it in the data schema inbox `/var/EQResponder/inbox/`
+After you create a data schema for the data source place it in the data schema inbox `/opt/enquery/dataschemas/`
 
 Refer to the Examples README files for more info in running Encrypted Query

@@ -16,79 +16,10 @@
  */
 package org.enquery.encryptedquery.querier;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-
-import org.enquery.encryptedquery.core.CoreConfigurationProperties;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery;
-import org.enquery.encryptedquery.utils.PIRException;
-
 /**
  * Properties constants for the Querier
  */
-public interface QuerierProperties extends CoreConfigurationProperties {
-
-	String QUERYTYPE = "querier.queryType";
-	String NUMTHREADS = "querier.numThreads";
-	String METHOD = "query.encryption.method";
-
-	String EMBEDSELECTOR = "querier.embedSelector";
-	String EMBEDQUERYSCHEMA = "pir.embedQuerySchema";
-	String ENCQUERYMETHOD = "pir.encryptQueryMethod";
-
-	List<String> PROPSLIST = Arrays.asList(
-			QUERYTYPE,
-			NUMTHREADS,
-			EMBEDQUERYSCHEMA,
-			HASH_BIT_SIZE,
-			DATA_CHUNK_SIZE,
-			PAILLIER_BIT_SIZE,
-			BIT_SET,
-			CERTAINTY,
-			EMBEDSELECTOR,
-			PAILLIER_SECURE_RANDOM_ALG,
-			ENCQUERYMETHOD,
-			PAILLIER_SECURE_RANDOM_PROVIDER);
-
-	default void validateQuerierEncryptionProperties(Properties properties) throws PIRException {
-		// Parse encryption properties
-		if (!properties.containsKey(QUERYTYPE)) {
-			throw new PIRException("Encryption properties not valid. Missing property " + QUERYTYPE);
-		}
-
-		if (!properties.containsKey(HASH_BIT_SIZE)) {
-			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + HASH_BIT_SIZE);
-		}
-
-		if (!properties.containsKey(DATA_CHUNK_SIZE)) {
-			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + DATA_CHUNK_SIZE);
-		}
-
-		if (!properties.containsKey(PAILLIER_BIT_SIZE)) {
-			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + PAILLIER_BIT_SIZE);
-		}
-
-		if (!properties.containsKey(CERTAINTY)) {
-			throw new PIRException("Encryption properties not valid. For action='encrypt': Must have the option " + CERTAINTY);
-		}
-
-		if (properties.containsKey(ENCQUERYMETHOD)) {
-			String method = properties.getProperty(ENCQUERYMETHOD);
-			if (!EncryptQuery.METHODS.contains(method)) {
-				throw new PIRException("Encryption properties not valid. Unrecognized 'pir.encryptQueryMethod' property with value '" + method + "'.");
-			}
-		}
-
-		int dataChunkSize = Integer.parseInt(properties.getProperty(DATA_CHUNK_SIZE));
-		int paillierBitSize = Integer.parseInt(properties.getProperty(PAILLIER_BIT_SIZE));
-		if (dataChunkSize > (paillierBitSize / 8)) {
-			throw new PIRException("Encryption properties not valid. " + DATA_CHUNK_SIZE + " must be less than 3072.");
-		}
-
-//		if ((dataPartitionBitSize % 8) != 0) {
-//			throw new PIRException("Encryption properties not valid. " + DATA_CHUNK_SIZE + "  must be a multiple of 8.");
-//		}
-	}
-
+public interface QuerierProperties {
+	String DATA_CHUNK_SIZE = "dataChunkSize";
+	String HASH_BIT_SIZE = "hashBitSize";
 }

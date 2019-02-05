@@ -1,19 +1,18 @@
 /*
- * EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
- * Copyright (C) 2018  EnQuery LLC 
+ * EncryptedQuery is an open source project allowing user to query databases with queries under
+ * homomorphic encryption to securing the query and results set from database owner inspection.
+ * Copyright (C) 2018 EnQuery LLC
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 package org.enquery.encryptedquery.flink.jdbc;
 
@@ -32,8 +31,7 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,19 +41,16 @@ import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
-import org.enquery.encryptedquery.encryption.ModPowAbstraction;
-import org.enquery.encryptedquery.encryption.PaillierEncryption;
-import org.enquery.encryptedquery.encryption.PrimeGenerator;
-import org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl;
-import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QueryKey;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
+import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.utils.RandomProvider;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
@@ -70,47 +65,53 @@ public class ResponderTest extends JDBCTestBase {
 
 	private final Logger log = LoggerFactory.getLogger(ResponderTest.class);
 
-	private static final Integer DATA_CHUNK_SIZE = 2;
-	private static final Integer HASH_BIT_SIZE = 9;
+	private static final Integer DATA_CHUNK_SIZE = 1;
+	private static final Integer HASH_BIT_SIZE = 8;
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
 	private static final Path CONFIG_FILE_NAME = Paths.get("target/test-classes/", "config.properties");
 
-	public static final int paillierBitSize = 384;
+	public static final int modulusBitSize = 384;
 	public static final int certainty = 128;
 	private static final String SELECTOR = "A Cup of Java";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
 	private QuerySchema querySchema;
-	private PaillierEncryption paillierEnc;
-	private EncryptQuery queryEnc;
-	private ModPowAbstraction modPow;
-	private QuerierFactory querierFactory;
-	private PrimeGenerator primeGenerator;
-	private RandomProvider randomProvider;
-
 	private QueryTypeConverter queryConverter;
 	private ResponseTypeConverter responseConverter;
 	private QueryKey queryKey;
-	private ExecutorService threadPool;
+	private Map<String, String> config;
+	private PaillierCryptoScheme crypto;
 
 	@Before
 	public void prepare() throws Exception {
 		Files.deleteIfExists(RESPONSE_FILE_NAME);
 		Files.deleteIfExists(QUERY_FILE_NAME);
 
+		config = FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME);
+		crypto = new PaillierCryptoScheme();
+		crypto.initialize(config);
+
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
+
 		queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(cryptoRegistry);
+		queryConverter.initialize();
+
 		responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoRegistry);
+		responseConverter.initialize();
 
 		querySchema = createQuerySchema();
-
-		threadPool = Executors.newFixedThreadPool(1);
-		randomProvider = new RandomProvider();
-		modPow = new ModPowAbstractionJavaImpl();
-		primeGenerator = new PrimeGenerator(modPow, randomProvider);
-		paillierEnc = new PaillierEncryption(modPow, primeGenerator, randomProvider);
-		queryEnc = new EncryptQuery(modPow, paillierEnc, randomProvider, threadPool);
-		querierFactory = new QuerierFactory(modPow, paillierEnc, queryEnc);
 
 		Querier querier = createQuerier("Books", SELECTORS);
 		queryKey = querier.getQueryKey();
@@ -130,7 +131,7 @@ public class ResponderTest extends JDBCTestBase {
 		q.setDriverClassName(DRIVER_CLASS);
 		q.setConnectionUrl(DB_URL);
 		q.setSqlQuery(SELECT_ALL_BOOKS);
-		q.setConfig(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
+		q.setConfig(config);
 		q.run();
 
 		Response response = loadResponseFile();
@@ -140,8 +141,11 @@ public class ResponderTest extends JDBCTestBase {
 
 		DecryptResponse dr = new DecryptResponse();
 		ExecutorService es = Executors.newCachedThreadPool();
+		dr.setCrypto(crypto);
+		dr.setExecutionService(es);
+		dr.activate();
 
-		ClearTextQueryResponse answer = dr.decrypt(es, response, queryKey);
+		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
 		answer.forEach(sel -> {
 			log.info("Selector {}", sel);
 			assertEquals("title", sel.getName());
@@ -180,17 +184,12 @@ public class ResponderTest extends JDBCTestBase {
 
 
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
-		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-				.newBuilder()
-				.dataChunkSize(DATA_CHUNK_SIZE)
-				.hashBitSize(HASH_BIT_SIZE)
-				.paillierBitSize(paillierBitSize)
-				.certainty(certainty)
-				.embedSelector(true)
-				.queryType(queryType)
-				.build();
+		RandomProvider randomProvider = new RandomProvider();
+		EncryptQuery queryEnc = new EncryptQuery();
+		queryEnc.setCrypto(crypto);
+		queryEnc.setRandomProvider(randomProvider);
 
-		return querierFactory.createQuerier(querySchema, UUID.randomUUID(), selectors, baseTestEncryptionProperties);
+		return queryEnc.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 
 	private QuerySchema createQuerySchema() {
@@ -281,6 +280,5 @@ public class ResponderTest extends JDBCTestBase {
 		qs.addElement(field5);
 
 		return qs;
-
 	}
 }

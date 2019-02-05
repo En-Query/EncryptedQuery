@@ -241,7 +241,7 @@ public class PrimeGenerator {
 	 * @throws IllegalArgumentException If {@code bitLength} is less than 1024
 	 * @throws PIRException If an unexpected error occured during prime generation
 	 */
-	public BigInteger[] getPrimePairWithAuxiliaryPrimes(int bitLength, int certainty) throws PIRException {
+	public BigInteger[] getPrimePairWithAuxiliaryPrimes(int bitLength, int certainty) {
 		final Random rnd = randomProvider.getSecureRandom();
 		logger.debug("bitLength " + bitLength + " certainty " + certainty + " random " + rnd);
 
@@ -340,7 +340,7 @@ public class PrimeGenerator {
 	 * FIPS 186-4 only applies for bitLength=1024, 2048, and 3072. For any other value of bitLength,
 	 * use this method with caution.
 	 */
-	public BigInteger[] getSinglePrimeFromAuxiliaryPrimes(BigInteger r1, BigInteger r2, int bitLength, int certainty) throws PIRException {
+	public BigInteger[] getSinglePrimeFromAuxiliaryPrimes(BigInteger r1, BigInteger r2, int bitLength, int certainty) {
 		final Random rnd = randomProvider.getSecureRandom();
 		// step 1
 		BigInteger twoR1 = r1.add(r1);
@@ -399,7 +399,7 @@ public class PrimeGenerator {
 				// step 9
 				// if i >= 5 * (bitLength / 2), return (FAILURE, 0, 0)
 				if (i >= 5 * (bitLength / 2)) {
-					throw new PIRException("prime generation failed with i >= 5*(bitlength/2)");
+					throw new RuntimeException("prime generation failed with i >= 5*(bitlength/2)");
 				}
 				// step 10
 				Y = Y.add(twoR1R2);

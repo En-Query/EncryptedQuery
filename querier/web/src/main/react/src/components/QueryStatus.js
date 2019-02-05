@@ -29,8 +29,10 @@ class QueryStatus extends React.Component {
       querySelfUri: []
     };
 
-    this.handleChange = this.handleChange.bind(this);
-    this.getSchedule = this.getSchedule.bind(this);
+    this.dataSchemaChange = this.dataSchemaChange.bind(this);
+    this.scheduleQuery = this.scheduleQuery.bind(this);
+    this.viewSchedules = this.viewSchedules.bind(this);
+    this.scheduleAgain = this.scheduleAgain.bind(this);
   }
 
   //invoke data fetch function inside interval timeout as well as outside of it
@@ -58,14 +60,15 @@ class QueryStatus extends React.Component {
     this.setState({ querySchemaName: e.target.value });
   };
 
-  handleChange = e => {
+  dataSchemaChange = e => {
     const dataSchema = this.state.dataSchemas.find(
       dataSchema => dataSchema.name === e.target.value
     );
+    const querySchemasUri = localStorage.getItem("querySchemasUri");
     if (dataSchema) {
       axios({
         method: "get",
-        url: `${dataSchema.selfUri}/queryschemas/`,
+        url: `${querySchemasUri}`,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
@@ -77,10 +80,12 @@ class QueryStatus extends React.Component {
           this.setState(
             {
               querySchemas: response.data.data,
+              querySchemaSelfUri: response.data.data[0].selfUri,
               selectedId: dataSchema.id
             },
             () => {
               console.log(this.state.querySchemas);
+              console.log(this.state.querySchemaSelfUri);
               console.log(this.state.selectedId);
             }
           );
@@ -94,11 +99,12 @@ class QueryStatus extends React.Component {
       querySchema => querySchema.name === e.target.value
     );
     if (querySchema) {
-      const { id, name } = querySchema;
+      const { id, name, selfUri } = querySchema;
       this.setState(
         {
           querySchemaId: id,
-          querySchemaName: name
+          querySchemaName: name,
+          querySchemaSelfUri: selfUri
         },
         () => {
           console.log(this.state.querySchemaId);
@@ -111,15 +117,14 @@ class QueryStatus extends React.Component {
   getQueryData = () => {
     axios({
       method: "get",
-      url: `/querier/api/rest/dataschemas/${this.state
-        .selectedId}/queryschemas/${this.state.querySchemaId}/queries/`,
+      url: `${this.state.querySchemaSelfUri}/queries`,
       headers: {
         Accept: "application/vnd.encryptedquery.enclave+json; version=1"
       }
     })
       .then(response => {
-        // check if status is ENCRYPTED, will stop polling for upated status
-        if (response.data.data[0].status !== "Encrypted" && "Scheduled") {
+        // check if status is ENCRYPTED/SCHEDULED, will stop polling for updated status
+        if (response.data.data[0].status !== "Scheduled") {
           this.timeout = setTimeout(() => this.getQueryData(), 10000);
         }
         console.log(response);
@@ -151,15 +156,29 @@ class QueryStatus extends React.Component {
         return <button> ENCRYPTING ... </button>;
       case `Encrypted`:
         return (
-          <button onClick={this.getSchedule} type="button">
+          <button
+            onClick={e => this.scheduleQuery(e, querySelfUri)}
+            type="button"
+          >
             SCHEDULE
           </button>
         );
       case `Scheduled`:
         return (
-          <button onClick={e => this.getView(e, querySelfUri)} type="button">
-            VIEW{" "}
-          </button>
+          <React.Fragment>
+            <button
+              onClick={e => this.viewSchedules(e, querySelfUri)}
+              type="button"
+            >
+              VIEW SCHEDULES{" "}
+            </button>
+            <button
+              onClick={e => this.scheduleAgain(e, querySelfUri)}
+              type="button"
+            >
+              SCHEDULE AGAIN{" "}
+            </button>
+          </React.Fragment>
         );
       case `Failed`:
         return <button className="btnFailed"> Failed </button>;
@@ -168,22 +187,42 @@ class QueryStatus extends React.Component {
     }
   };
 
-  getSchedule = (e, querySelfUri) => {
+  scheduleQuery = async (e, querySelfUri) => {
     // Handle schedule button interaction
     // Only when status = ENCRYPTED, goes to Schedule Query Page.
     e.preventDefault();
+    await this.setState({ querySelfUri });
     localStorage.setItem("querySelfUri", this.state.querySelfUri);
+    console.log(
+      "This query will be used to load info on the next page:",
+      this.state.querySelfUri
+    );
     this.props.history.push(`/querier/schedulequery`);
   };
 
-  getView = async (e, querySelfUri) => {
-    // Handle schedule button interaction
+  viewSchedules = async (e, querySelfUri) => {
+    // Handle view schedules button interaction
     // Only when status = SCHEDULED, goes to Query Schedules Status Page
     e.preventDefault();
     await this.setState({ querySelfUri });
-    console.log(this.state.querySelfUri);
     localStorage.setItem("querySelfUri", this.state.querySelfUri);
+    console.log(
+      "This query will be used to load info on the next page:",
+      this.state.querySelfUri
+    );
     this.props.history.push(`/querier/queryschedulesstatus`);
+  };
+
+  scheduleAgain = async (e, querySelfUri) => {
+    //function for  scheduling a query multiple times
+    e.preventDefault();
+    await this.setState({ querySelfUri });
+    localStorage.setItem("querySelfUri", this.state.querySelfUri);
+    console.log(
+      "This query will be used to load info on the next page:",
+      this.state.querySelfUri
+    );
+    this.props.history.push(`/querier/schedulequery`);
   };
 
   render() {
@@ -207,47 +246,50 @@ class QueryStatus extends React.Component {
         <form onSubmit={this.handleSubmit}>
           <fieldset>
             <legend>Query Status</legend>
-            <br />
-            <div>
-              <label>
-                Pick a DataSchema to filter down available QuerySchemas:
-              </label>{" "}
-              <select value={this.state.value} onChange={this.handleChange}>
-                <option value="">Choose DataSchema ...</option>
-                {dataSchemas &&
-                  dataSchemas.length > 0 &&
-                  dataSchemas.map(dataSchema => {
-                    return (
-                      <option value={dataSchema.name}>{dataSchema.name}</option>
-                    );
-                  })}
-              </select>
-            </div>
-            <br />
+            <div className="status-selectboxes">
+              <div>
+                <label>
+                  Pick a DataSchema to filter down available QuerySchemas:
+                </label>{" "}
+                <select
+                  value={this.state.value}
+                  onChange={this.dataSchemaChange}
+                >
+                  <option value="">Choose DataSchema ...</option>
+                  {dataSchemas &&
+                    dataSchemas.length > 0 &&
+                    dataSchemas.map(dataSchema => {
+                      return (
+                        <option value={dataSchema.name}>
+                          {dataSchema.name}
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
 
-            <div>
-              <label>
-                Pick a QuerySchema to view its corresponding queries status:
-              </label>{" "}
-              <select
-                value={this.state.querySchemaName}
-                onChange={this.handleChange}
-                onChange={this.querySchemaChange}
-              >
-                <option value="">Choose QuerySchema ...</option>
-                {querySchemas &&
-                  querySchemas.map(querySchema => {
-                    return (
-                      <option value={querySchema.name}>
-                        {querySchema.name}
-                      </option>
-                    );
-                  })}
-              </select>
+              <div>
+                <label>
+                  Pick a QuerySchema to view its corresponding queries status:
+                </label>{" "}
+                <select
+                  value={this.state.querySchemaName}
+                  onChange={this.handleChange}
+                  onChange={this.querySchemaChange}
+                >
+                  <option value="">Choose QuerySchema ...</option>
+                  {querySchemas &&
+                    querySchemas.map(querySchema => {
+                      return (
+                        <option value={querySchema.name}>
+                          {querySchema.name}
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
             </div>
-            <br />
           </fieldset>
-          <br />
         </form>
 
         <table id="queries">

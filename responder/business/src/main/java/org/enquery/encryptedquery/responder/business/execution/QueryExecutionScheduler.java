@@ -20,6 +20,10 @@ import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.quartz.JobExecutionException;
 
 
+/**
+ * Schedules an execution (internally uses Quartz) for future running. Uses Execution.scheduleTime
+ * as the time to run.
+ */
 public interface QueryExecutionScheduler {
 
 	void add(Execution execution) throws JobExecutionException;

@@ -1,14 +1,14 @@
+Export-Package: \
+	org.enquery.encryptedquery.responder.business,\
+	org.enquery.encryptedquery.responder.business.execution,\
+	org.enquery.encryptedquery.responder.business.results
+	
 Import-Package: \
-	org.enquery.encryptedquery.schema.data,\
+	org.enquery.encryptedquery.xml.schema,\
+	org.enquery.encryptedquery.xml.transformation,\
 	org.enquery.encryptedquery.responder.data.entity,\
 	org.enquery.encryptedquery.responder.data.transformation,\
 	org.enquery.encryptedquery.responder.data.service,\
-	org.enquery.encryptedquery.xml.schema,\
-	org.enquery.encryptedquery.xml.transformation, \
 	*
+
 	
-Export-Package: \
-	org.enquery.encryptedquery.responder.business.execution,\
-	org.enquery.encryptedquery.responder.business.flink, \
-	org.enquery.encryptedquery.responder.business.standalone,\
-	org.enquery.encryptedquery.responder.business

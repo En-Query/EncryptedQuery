@@ -19,7 +19,11 @@
 				<dbms type="mysql"/>
 			</not>
 		</preConditions>
-		<createSequence sequenceName="ids_sequence"/>
+		
+		<createSequence sequenceName="dschema_seq" startValue="1"/>
+		<createSequence sequenceName="dschema_field_seq" startValue="1"/>
+		<createSequence sequenceName="dsource_seq" startValue="1"/>
+		<createSequence sequenceName="ids_sequence" startValue="1"/>
 	</changeSet>
 
     <changeSet id="2" author="asoto">

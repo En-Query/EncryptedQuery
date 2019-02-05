@@ -1,19 +1,18 @@
 /*
- * EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
- * Copyright (C) 2018  EnQuery LLC 
+ * EncryptedQuery is an open source project allowing user to query databases with queries under
+ * homomorphic encryption to securing the query and results set from database owner inspection.
+ * Copyright (C) 2018 EnQuery LLC
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 package org.enquery.encryptedquery.standalone;
 
@@ -22,8 +21,10 @@ import static org.junit.Assert.assertNotNull;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,75 +32,59 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
 
+import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
-import org.enquery.encryptedquery.encryption.ModPowAbstraction;
-import org.enquery.encryptedquery.encryption.PaillierEncryption;
-import org.enquery.encryptedquery.encryption.PrimeGenerator;
-import org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl;
-import org.enquery.encryptedquery.querier.wideskies.decrypt.DecryptResponse;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QueryKey;
-import org.enquery.encryptedquery.query.wideskies.Query;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
+import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.utils.RandomProvider;
 import org.enquery.encryptedquery.xml.transformation.QueryKeyTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 public class ResponderTest {
-
-
 	private final Logger log = LoggerFactory.getLogger(ResponderTest.class);
 
-	private static final Integer DATA_CHUNK_SIZE = 1;
-	private static final Integer HASH_BIT_SIZE = 9;
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
 	private static final Path CONFIG_FILE_NAME = Paths.get("target/test-classes/", "config.cfg");
 	private static final Path DATA_FILE_NAME = Paths.get("target/test-classes/", "simple-data.json");
-	private static final Path CDR_DATA_FILE = Paths.get("target/test-classes/", "cdr5.json");
-	private static final Path CDR_QUERY_FILE = Paths.get("target/test-classes/", "cdr5-query.xml");
-	private static final Path CDR_QUERY_KEY_FILE = Paths.get("target/test-classes/", "cdr5-query-key.xml");
 
-	public static final int paillierBitSize = 384;  
-	public static final int certainty = 128;
 	private static final String SELECTOR = "31";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
 	private QuerySchema querySchema;
-	private PaillierEncryption paillierEnc;
-	private EncryptQuery queryEnc;
-	private ModPowAbstraction modPow;
-	private QuerierFactory querierFactory;
-	private PrimeGenerator primeGenerator;
-	private RandomProvider randomProvider;
-	private ExecutorService threadPool;
-	
-	// private QueryTypeConverter queryConverter;
+	private PaillierCryptoScheme crypto;
 	private ResponseTypeConverter responseConverter;
 	private QueryKey queryKey;
 	private Query query;
+
+	private Map<String, String> config;
+
+	private QueryTypeConverter queryConverter;
 
 	@Before
 	public void prepare() throws Exception {
@@ -108,78 +93,65 @@ public class ResponderTest {
 		Files.deleteIfExists(RESPONSE_FILE_NAME);
 		Files.deleteIfExists(QUERY_FILE_NAME);
 
-		// queryConverter = new QueryTypeConverter();
+		config = FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME);
+		log.info("Loaded config: " + config);
+		crypto = new PaillierCryptoScheme();
+		crypto.initialize(config);
+
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
+
+		queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(cryptoRegistry);
+		queryConverter.initialize();
+
 		responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoRegistry);
+		responseConverter.initialize();
 
 		querySchema = createQuerySchema();
 
-		threadPool = Executors.newFixedThreadPool(1);
-		randomProvider = new RandomProvider();
-		modPow = new ModPowAbstractionJavaImpl();
-		primeGenerator = new PrimeGenerator(modPow, randomProvider);
-		paillierEnc = new PaillierEncryption(modPow, primeGenerator, randomProvider);
-		queryEnc = new EncryptQuery(modPow, paillierEnc, randomProvider, threadPool);
-		querierFactory = new QuerierFactory(modPow, paillierEnc, queryEnc);
-
-		Querier querier = createQuerier("People", SELECTORS);
+		Querier querier = createQuerier("Books", SELECTORS);
 		queryKey = querier.getQueryKey();
 		query = querier.getQuery();
 
+		// save the query
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		}
+
 		log.info("Finished initializing test.");
-	}
-
-	@Test
-	public void testCdr5File() throws Exception {
-
-		Responder responder = new Responder();
-		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.setInputDataFile(CDR_DATA_FILE);
-		responder.setQuery(loadQuery(CDR_QUERY_FILE));
-		responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
-
-		Response response = loadFile();
-		response.getQueryInfo().printQueryInfo();
-
-		log.info("# Response records: ", response.getResponseElements().size());
-
-		DecryptResponse dr = new DecryptResponse();
-		ExecutorService es = Executors.newCachedThreadPool();
-
-		ClearTextQueryResponse answer = dr.decrypt(es, response, loadQueryKey(CDR_QUERY_KEY_FILE));
-		log.info(answer.toString());
-
-		assertEquals(1, answer.selectorCount());
-
-		Selector selector = answer.selectorByName("Caller #");
-		assertNotNull(selector);
-
-		assertEquals(1, selector.hitCount());
-
-		selector.forEachHits(hits -> {
-			assertEquals("275-913-7889", hits.getSelectorValue());
-			assertEquals(2, hits.recordCount());
-			hits.forEachRecord(hit -> {
-				hit.forEachField(field -> {
-					log.info("Field {}", field);
-					if (field.getName().equals("Caller #")) {
-						assertEquals("275-913-7889", field.getValue());
-					}
-				});
-			});
-		});
 	}
 
 	@Test
 	public void testXertaFile() throws Exception {
 
 		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
-		Path CDR_QUERY_FILE = Paths.get("target/test-classes/", "xerta-query.xml");
-		Path CDR_QUERY_KEY_FILE = Paths.get("target/test-classes/", "xerta-query-key.xml");
+		
+		querySchema = createXertaQuerySchema();
+
+		List<String> selectors = Arrays.asList(new String[] {"MTX", "LTEC", "S3F", "GBRA", "KCC", "NESR"});
+		Querier querier = createQuerier("Xerta", selectors);
+		queryKey = querier.getQueryKey();
+		query = querier.getQuery();
+
+		// save the query
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		}
 
 		Responder responder = new Responder();
 		responder.setOutputFileName(RESPONSE_FILE_NAME);
 		responder.setInputDataFile(CDR_DATA_FILE);
-		responder.setQuery(loadQuery(CDR_QUERY_FILE));
+		responder.setQuery(query);
 		responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
 
 		Response response = loadFile();
@@ -187,33 +159,47 @@ public class ResponderTest {
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		DecryptResponse dr = new DecryptResponse();
 		ExecutorService es = Executors.newCachedThreadPool();
+		DecryptResponse dr = new DecryptResponse();
+		dr.setCrypto(crypto);
+		dr.setExecutionService(es);
+		dr.activate();
 
-		ClearTextQueryResponse answer = dr.decrypt(es, response, loadQueryKey(CDR_QUERY_KEY_FILE));
+		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
 		log.info(answer.toString());
 
 		assertEquals(1, answer.selectorCount());
 
+		final Map<String, Object> returnedFields = new HashMap<>();
 		Selector selector = answer.selectorByName("Mnemonic");
+		selector.forEachHits(hits -> {
+			hits.forEachRecord(record -> {
+				record.forEachField(field -> {
+					log.info("Field {}", field);
+					returnedFields.put(field.getName(), field.getValue());
+				});
+			});
+		});
+		
 		assertNotNull(selector);
 
-		assertEquals(2, selector.hitCount());
+		assertEquals("MTX", returnedFields.get("Mnemonic"));
 
-//		selector.forEachHits(hits -> {
-//			assertEquals("TC1", hits.getSelectorValue());
-//			assertEquals(1, hits.recordCount());
-//			hits.forEachRecord(hit -> {
-//				hit.forEachField(field -> {
-//					log.info("Field {}", field);
-//					if (field.getName().equals("Mnemonic")) {
-//						assertEquals("TC1", field.getValue());
-//					}
-//				});
-//			});
-//		});
+
+		// selector.forEachHits(hits -> {
+		// assertEquals("TC1", hits.getSelectorValue());
+		// assertEquals(1, hits.recordCount());
+		// hits.forEachRecord(hit -> {
+		// hit.forEachField(field -> {
+		// log.info("Field {}", field);
+		// if (field.getName().equals("Mnemonic")) {
+		// assertEquals("TC1", field.getValue());
+		// }
+		// });
+		// });
+		// });
 	}
-	
+
 	@SuppressWarnings("static-access")
 	private QueryKey loadQueryKey(Path fileName) throws FileNotFoundException, IOException, JAXBException {
 		QueryKeyTypeConverter qtc = new QueryKeyTypeConverter();
@@ -243,10 +229,13 @@ public class ResponderTest {
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		DecryptResponse dr = new DecryptResponse();
 		ExecutorService es = Executors.newCachedThreadPool();
+		DecryptResponse dr = new DecryptResponse();
+		dr.setCrypto(crypto);
+		dr.setExecutionService(es);
+		dr.activate();
 
-		ClearTextQueryResponse answer = dr.decrypt(es, response, queryKey);
+		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
 		log.info("answer: " + answer);
 
 		final Map<String, Object> returnedFields = new HashMap<>();
@@ -273,17 +262,13 @@ public class ResponderTest {
 	}
 
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
-		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-				.newBuilder()
-				.dataChunkSize(DATA_CHUNK_SIZE)
-				.hashBitSize(HASH_BIT_SIZE)
-				.paillierBitSize(paillierBitSize)
-				.certainty(certainty)
-				.embedSelector(true)
-				.queryType(queryType)
-				.build();
-
-		return querierFactory.createQuerier(querySchema, UUID.randomUUID(), selectors, baseTestEncryptionProperties);
+		RandomProvider randomProvider = new RandomProvider();
+		EncryptQuery queryEnc = new EncryptQuery();
+		queryEnc.setCrypto(crypto);
+		queryEnc.setRandomProvider(randomProvider);
+		// dataChunkSize=1
+		// hashBitSize=9
+		return queryEnc.encrypt(querySchema, selectors, true, 1, 9);
 	}
 
 	private QuerySchema createQuerySchema() {
@@ -338,8 +323,136 @@ public class ResponderTest {
 		qs.addElement(field3);
 
 		return qs;
-
 	}
+	
+	private QuerySchema createXertaQuerySchema() {
+		DataSchema ds = new DataSchema();
+		ds.setName("xerta");
+		DataSchemaElement dse1 = new DataSchemaElement();
+		dse1.setName("Mnemonic");
+		dse1.setDataType(FieldTypes.STRING);
+		dse1.setIsArray(false);
+		dse1.setPosition(1);
+		ds.addElement(dse1);
 
+		DataSchemaElement dse2 = new DataSchemaElement();
+		dse2.setName("Currency");
+		dse2.setDataType(FieldTypes.STRING);
+		dse2.setIsArray(false);
+		dse2.setPosition(4);
+		ds.addElement(dse2);
 
+		DataSchemaElement dse3 = new DataSchemaElement();
+		dse3.setName("MaxPrice");
+		dse3.setDataType(FieldTypes.FLOAT);
+		dse3.setIsArray(false);
+		dse3.setPosition(8);
+		ds.addElement(dse3);
+
+		DataSchemaElement dse4 = new DataSchemaElement();
+		dse4.setName("MinPrice");
+		dse4.setDataType(FieldTypes.FLOAT);
+		dse4.setIsArray(false);
+		dse4.setPosition(9);
+		ds.addElement(dse4);
+
+		DataSchemaElement dse5 = new DataSchemaElement();
+		dse5.setName("Date");
+		dse5.setDataType(FieldTypes.STRING);
+		dse5.setIsArray(false);
+		dse5.setPosition(6);
+		ds.addElement(dse5);
+
+		DataSchemaElement dse6 = new DataSchemaElement();
+		dse6.setName("SecurityType");
+		dse6.setDataType(FieldTypes.STRING);
+		dse6.setIsArray(false);
+		dse6.setPosition(3);
+		ds.addElement(dse6);
+
+		DataSchemaElement dse7 = new DataSchemaElement();
+		dse7.setName("SecurityDesc");
+		dse7.setDataType(FieldTypes.STRING);
+		dse7.setIsArray(false);
+		dse7.setPosition(2);
+		ds.addElement(dse7);
+		
+		DataSchemaElement dse9 = new DataSchemaElement();
+		dse9.setName("SecurityID");
+		dse9.setDataType(FieldTypes.INT);
+		dse9.setIsArray(false);
+		dse9.setPosition(5);
+		ds.addElement(dse9);
+
+		DataSchemaElement dse10 = new DataSchemaElement();
+		dse10.setName("ISIN");
+		dse10.setDataType(FieldTypes.STRING);
+		dse10.setIsArray(false);
+		dse10.setPosition(0);
+		ds.addElement(dse10);
+		
+		DataSchemaElement dse11 = new DataSchemaElement();
+		dse11.setName("Time");
+		dse11.setDataType(FieldTypes.STRING);
+		dse11.setIsArray(false);
+		dse11.setPosition(7);
+		ds.addElement(dse11);
+		
+		QuerySchema qs = new QuerySchema();
+		qs.setName("xerta");
+		qs.setSelectorField("Mnemonic");
+		qs.setDataSchema(ds);
+
+		QuerySchemaElement field1 = new QuerySchemaElement();
+		field1.setLengthType("variable");
+		field1.setName("Mnemonic");
+		field1.setSize(20);
+		field1.setMaxArrayElements(1);
+		qs.addElement(field1);
+
+		QuerySchemaElement field2 = new QuerySchemaElement();
+		field2.setLengthType("variable");
+		field2.setName("Currency");
+		field2.setSize(16);
+		field2.setMaxArrayElements(1);
+		qs.addElement(field2);
+
+		QuerySchemaElement field3 = new QuerySchemaElement();
+		field3.setLengthType("fixed");
+		field3.setName("MaxPrice");
+		field3.setSize(4);
+		field3.setMaxArrayElements(1);
+		qs.addElement(field3);
+
+		QuerySchemaElement field4 = new QuerySchemaElement();
+		field4.setLengthType("fixed");
+		field4.setName("MinPrice");
+		field4.setSize(4);
+		field4.setMaxArrayElements(1);
+		qs.addElement(field4);
+
+		QuerySchemaElement field5 = new QuerySchemaElement();
+		field5.setLengthType("variable");
+		field5.setName("Date");
+		field5.setSize(20);
+		field5.setMaxArrayElements(1);
+		qs.addElement(field5);
+
+		QuerySchemaElement field6 = new QuerySchemaElement();
+		field6.setLengthType("variable");
+		field6.setName("SecurityType");
+		field6.setSize(30);
+		field6.setMaxArrayElements(1);
+		qs.addElement(field6);
+
+		QuerySchemaElement field7 = new QuerySchemaElement();
+		field7.setLengthType("variable");
+		field7.setName("SecurityDesc");
+		field7.setSize(1000);
+		field7.setMaxArrayElements(1);
+		qs.addElement(field7);
+
+		return qs;
+	}
+	
 }

@@ -18,18 +18,16 @@ class CreateQuerySchema extends React.Component {
     this.state = {
       schemas: [],
       fields: [],
-      selectedId: [],
-      qsName: [],
       selectorField: [],
       size: {},
       lengthType: {},
       maxArrayElements: {},
-      fieldNames: [],
-      querySchemaId: []
+      fieldNames: []
     };
 
-    this.handleChange = this.handleChange.bind(this);
+    this.onDataSchemaChange = this.onDataSchemaChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleCancel = this.handleCancel.bind(this);
   }
 
   componentDidMount() {
@@ -47,7 +45,7 @@ class CreateQuerySchema extends React.Component {
       .catch(error => console.log(error.response));
   }
 
-  handleChange = event => {
+  onDataSchemaChange = event => {
     const schema = this.state.schemas.find(
       schema => schema.name === event.target.value
     );
@@ -63,12 +61,18 @@ class CreateQuerySchema extends React.Component {
       })
         .then(response => {
           console.log(response);
-          this.setState({
-            fields: response.data.data.fields,
-            selectedId: response.data.data.id
-          });
-          console.log(this.state.selectedId);
-          console.log(this.state.fields);
+          this.setState(
+            {
+              fields: response.data.data.fields,
+              selectedId: response.data.data.id,
+              querySchemasUri: response.data.data.querySchemasUri
+            },
+            () => {
+              console.log(this.state.selectedId);
+              console.log(this.state.querySchemasUri);
+            }
+          );
+          localStorage.setItem("querySchemasUri", this.state.querySchemasUri);
         })
         .catch(error => console.log(error.response));
     }
@@ -118,15 +122,15 @@ class CreateQuerySchema extends React.Component {
   };
 
   fieldNamesChanged = newFieldNames => {
-    console.log("newFieldNames", newFieldNames);
     this.setState({
+      submitDisabled: !newFieldNames.length,
       fieldNames: newFieldNames,
       size: {
-        [newFieldNames]: 1,
+        [newFieldNames[newFieldNames.length - 1]]: 1,
         ...this.state.size
       },
       maxArrayElements: {
-        [newFieldNames]: 1,
+        [newFieldNames[newFieldNames.length - 1]]: 1,
         ...this.state.maxArrayElements
       }
     });
@@ -159,11 +163,10 @@ class CreateQuerySchema extends React.Component {
       size: this.state.size[fieldName],
       maxArrayElements: this.state.maxArrayElements[fieldName]
     }));
-
+    const querySchemaUri = localStorage.getItem("querySchemasUri");
     axios({
       method: "post",
-      url: `/querier/api/rest/dataschemas/${this.state
-        .selectedId}/queryschemas`,
+      url: `${querySchemaUri}`,
       headers: {
         Accept: "application/vnd.encryptedquery.enclave+json; version=1",
         "Content-Type": "application/json"
@@ -176,10 +179,6 @@ class CreateQuerySchema extends React.Component {
     })
       .then(response => {
         console.log(response);
-        this.setState({
-          querySchemaId: response.data.data.id
-        });
-        console.log(this.state.selectorField);
       })
       .catch(error => console.log(error.response));
     this.props.history.push("/querier/createquery");
@@ -203,120 +202,133 @@ class CreateQuerySchema extends React.Component {
         <HomePage />
         <form onSubmit={this.handleSubmit}>
           <fieldset>
-            <legend>Create QuerySchema</legend>
-            <div>
-              <label>
-                <h4>QuerySchema name (will be saved as):</h4>
-              </label>
-              <input
-                value={this.state.qsName}
-                onChange={this.handleChangeQsName}
-                placeholder="QuerySchema1"
-                required
-              />
-            </div>
-            <br />
-            <label>Pick the dataschema to describe your data file:</label>{" "}
-            <select
-              name="schemaName"
-              value={this.state.value}
-              onChange={this.handleChange}
-            >
-              <option value="">Choose Dataschema..</option>
-              {schemas &&
-                schemas.length > 0 &&
-                schemas.map(schema => {
-                  return <option value={schema.name}>{schema.name}</option>;
-                })}
-            </select>
-            <br />
-            <br />
-            <h2> DataSchema Fields </h2>
-            <br />
-            <label>Selector Field:</label>{" "}
-            <select
-              value={this.state.selectorField}
-              onChange={this.updateSelectorField}
-              required
-            >
-              <option value="">Pick Selector Field...</option>
-              {fields &&
-                fields.map(field => {
-                  return <option value={field.name}>{field.name}</option>;
-                })}
-            </select>
-            <br />
-            <br />
-            <br />
-            <fieldset>
-              <legend>Choose field names</legend>
-              <br />
-              <CheckboxGroup
-                checkboxDepth={5}
-                name="fieldNames"
-                value={this.state.fieldNames}
-                onChange={this.fieldNamesChanged}
-              >
-                {fields &&
-                  fields.map(field => {
-                    return (
-                      <label>
-                        <Checkbox value={field.name} />
-                        {field.name}
-                      </label>
-                    );
-                  })}
-                <br />
-              </CheckboxGroup>
-            </fieldset>
-            <br />
-            <br />
-            {lastCheckedFieldName && (
+            <legend>
+              <h2>QuerySchema Information</h2>
+            </legend>
+            <div className="CQS-info-boxes">
               <div>
-                <label>Length Type:</label>
-                <select
-                  value={this.state.lengthType[lastCheckedFieldName] || ""}
-                  onChange={this.updateLengthType}
+                <label>QuerySchema name (will be saved as):</label>
+                <input
+                  value={this.state.qsName}
+                  onChange={this.handleChangeQsName}
+                  placeholder="example -- QuerySchema1"
                   required
+                />
+              </div>
+              <div>
+                <label>
+                  {" "}
+                  Pick the dataschema to describe your data file:
+                </label>{" "}
+                <select
+                  name="schemaName"
+                  value={this.state.value}
+                  onChange={this.onDataSchemaChange}
                 >
-                  <option value="">Select Length Type...</option>
-                  <option value="fixed">Fixed</option>
-                  <option value="variable">Variable</option>
+                  <option value="">Choose Dataschema ...</option>
+                  {schemas &&
+                    schemas.length > 0 &&
+                    schemas.map(schema => {
+                      return <option value={schema.name}>{schema.name}</option>;
+                    })}
                 </select>
               </div>
-            )}
-            <br />
-            {lastCheckedFieldName && (
-              <div>
-                <label>Size:</label>
-                <input
-                  value={this.state.size[lastCheckedFieldName] || 1}
-                  onChange={this.onSizeChange}
-                  type="number"
-                  name="size"
-                  min="1"
-                  required
-                />
-              </div>
-            )}
-            <br />
-            {lastCheckedFieldName && (
-              <div>
-                <label>MaxArray Elements:</label>
-                <input
-                  value={this.state.maxArrayElements[lastCheckedFieldName] || 1}
-                  onChange={this.onChangeMaxArrayElements}
-                  type="number"
-                  name="maxArrayElements"
-                  placeholder="1"
-                  min="1"
-                  max="100"
-                  required
-                />
-              </div>
-            )}
-            <br />
+            </div>
           </fieldset>
+          <div>
+            <fieldset>
+              <legend>
+                <h2> DataSchema Fields </h2>
+              </legend>
+              <div className="selectorField-div">
+                <div>
+                  <label>Selector Field:</label>{" "}
+                  <select
+                    value={this.state.selectorField}
+                    onChange={this.updateSelectorField}
+                    required
+                  >
+                    <option value="">Pick Selector Field...</option>
+                    {fields &&
+                      fields.map(field => {
+                        return <option value={field.name}>{field.name}</option>;
+                      })}
+                  </select>
+                </div>{" "}
+                {selectorField && (
+                  <fieldset>
+                    <div>
+                      <legend>Choose field names</legend>
+                      <CheckboxGroup
+                        checkboxDepth={5}
+                        name="fieldNames"
+                        value={this.state.fieldNames}
+                        onChange={this.fieldNamesChanged}
+                        required
+                      >
+                        {fields &&
+                          fields.map(field => {
+                            return (
+                              <li>
+                                <Checkbox value={field.name} />
+                                {field.name}
+                              </li>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </div>
+                  </fieldset>
+                )}
+              </div>
+              <div className="CQS-input-boxes">
+                {lastCheckedFieldName && (
+                  <div>
+                    <label>Length Type:</label>
+                    <select
+                      value={this.state.lengthType[lastCheckedFieldName] || ""}
+                      onChange={this.updateLengthType}
+                      required
+                    >
+                      <option value="">Select Length Type...</option>
+                      <option value="fixed">Fixed</option>
+                      <option value="variable">Variable</option>
+                    </select>
+                  </div>
+                )}
+                {lastCheckedFieldName && (
+                  <div>
+                    <label>Size:</label>
+                    <input
+                      value={this.state.size[lastCheckedFieldName] || 1}
+                      onChange={this.onSizeChange}
+                      type="number"
+                      name="size"
+                      min="1"
+                      placeholder="1"
+                      required
+                    />
+                  </div>
+                )}
+                {lastCheckedFieldName && (
+                  <div>
+                    <label>MaxArray Elements:</label>
+                    <input
+                      value={
+                        this.state.maxArrayElements[lastCheckedFieldName] || 1
+                      }
+                      onChange={this.onChangeMaxArrayElements}
+                      type="number"
+                      name="maxArrayElements"
+                      placeholder="1"
+                      min="1"
+                      max="100"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            </fieldset>
+          </div>
 
           <div className="btn-group">
             <span className="input-group-btn">
@@ -324,8 +336,9 @@ class CreateQuerySchema extends React.Component {
                 className="btnSubmit"
                 handleSubmit={this.handleSubmit}
                 type="submit"
+                disabled={this.state.submitDisabled}
               >
-                Submit
+                Submit{" "}
               </button>
               <button
                 className="btnReset"
@@ -344,4 +357,5 @@ class CreateQuerySchema extends React.Component {
     );
   }
 }
+
 export default withRouter(CreateQuerySchema);

@@ -1,0 +1,454 @@
+{
+	"info": {
+		"_postman_id": "d2599d49-ffb0-4d61-8e0d-8cb543573e03",
+		"name": "Pcap",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get DataSchemas",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create QuerySchema",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\":\"QS-Pcap-wes-4\",\r\n    \"selectorField\":\"_source|layers|frame|frame.protocols\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"_source|layers|frame|frame.protocols\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":200,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"_source|layers|ip|ip.dst\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"_source|layers|ip|ip.src\",\r\n                \"lengthType\":\"fixed\",\r\n                \"size\":15,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"_source|layers|tcp|tcp.srcport\",\r\n                \"lengthType\":\"fixed\",\r\n                \"size\":4,\r\n                \"maxArrayElements\":1\r\n            },                        {\r\n                \"name\": \"_source|layers|tcp|tcp.dstport\",\r\n                \"lengthType\":\"fixed\",\r\n                \"size\":4,\r\n                \"maxArrayElements\":1\r\n            },            {\r\n                \"name\": \"_source|layers|tcp|tcp.payload\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":5000,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/11/queryschemas",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"11",
+						"queryschemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get QuerySchema Detail",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/queryschemas/3",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"3",
+						"queryschemas",
+						"3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Encrypt Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\":\"Q-Pcap\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":5\r\n     },\r\n  \"selectorValues\":[\r\n                    \"eth:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:ssh\"\r\n],\r\n  \"embedSelector\":\"true\"\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483601/queryschemas/2147483603/queries",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483601",
+						"queryschemas",
+						"2147483603",
+						"queries"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Query Detail",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/11/queryschemas/22/queries/19/",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"11",
+						"queryschemas",
+						"22",
+						"queries",
+						"19",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get DataSources",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/11/datasources",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"11",
+						"datasources"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Schedule Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"startTime\":\"2019-02-01T13:03:33.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":1000,\r\n       \"stream.runtime.seconds\":60,\r\n       \"stream.window.length.seconds\":20,\r\n       \"groupId\":\"eq-test\"\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483610\r\n    }\r\n  \r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483601/queryschemas/2147483603/queries/2147483605/schedules",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483601",
+						"queryschemas",
+						"2147483603",
+						"queries",
+						"2147483605",
+						"schedules"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Results",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483600/queryschemas/2147483601/queries/2147483603/schedules/2147483608/results",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483600",
+						"queryschemas",
+						"2147483601",
+						"queries",
+						"2147483603",
+						"schedules",
+						"2147483608",
+						"results"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Results",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/11/queryschemas/22/queries/22/schedules/113/results/32/retrievals",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"11",
+						"queryschemas",
+						"22",
+						"queries",
+						"22",
+						"schedules",
+						"113",
+						"results",
+						"32",
+						"retrievals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Decrypt",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/queryschemas/4/queries/7/schedules/11/results/5/retrievals/5/decryptions",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"3",
+						"queryschemas",
+						"4",
+						"queries",
+						"7",
+						"schedules",
+						"11",
+						"results",
+						"5",
+						"retrievals",
+						"5",
+						"decryptions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "retreival result",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483600/queryschemas/2147483601/queries/2147483603/schedules/2147483605/results/2147483607/retrievals/2147483617",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483600",
+						"queryschemas",
+						"2147483601",
+						"queries",
+						"2147483603",
+						"schedules",
+						"2147483605",
+						"results",
+						"2147483607",
+						"retrievals",
+						"2147483617"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

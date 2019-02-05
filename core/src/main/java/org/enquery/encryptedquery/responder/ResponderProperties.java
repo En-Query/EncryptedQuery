@@ -16,15 +16,9 @@
  */
 package org.enquery.encryptedquery.responder;
 
-import org.enquery.encryptedquery.core.CoreConfigurationProperties;
-
 /**
  * Properties constants for the Responder
  */
-public interface ResponderProperties extends CoreConfigurationProperties {
-	String COLUMN_ENCRYPTION_CLASS_NAME = "column.encryption.class.name";
-	String COMPUTE_THRESHOLD = "compute.threshold";
+public interface ResponderProperties {
 	String MAX_HITS_PER_SELECTOR = "maxHitsPerSelector";
-	String USE_MONTGOMERY = "useMontgomery";
-	String DATA_SOURCE_RECORD_TYPE = "data.source.record.type";
 }

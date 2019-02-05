@@ -49,6 +49,7 @@ public class QuerySchema implements Serializable {
 		Validate.notBlank(name);
 		Validate.notNull(dataSchema);
 		Validate.notBlank(selectorField);
+		Validate.notNull(this.getElement(selectorField));
 	}
 
 	public String getName() {
@@ -111,6 +112,12 @@ public class QuerySchema implements Serializable {
 	public List<String> getElementNames() {
 
 		List<String> elementNames = new ArrayList<String>();
+		for (QuerySchemaElement qse : elementList) {
+			elementNames.add(qse.getName());
+		}
+		if (elementNames.size() > 0) {
+			return elementNames;
+		}
 		Set<Entry<String, QuerySchemaElement>> entrySet = elements.entrySet();
 		Iterator<Entry<String, QuerySchemaElement>> it = entrySet.iterator();
 		while (it.hasNext()) {

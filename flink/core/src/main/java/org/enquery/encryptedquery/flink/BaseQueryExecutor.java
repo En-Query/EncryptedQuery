@@ -19,7 +19,6 @@ package org.enquery.encryptedquery.flink;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -36,39 +35,55 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.types.Row;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.QuerySchema;
-import org.enquery.encryptedquery.query.wideskies.Query;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
+import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.flink.batch.BucketKeySelector;
+import org.enquery.encryptedquery.flink.batch.ColumnReduceFunction;
+import org.enquery.encryptedquery.flink.batch.DataPartitionsReduceFunction;
+import org.enquery.encryptedquery.flink.batch.ResponseFileOutputFormat;
+import org.enquery.encryptedquery.flink.streaming.AllColumnsPerWindowReducer;
+import org.enquery.encryptedquery.flink.streaming.ExecutionTimeTrigger;
+import org.enquery.encryptedquery.flink.streaming.StreamingColumnProcessor;
+import org.enquery.encryptedquery.flink.streaming.StreamingColumnReducer;
+import org.enquery.encryptedquery.flink.streaming.WindowResultSink;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BaseQueryExecutor implements FlinkTypes {
+public class BaseQueryExecutor implements FlinkTypes {
 
-	private final Logger log = LoggerFactory.getLogger(BaseQueryExecutor.class);
+	private static final Logger log = LoggerFactory.getLogger(BaseQueryExecutor.class);
 
-	private QuerySchema querySchema;
-	private DataSchema dataSchema;
-	private Query query;
-	private int hashBitSize;
-	private int dataChunkSize;
-	private String key;
-	private boolean embedSelector;
-	private int maxHitsPerSelector;
-	private int columnEncryptionPartitionCount;
-	private Integer selectorFieldIndex;
-	private String selectorFieldType;
-	private RowTypeInfo rowTypeInfo;
-	private Map<String, String> config;
-	private Path outputFileName;
-	private Path inputFileName;
-	private Map<String, String> fieldTypeMap;
-	private String selectorFieldName;
-
-	private QueryTypeConverter queryTypeConverter = new QueryTypeConverter();
+	protected QuerySchema querySchema;
+	protected DataSchema dataSchema;
+	protected Query query;
+	protected int maxHitsPerSelector;
+	protected int columnEncryptionPartitionCount;
+	protected Integer selectorFieldIndex;
+	protected String selectorFieldType;
+	protected RowTypeInfo rowTypeInfo;
+	protected Map<String, String> config;
+	protected Path outputFileName;
+	protected Path inputFileName;
+	protected Map<String, String> fieldTypeMap;
+	protected String selectorFieldName;
+	protected QueryTypeConverter queryTypeConverter;
+	protected long computeThreshold;
+	protected boolean initialized;
+	protected long windowSizeInSeconds;
+	protected Long runtimeSeconds;
+	protected String jobName = "Encrypted Query Streaming";
 
 	public Map<String, String> getConfig() {
 		return config;
@@ -98,23 +113,54 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 		return rowTypeInfo;
 	}
 
-	abstract protected DataSet<Row> initSource(ExecutionEnvironment env);
+	public void run(StreamExecutionEnvironment env, DataStream<Row> source) throws Exception {
 
-	public void run() throws Exception {
+		Long maxTimestamp = null;
+		if (this.runtimeSeconds != null) {
+			maxTimestamp = System.currentTimeMillis() + (this.runtimeSeconds * 1000);
+		}
 
-		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		initializeCommon();
+		initializeStreaming();
 
-		loadAndValidateParams();
+		final QueryInfo queryInfo = query.getQueryInfo();
+		final RowHashMapFunction rowHash = new RowHashMapFunction(selectorFieldIndex, selectorFieldType, getRowTypeInfo(), queryInfo);
+		final StreamingColumnProcessor columnProcessor = new StreamingColumnProcessor(query, computeThreshold, config);
+		final StreamingColumnReducer columnReducer = new StreamingColumnReducer(queryInfo.getPublicKey(), config);
+		final AllColumnsPerWindowReducer allColumnsPerWidow = new AllColumnsPerWindowReducer();
+		final WindowResultSink sinkFunction = new WindowResultSink(queryInfo, config, outputFileName.toString());
+		final ExecutionTimeTrigger trigger = new ExecutionTimeTrigger(maxTimestamp, outputFileName.toString(), maxHitsPerSelector);
+		final Time windowSize = Time.seconds(windowSizeInSeconds);
 
-		final RowHashMapFunction rowHash = new RowHashMapFunction(selectorFieldIndex, selectorFieldType, getRowTypeInfo(), embedSelector, querySchema, key, hashBitSize, dataChunkSize);
-		final ColumnReduceFunction columnReducer = new ColumnReduceFunction(query.getNSquared());
-		final FileOutputFormat<Tuple2<Integer, BigInteger>> outputFormat = new ResponseFileOutputFormat(query.getQueryInfo());
-		final DataPartitionsReduceFunction partionReducer = new DataPartitionsReduceFunction(query.getQueryElements(), query.getNSquared(), config, hashBitSize);
+		source
+				.map(rowHash)
+				.keyBy("rowIndex")
+				.timeWindow(windowSize)
+				.trigger(trigger)
+				.process(columnProcessor)
+				.keyBy(r -> r.col)
+				.timeWindow(windowSize)
+				.process(columnReducer)
+				.timeWindowAll(windowSize)
+				.process(allColumnsPerWidow)
+				.addSink(sinkFunction);
 
-		// ((1 << hashBitSize) + columnEncryptionPartitionCount - 1) /
-		// columnEncryptionPartitionCount)
+		env.execute(jobName);
+	}
 
-		initSource(env)
+	public void run(ExecutionEnvironment env, DataSet<Row> source) throws Exception {
+
+		initializeCommon();
+		initializeBatch();
+
+		final QueryInfo queryInfo = query.getQueryInfo();
+		final RowHashMapFunction rowHash = new RowHashMapFunction(selectorFieldIndex, selectorFieldType, getRowTypeInfo(), queryInfo);
+		final ColumnReduceFunction columnReducer = new ColumnReduceFunction(queryInfo.getPublicKey(), config);
+		final FileOutputFormat<Tuple2<Integer, CipherText>> outputFormat = new ResponseFileOutputFormat(queryInfo, config);
+		final DataPartitionsReduceFunction partionReducer = new DataPartitionsReduceFunction(query, computeThreshold, config);
+
+		// initSource(env)
+		source
 				// shuffle input records for better parallelism
 				.rebalance()
 				// create QueueRecords
@@ -131,11 +177,14 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 				.setParallelism(1);
 
 		// execute program
-		env.execute("Encrypted Query");
+		env.execute("Encrypted Query Batch");
 	}
 
-	protected void loadAndValidateParams() throws Exception {
+	public void initializeCommon() throws Exception {
+		if (initialized) return;
 		Validate.notNull(config);
+
+		initializeCryptoScheme();
 
 		query = loadQuery(inputFileName);
 		Validate.notNull(query);
@@ -150,36 +199,14 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 		Validate.notNull(dataSchema);
 		dataSchema.validate();
 
-		hashBitSize = queryInfo.getHashBitSize();
-		dataChunkSize = queryInfo.getDataChunkSize();
-
-		// pass these params to the ComputeEncryptedColumn
-		config.put(FlinkConfigurationProperties.HASH_BIT_SIZE, Integer.toString(hashBitSize));
-
-		if (config.containsKey(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
-			maxHitsPerSelector = Integer.valueOf(config.get(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR));
-		} else {
-			log.warn(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR + " configuration parameter is missing, defaulting to 1000");
-			maxHitsPerSelector = 1000; // Default value if not found.
-		}
-
+		maxHitsPerSelector = Integer.valueOf(config.getOrDefault(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, "1000"));
 		Validate.isTrue(maxHitsPerSelector > 0, "maxHitsPerSelector must be > 0");
 
-		if (config.containsKey(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT)) {
-			columnEncryptionPartitionCount = Integer.valueOf(config.get(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT));
-		} else {
-			log.warn("Setting '{}' is missing, defaulting to 1.", FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT);
-			columnEncryptionPartitionCount = 1;
-		}
+		computeThreshold = Long.parseLong(config.getOrDefault(FlinkConfigurationProperties.COMPUTE_THRESHOLD, "30000"));
+		Validate.isTrue(computeThreshold > 0, "%s must be > 0", FlinkConfigurationProperties.COMPUTE_THRESHOLD);
 
-		Validate.isTrue(columnEncryptionPartitionCount > 0, "columnEncryptionPartitionCount must be > 0");
-
-		key = queryInfo.getHashKey();
-		embedSelector = queryInfo.getEmbedSelector();
 		selectorFieldName = queryInfo.getQuerySchema().getSelectorField();
-
 		fieldTypeMap = new HashMap<>();
-
 		dataSchema.elements().stream()
 				.forEach(e -> fieldTypeMap.put(e.getName(), e.getDataType()));
 
@@ -190,9 +217,59 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 
 		log.info(
 				MessageFormat
-						.format("Loaded query params bitSize: ''{0}'',  Selector: ''{1}'', Embed Selector: ''{2}''.",
-								hashBitSize, selectorFieldName, embedSelector));
+						.format("Loaded query params HashBitSize: ''{0}'',  Selector: ''{1}'', Embed Selector: ''{2}''.",
+								queryInfo.getHashBitSize(),
+								selectorFieldName,
+								queryInfo.getEmbedSelector()));
 
+		initialized = true;
+	}
+
+	/**
+	 * 
+	 */
+	public void initializeStreaming() {
+		windowSizeInSeconds = Integer.valueOf(config.getOrDefault(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS, "60"));
+		Validate.isTrue(windowSizeInSeconds > 0, "'%s' must be > 0", FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS);
+
+		runtimeSeconds = null;
+		String runtimeStr = config.get(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS);
+		if (runtimeStr != null) {
+			runtimeSeconds = Long.valueOf(runtimeStr);
+		}
+		Validate.isTrue(runtimeSeconds == null || runtimeSeconds > 0, "'%s' must be null or > 0", FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS);
+	}
+
+	/**
+	 * 
+	 */
+	protected void initializeBatch() {
+		columnEncryptionPartitionCount = Integer.valueOf(config.getOrDefault(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT, "1"));
+		Validate.isTrue(columnEncryptionPartitionCount > 0, "columnEncryptionPartitionCount must be > 0");
+	}
+
+
+	/**
+	 * @param config2
+	 * @throws Exception
+	 */
+	private void initializeCryptoScheme() throws Exception {
+
+		final CryptoScheme crypto = CryptoSchemeFactory.make(config);
+
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
+
+		queryTypeConverter = new QueryTypeConverter();
+		queryTypeConverter.setCryptoRegistry(cryptoRegistry);
+		queryTypeConverter.initialize();
 	}
 
 	protected Query loadQuery(Path file) throws IOException, FileNotFoundException, JAXBException {
@@ -208,6 +285,10 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 	 * @return
 	 */
 	protected RowTypeInfo makeRowTypeInfo() {
+		final boolean debugging = log.isDebugEnabled();
+
+		if (debugging) log.debug("Making row type info.");
+
 		final int numberOfElements = dataSchema.elementCount();
 		final TypeInformation<?>[] types = new TypeInformation<?>[numberOfElements];
 		final String[] fieldNames = new String[numberOfElements];
@@ -217,6 +298,8 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 			fieldNames[i] = element.getName();
 			String type = element.getDataType();
 			types[i] = pirTypeToFlinkType(type);
+
+			if (debugging) log.debug("Field index: {}, name: {}, type: {}", i, fieldNames[i], types[i]);
 
 			if (Objects.equals(element.getName(), selectorFieldName)) {
 				selectorFieldIndex = i;
@@ -231,6 +314,7 @@ public abstract class BaseQueryExecutor implements FlinkTypes {
 							new HashSet<>(dataSchema.elementNames())));
 		}
 
+		if (debugging) log.debug("Selector field index {}, type: {}", selectorFieldIndex, selectorFieldType);
 		return new RowTypeInfo(types, fieldNames);
 	}
 

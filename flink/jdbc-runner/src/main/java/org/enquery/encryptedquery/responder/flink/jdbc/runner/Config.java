@@ -46,21 +46,6 @@ public @interface Config {
 			description = "Name of the DataSchema describing the fields and partitioners.")
 	String data_schema_name();
 
-	@AttributeDefinition(name = ".column.encryption.class.name",
-			required = true,
-			description = "Class name of the encryption method to be used.")
-	String _column_encryption_class_name();
-
-	@AttributeDefinition(name = ".mod.pow.class.name",
-			required = true,
-			description = "Class name of the Modulus Power method to be used.")
-	String _mod_pow_class_name();
-
-	@AttributeDefinition(name = ".jni.library.path",
-			required = false,
-			description = "Comma separated list of native libraries to load. Optional.")
-	String _jni_library_path();
-
 	@AttributeDefinition(name = ".computer.threshold",
 			required = false,
 			description = "Amount of data to process before consolidation.   Larger numbers require more memory per task. Defaults to 30000")
@@ -112,9 +97,4 @@ public @interface Config {
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
 
-
-	@AttributeDefinition(name = "Maximum number of hits per selector.",
-			required = false,
-			description = "Optional, default is 100. Must be positive integer > 0.")
-	String _max_hits_per_selector();
 }

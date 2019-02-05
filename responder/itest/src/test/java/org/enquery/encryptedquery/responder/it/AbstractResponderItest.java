@@ -51,6 +51,9 @@ import org.enquery.encryptedquery.healthcheck.SystemHealthCheck;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner;
+import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
+import org.enquery.encryptedquery.responder.it.util.FlinkKafkaRunnerConfigurator;
+import org.enquery.encryptedquery.responder.it.util.ThrowingPredicate;
 import org.enquery.encryptedquery.responder.standalone.runner.StandaloneQueryRunner;
 import org.junit.Assert;
 import org.junit.Before;
@@ -140,9 +143,10 @@ public abstract class AbstractResponderItest {
 				editConfigurationFilePut("etc/org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck.cfg",
 						".ignore.component",
 						"[\"org.enquery.encryptedquery.responder.it.business.QueryRunnerMock\", "
-								+ "\"org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl\",  "
+								+ "\"org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl\","
 								+ "\"" + FlinkJdbcQueryRunner.class.getName() + "\","
-								+ "\"" + StandaloneQueryRunner.class.getName() + "\""
+								+ "\"" + StandaloneQueryRunner.class.getName() + "\","
+								+ "\"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner\""
 								+ "]"),
 
 				editConfigurationFilePut("etc/encrypted.query.responder.business.cfg",
@@ -316,10 +320,20 @@ public abstract class AbstractResponderItest {
 
 	}
 
-	protected org.enquery.encryptedquery.responder.data.entity.DataSource installDataSource(String dataSourceName, String dataSchemaName) throws IOException, Exception, InterruptedException {
+	protected org.enquery.encryptedquery.responder.data.entity.DataSource installFlinkJdbcDataSource(String dataSourceName, String dataSchemaName) throws Exception {
 		// Add a QueryRunner
-		QueryRunnerConfigurator runnerConfigurator = new QueryRunnerConfigurator(confAdmin);
+		FlinkJdbcRunnerConfigurator runnerConfigurator = new FlinkJdbcRunnerConfigurator(confAdmin);
 		runnerConfigurator.create(dataSourceName, dataSchemaName, DATA_SOURCE_DESCRIPTION);
+		// give enough time for the QueryRunner to be registered
+		waitUntilQueryRunnerRegistered(dataSourceName);
+
+		return dataSourceRegistry.find(dataSourceName);
+	}
+
+	protected org.enquery.encryptedquery.responder.data.entity.DataSource installFlinkKafkaDataSource(String dataSourceName, String dataSchemaName) throws Exception {
+		// Add a QueryRunner
+		FlinkKafkaRunnerConfigurator runnerConfigurator = new FlinkKafkaRunnerConfigurator(confAdmin);
+		runnerConfigurator.create(dataSourceName, dataSchemaName);
 		// give enough time for the QueryRunner to be registered
 		waitUntilQueryRunnerRegistered(dataSourceName);
 

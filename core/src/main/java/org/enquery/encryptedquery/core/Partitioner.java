@@ -488,7 +488,9 @@ public class Partitioner implements FieldTypes {
 		// elements in the parts. In that case the numParts may be larger
 		// then the actual number of parts so return now.
 		if (numParts > parts.size()) {
-			throw new PIRException("Size of data (" + numParts + ") exceeds part size (" + parts.size() + ") !");
+			// throw new PIRException("Query Element ("+element.getName() + ") Size of data (" + numParts + ") exceeds part size (" + parts.size() + ") !") ;
+			logger.warn("Query Element {} Size of Data {} exceeds part size {} minus number to skip {}", element.getName(), numParts, parts.size(), numberToSkip);
+			return result;
 		}
 		for (int i = 0; i < (numParts - numberToSkip); ++i) {
 			if ((partsIndex + i + numberToSkip) >= parts.size()) {
@@ -515,8 +517,8 @@ public class Partitioner implements FieldTypes {
 	 * @return
 	 * @throws PIRException
 	 */
-	public List<Byte[]> createPartitions(List<Byte> inputData, int dataChunkSize) throws PIRException {
-		List<Byte[]> partitionedData = new ArrayList<>();
+	public List<byte[]> createPartitions(List<Byte> inputData, int dataChunkSize) throws PIRException {
+		List<byte[]> partitionedData = new ArrayList<>();
 
 		// int bytesPerPartition = getBytesPerPartition(dataPartitionBitSize);
 
@@ -527,7 +529,7 @@ public class Partitioner implements FieldTypes {
 				if (j < dataChunkSize) {
 					tempByteArray[j] = inputData.get(i).byteValue();
 				} else {
-					Byte[] returnByte = new Byte[tempByteArray.length];
+					byte[] returnByte = new byte[tempByteArray.length];
 					for (int ndx = 0; ndx < tempByteArray.length; ndx++) {
 						returnByte[ndx] = Byte.valueOf(tempByteArray[ndx]);
 					}
@@ -542,15 +544,15 @@ public class Partitioner implements FieldTypes {
 					tempByteArray[j] = new Byte("0");
 					j++;
 				}
-				Byte[] returnByte = new Byte[tempByteArray.length];
+				byte[] returnByte = new byte[tempByteArray.length];
 				for (int i = 0; i < tempByteArray.length; i++) {
-					returnByte[i] = Byte.valueOf(tempByteArray[i]);
+					returnByte[i] = tempByteArray[i];
 				}
 				partitionedData.add(returnByte);
 			}
 		} else {
 			for (int i = 0; i < inputData.size(); i++) {
-				Byte[] tempByteArray = new Byte[1];
+				byte[] tempByteArray = new byte[1];
 				tempByteArray[0] = inputData.get(i).byteValue();
 				partitionedData.add(tempByteArray);
 			}

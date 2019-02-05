@@ -51,16 +51,6 @@ public @interface Config {
 			description = "Record type (i.e. json, csv, etc). Only JSON is supported at the moment.")
 	String data_source_record_type();
 
-	@AttributeDefinition(name = ".column.encryption.class.name",
-			required = true,
-			description = "Class name of the encryption method to be used.")
-	String _column_encryption_class_name();
-
-	@AttributeDefinition(name = ".mod.pow.class.name",
-			required = true,
-			description = "Class name of the Modulus Power method to be used.")
-	String _mod_pow_class_name();
-
 	@AttributeDefinition(name = "Run Directory",
 			required = true,
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."
@@ -96,9 +86,4 @@ public @interface Config {
 			required = false,
 			description = "Compute threshold.")
 	long _compute_threshold() default 30000L;
-
-	@AttributeDefinition(name = ".jni.library.path",
-			required = false,
-			description = "Comma separated list of native libraries to load. Optional.")
-	String _jni_library_path();
 }

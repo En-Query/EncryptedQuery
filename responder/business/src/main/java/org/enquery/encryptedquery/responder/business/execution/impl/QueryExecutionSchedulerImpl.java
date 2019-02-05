@@ -28,7 +28,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -36,10 +35,11 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.json.JSONStringConverter;
-import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.responder.business.execution.QueryExecutionScheduler;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
+import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
@@ -85,13 +85,14 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 	private ExecutionRepository executionRepository;
 	@Reference
 	private ResultRepository resultRepository;
+	@Reference
+	private QueryTypeConverter queryConverter;
 
 	// force this component to wait until the data source is ready
 	@Reference(target = "(dataSourceName=responder)")
 	private javax.sql.DataSource sqlDatasource;
 
 	private Path outputPath;
-	private QueryTypeConverter queryConverter;
 
 	@Activate
 	void activate(Map<String, String> config) throws SchedulerException, IOException {
@@ -111,8 +112,6 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		scheduler.start();
 
 		group = scheduler.getSchedulerInstanceId();
-
-		queryConverter = new QueryTypeConverter();
 	}
 
 	/**
@@ -229,14 +228,21 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 			execution.setStartTime(new Date());
 			executionRepository.update(execution);
 
-			Map<String, String> parameters = new HashMap<>();
-			parameters = JSONStringConverter.toMap(execution.getParameters());
+			// TODO refactor the JPA Execution entity to have field for maxHitsPerSelector, move
+			// away from generic maps
+			// String maxHits = null;
+			Map<String, String> parameters = JSONStringConverter.toMap(execution.getParameters());
+			// if (parameters != null) {
+			// maxHits = parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR);
+			// }
+			// if (maxHits == null) maxHits = "100";
+			// int maxHitsPerSelector = Integer.parseInt(maxHits);
 
 			final Path outputFileName = outputPath.resolve("response-" + execution.getId().toString() + ".xml");
 
 			try (OutputStream stdOut = executionRepository.executionOutputOutputStream(executionId)) {
-				dataSource.getRunner().run(parameters,
-						query,
+				dataSource.getRunner().run(query,
+						parameters,
 						outputFileName.toString(),
 						stdOut);
 			}
@@ -245,10 +251,20 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 			log.info("Finished running execution id {}.", execution.getId());
 
 			execution.setEndTime(endTime);
+			execution.setOutputFilePath(outputFileName.toString());
 			executionRepository.update(execution);
 
-			try (InputStream in = new FileInputStream(outputFileName.toFile())) {
-				resultRepository.add(execution, in);
+			// only batch mode has a response inmediately
+			if (dataSource.getType() == DataSourceType.Batch) {
+				try (InputStream in = new FileInputStream(outputFileName.toFile())) {
+					resultRepository.add(execution, in);
+				}
+				// Delete the response file after storing it in the repository
+				try {
+					Files.delete(outputFileName);
+				} catch (Exception e) {
+					log.warn("Unable to delete response file: " + outputFileName, e);
+				}
 			}
 
 		} catch (IOException e) {

@@ -17,44 +17,69 @@
 package org.enquery.encryptedquery.flink;
 
 import java.io.IOException;
-import java.math.BigInteger;
+import java.util.Map;
 import java.util.TreeMap;
 
-import javax.xml.bind.JAXBException;
-
+import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.io.FileOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 
 @SuppressWarnings("serial")
-public class ResponseFileOutputFormat extends FileOutputFormat<Tuple2<Integer, BigInteger>> {
+public class ResponseFileOutputFormat extends FileOutputFormat<Tuple2<Integer, CipherText>> {
 
-	private Response response;
-	private TreeMap<Integer, BigInteger> treeMap = new TreeMap<>();
+	private final QueryInfo queryInfo;
+	private final Map<Integer, CipherText> map = new TreeMap<>();
+	private final Map<String, String> config;
 
-	public ResponseFileOutputFormat(QueryInfo queryInfo) {
-		response = new Response(queryInfo);
+	public ResponseFileOutputFormat(QueryInfo queryInfo, Map<String, String> config) {
+		Validate.notNull(queryInfo);
+		Validate.notNull(config);
+		this.config = config;
+		this.queryInfo = queryInfo;
 	}
 
 	@Override
-	public void writeRecord(Tuple2<Integer, BigInteger> record) throws IOException {
-		treeMap.put(record.f0, record.f1);
+	public void writeRecord(Tuple2<Integer, CipherText> record) throws IOException {
+		map.put(record.f0, record.f1);
 	}
 
 	@Override
 	public void close() throws IOException {
-		ResponseTypeConverter converter = new ResponseTypeConverter();
-		response.addResponseElements(treeMap);
-		org.enquery.encryptedquery.xml.schema.Response xml = converter.toXML(response);
 		try {
-			converter.marshal(xml, stream);
-		} catch (JAXBException e) {
-			throw new IOException("Error saving  response.", e);
+			final CryptoScheme crypto = CryptoSchemeFactory.make(config);
+			final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
+				@Override
+				public CryptoScheme cryptoSchemeByName(String schemeId) {
+					if (schemeId == null) return null;
+					if (schemeId.equals(crypto.name())) return crypto;
+					return null;
+				}
+			};
+
+			QueryTypeConverter queryConverter = new QueryTypeConverter();
+			queryConverter.setCryptoRegistry(registry);
+			queryConverter.initialize();
+
+			ResponseTypeConverter converter = new ResponseTypeConverter();
+			converter.setQueryConverter(queryConverter);
+			converter.setSchemeRegistry(registry);
+			converter.initialize();
+
+			Response response = new Response(queryInfo);
+			response.addResponseElements(map);
+			converter.marshal(converter.toXML(response), stream);
+
+			super.close();
+		} catch (Exception e) {
+			throw new IOException("Error saving response.", e);
 		}
-		super.close();
 	}
-
-
 }

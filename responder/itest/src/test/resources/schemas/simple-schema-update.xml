@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<name>simple-schema</name>
+	<field>
+		<name>FieldName</name>
+		<dataType>String</dataType>
+		<isArray>false</isArray>
+		<position>0</position>
+	</field>
+	<field>
+		<name>NewFieldName</name>
+		<dataType>Integer</dataType>
+		<isArray>false</isArray>
+		<position>1</position>
+	</field>
+</dataSchema>

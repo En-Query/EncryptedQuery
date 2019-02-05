@@ -41,7 +41,9 @@ public class ExecutionTypeConverter {
 	public ExecutionResources toXMLExecutions(Collection<org.enquery.encryptedquery.responder.data.entity.Execution> jpaExecutions,
 			Exchange exchange) {
 
-		log.info("Converting {} to XML ExecutionResources.", jpaExecutions);
+		if (log.isDebugEnabled()) {
+			log.debug("Converting {} to XML ExecutionResources.", jpaExecutions);
+		}
 
 		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
 		DataSourceRegistry dataSrcRegistry = CamelContextBeanLocator.dataSourceRegistry(exchange);
@@ -61,7 +63,9 @@ public class ExecutionTypeConverter {
 	public static ExecutionResource toXMLExecution(org.enquery.encryptedquery.responder.data.entity.Execution jpaExecution,
 			Exchange exchange) {
 
-		log.info("Converting {} to XML ExecutionResource.", jpaExecution);
+		if (log.isDebugEnabled()) {
+			log.debug("Converting {} to XML ExecutionResource.", jpaExecution);
+		}
 
 		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
 		DataSourceRegistry dataSrcRegistry = CamelContextBeanLocator.dataSourceRegistry(exchange);
@@ -108,7 +112,4 @@ public class ExecutionTypeConverter {
 
 		return result;
 	}
-
-
-
 }

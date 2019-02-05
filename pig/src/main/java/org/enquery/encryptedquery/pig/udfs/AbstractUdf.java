@@ -29,8 +29,8 @@ import javax.xml.bind.JAXBException;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
-import org.enquery.encryptedquery.query.wideskies.Query;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 
@@ -50,7 +50,7 @@ public abstract class AbstractUdf<T> extends AliasableEvalFunc<T> {
 	protected QuerySchema querySchema;
 	protected DataSchema dataSchema;
 	protected Map<String, String> systemConfig;
-	private QueryTypeConverter queryTypeConverter = new QueryTypeConverter();
+	private QueryTypeConverter queryTypeConverter;
 
 	public AbstractUdf(String queryFileName, String configFileName) {
 		super();

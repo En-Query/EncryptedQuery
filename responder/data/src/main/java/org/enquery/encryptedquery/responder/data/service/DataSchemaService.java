@@ -32,5 +32,7 @@ public interface DataSchemaService {
 
 	DataSchema update(DataSchema ds);
 
+	DataSchema addOrUpdate(DataSchema ds);
+
 	void delete(String name);
 }

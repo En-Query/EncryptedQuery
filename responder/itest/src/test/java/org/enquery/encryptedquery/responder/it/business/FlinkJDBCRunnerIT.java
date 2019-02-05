@@ -24,25 +24,26 @@ import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.Map;
 
 import javax.inject.Inject;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptionPropertiesBuilder;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QuerierFactory;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
-import org.enquery.encryptedquery.responder.it.QueryRunnerConfigurator;
+import org.enquery.encryptedquery.responder.it.util.DerbyBookDatabase;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
+import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -80,11 +81,12 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 	@Inject
 	private ConfigurationAdmin confAdmin;
 	@Inject
-	private QuerierFactory querierFactory;
+	private EncryptQuery querierFactory;
 
 	private Querier querier;
 	private Query query;
 	private FlinkDriver flinkDriver = new FlinkDriver();
+	private DerbyBookDatabase derbyDatabase = new DerbyBookDatabase();
 
 	@Override
 	@Before
@@ -92,6 +94,7 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 		super.init();
 		installBooksDataSchema();
 		flinkDriver.init();
+		derbyDatabase.init();
 	}
 
 	@ProbeBuilder
@@ -134,7 +137,7 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 		Assert.assertEquals(0, dsRegistry.list().size());
 
 		// register a Flink-JDBC query runner
-		QueryRunnerConfigurator conf = new QueryRunnerConfigurator(confAdmin);
+		FlinkJdbcRunnerConfigurator conf = new FlinkJdbcRunnerConfigurator(confAdmin);
 		conf.create(DATA_SOURCE_NAME, BOOKS_DATA_SCHEMA_NAME, DESCRIPTION);
 
 		waitUntilQueryRunnerRegistered(DATA_SOURCE_NAME);
@@ -153,7 +156,10 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 		query = querier.getQuery();
 		OutputStream stdOut = new ByteArrayOutputStream();
 
-		runner.run(null, query, System.getProperty("response.path"), stdOut);
+		Map<String, String> parameters = new HashMap<>();
+		parameters.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "100");
+
+		runner.run(query, parameters, System.getProperty("response.path"), stdOut);
 	}
 
 
@@ -161,15 +167,13 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
 
-		Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-				.newBuilder()
-				.dataChunkSize(DATA_CHUNK_SIZE)
-				.hashBitSize(HASH_BIT_SIZE)
-				.paillierBitSize(BIT_SIZE)
-				.certainty(CERTAINTY)
-				.embedSelector(true)
-				.queryType(queryType)
-				.build();
-		return querierFactory.createQuerier(querySchema, UUID.randomUUID(), selectors, baseTestEncryptionProperties);
+		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
+		// .newBuilder()
+		// .dataChunkSize(DATA_CHUNK_SIZE)
+		// .hashBitSize(HASH_BIT_SIZE)
+		// .certainty(CERTAINTY)
+		// .embedSelector(true)
+		// .build();
+		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

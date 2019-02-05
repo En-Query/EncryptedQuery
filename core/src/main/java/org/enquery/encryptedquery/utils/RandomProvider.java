@@ -21,7 +21,6 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Random;
 
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
@@ -47,20 +46,23 @@ import org.slf4j.LoggerFactory;
  * </ul>
  */
 @Component(service = RandomProvider.class)
-public class RandomProvider implements ResponderProperties {
+public class RandomProvider {
 
 	private static final Logger logger = LoggerFactory.getLogger(RandomProvider.class);
+
+	public static String SECURE_RANDOM_ALG = "secureRandom.algorithm";
+	public static String SECURE_RANDOM_PROVIDER = "secureRandom.provider";
 
 	private SecureRandom secureRandom = new SecureRandom();
 
 	@Activate
 	public void initialize(Map<String, String> config) {
 		try {
-			String alg = config.get("pallier.secureRandom.algorithm");
+			String alg = config.get(SECURE_RANDOM_ALG);
 			if (alg == null) {
 				secureRandom = new SecureRandom();
 			} else {
-				String provider = config.get(PAILLIER_SECURE_RANDOM_PROVIDER);
+				String provider = config.get(SECURE_RANDOM_PROVIDER);
 				secureRandom = (provider == null) ? SecureRandom.getInstance(alg) : SecureRandom.getInstance(alg, provider);
 			}
 			logger.info("Using secure random from " + secureRandom.getProvider().getName() + ":" + secureRandom.getAlgorithm());

@@ -35,7 +35,7 @@ import org.enquery.encryptedquery.querier.data.entity.DataSourceType;
 public class DataSource {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dsource_seq")
 	private Integer id;
 
 	@Column(unique = true, nullable = false)

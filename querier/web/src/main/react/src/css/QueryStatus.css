@@ -1,25 +1,44 @@
-table, th, td {
-    border: 1px solid black;
-    border-collapse: collapse;
+table,
+th,
+td {
+  border: 1px solid black;
+  border-collapse: collapse;
 }
 
-th, td, tr {
-    padding: 5px;
+th,
+td,
+tr {
+  padding: 5px;
 }
 
 th {
-    text-align:left;
+  text-align: left;
 }
 
 table {
-    width:100%;
+  width: 100%;
 }
 
 .btnNoAction {
-    opacity: 0.6;
-    cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btnFailed {
-    background-color: #f44336;
+  background-color: #f44336;
+}
+
+.status-selectboxes div {
+  margin-bottom: 10px;
+  margin-top: 10px;
+  display: flex;
+}
+
+.status-selectboxes label {
+  min-width: 450px;
+}
+
+.status-selectboxes select {
+  flex-grow: 1;
+  max-width: 180px;
 }

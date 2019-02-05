@@ -23,12 +23,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.sshd.common.util.io.IoUtils;
-import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
@@ -117,18 +117,30 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 	}
 
 
-	private org.enquery.encryptedquery.querier.data.entity.json.Query createQuery() {
+	@Test
+	public void encryptWithNativeLib() throws Exception {
+		waitForHealthyStatus();
+		org.osgi.service.cm.Configuration configuration = configurationAdmin.getConfiguration(//
+				"org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme", null);
+
+		Dictionary<String, Object> properties = configuration.getProperties();
+		if (properties == null) {
+			properties = new Hashtable<>();
+		}
+		properties.put("paillier.encrypt.query.method", "FastWithJNI");
+		configuration.update(properties);
+		waitForHealthyStatus();
+
+		QueryResponse queryResponse = createQueryAndWaitForEncryption();
+		assertNotNull(queryResponse);
+		assertEquals("Encrypted", queryResponse.getData().getStatus().toString());
+	}
+
+	protected org.enquery.encryptedquery.querier.data.entity.json.Query createQuery() {
 		org.enquery.encryptedquery.querier.data.entity.json.Query q = new org.enquery.encryptedquery.querier.data.entity.json.Query();
 		q.setName("Test Query " + ++queryCount);
 
-		Map<String, String> params = new HashMap<>();
-		params.put(QuerierProperties.DATA_CHUNK_SIZE, "8");
-		params.put(QuerierProperties.HASH_BIT_SIZE, "9");
-		params.put(QuerierProperties.PAILLIER_BIT_SIZE, "384");
-		params.put(QuerierProperties.CERTAINTY, "128");
-		params.put(QuerierProperties.BIT_SET, "32");
-		q.setParameters(params);
-
+		q.setParameters(new HashMap<>());
 		List<String> selectorValues = new ArrayList<>();
 		selectorValues.add("432-567-3945");
 		selectorValues.add("534-776-3672");

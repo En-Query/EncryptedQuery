@@ -1,0 +1,3 @@
+Import-Package: \
+	org.enquery.encryptedquery.encryption.impl,\
+	*

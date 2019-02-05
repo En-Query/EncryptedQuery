@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.lang3.Validate;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -35,18 +36,32 @@ import org.osgi.service.component.annotations.Deactivate;
 @Component
 public class ThreadPool implements ExecutorService {
 
-	private static final long DEFAULT_SHUTSHOWN_WAIT_TIME = TimeUnit.MINUTES.toSeconds(5);
-	private static final int DEFAULT_TASK_QUEUE_SIZE = 10 * 1024;
+	public static final String CORE_POOL_SIZE = "core.pool.size";
+	public static final String MAX_TASK_QUEUE_SIZE = "max.task.queue.size";
+	public static final String SHUTDOWN_WAIT_TIME_SECONDS = "shutdown.wait.time.seconds";
+	public static final String KEEP_ALIVE_TIME_SECONDS = "keep.alive.time.seconds";
+	public static final String MAX_POOL_SIZE = "max.pool.size";
+
+	public static final String[] CONFIURATION_KEYS = {CORE_POOL_SIZE,
+			MAX_TASK_QUEUE_SIZE,
+			SHUTDOWN_WAIT_TIME_SECONDS,
+			KEEP_ALIVE_TIME_SECONDS,
+			MAX_POOL_SIZE
+	};
+
+	private static final Long DEFAULT_SHUTSHOWN_WAIT_TIME = TimeUnit.MINUTES.toSeconds(5);
+	private static final Integer DEFAULT_TASK_QUEUE_SIZE = 10 * 1024;
 	private ExecutorService es;
 	private long shutdownWaitTimeInSeconds = DEFAULT_SHUTSHOWN_WAIT_TIME;
 
 	@Activate
-	public void activate(Map<String, Object> config) {
-		int corePoolSize = (int) config.getOrDefault("core.pool.size", 16);
-		int maximumPoolSize = (int) config.getOrDefault("max.pool.size", 64);
-		long keepAliveTimeInSeconds = (int) config.getOrDefault("keep.alive.time.seconds", 30);
-		shutdownWaitTimeInSeconds = (long) config.getOrDefault("shutdown.wait.time.seconds", DEFAULT_SHUTSHOWN_WAIT_TIME);
-		int maxTaskQueueSize = (int) config.getOrDefault("max.task.queue.size", DEFAULT_TASK_QUEUE_SIZE);
+	public void initialize(Map<String, String> config) {
+		Validate.notNull(config);
+		int corePoolSize = Integer.parseInt(config.getOrDefault(CORE_POOL_SIZE, "16"));
+		int maximumPoolSize = Integer.parseInt(config.getOrDefault(MAX_POOL_SIZE, "64"));
+		long keepAliveTimeInSeconds = Long.parseLong(config.getOrDefault(KEEP_ALIVE_TIME_SECONDS, "30"));
+		shutdownWaitTimeInSeconds = Long.parseLong(config.getOrDefault(SHUTDOWN_WAIT_TIME_SECONDS, DEFAULT_SHUTSHOWN_WAIT_TIME.toString()));
+		int maxTaskQueueSize = Integer.parseInt(config.getOrDefault(MAX_TASK_QUEUE_SIZE, DEFAULT_TASK_QUEUE_SIZE.toString()));
 		es = new ThreadPoolExecutor(
 				corePoolSize,
 				maximumPoolSize,
@@ -59,7 +74,10 @@ public class ThreadPool implements ExecutorService {
 	public void deactivate() throws InterruptedException {
 		if (es != null) {
 			es.shutdown();
-			es.awaitTermination(shutdownWaitTimeInSeconds, TimeUnit.SECONDS);
+			boolean terminated = es.awaitTermination(shutdownWaitTimeInSeconds, TimeUnit.SECONDS);
+			if (!terminated) {
+				es.shutdownNow();
+			}
 		}
 	}
 

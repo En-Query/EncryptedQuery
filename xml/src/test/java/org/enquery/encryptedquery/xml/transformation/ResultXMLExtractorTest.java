@@ -82,8 +82,11 @@ public class ResultXMLExtractorTest {
 
 			InputStream is = new ByteArrayInputStream(output.toByteArray());
 			Response query = unmarshal(is);
+
 			assertEquals("8d008ed7-92cd-4f7a-9ea5-f93db1753532",
-					query.getQueryInfo().getIdentifier());
+					query.getQueryInfo().getQueryId());
+			assertEquals("{n=10,modulusBitSize=35}",
+					new String(query.getQueryInfo().getPublicKey()));
 		}
 	}
 

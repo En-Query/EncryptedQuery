@@ -24,6 +24,20 @@
 		<bundle>mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.version}</bundle>
 		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
 	</feature>
+	
+	<feature name="encryptedquery-jdbc" description="JDBC service and commands">
+        <details>JDBC support providing service, commands, and MBean.</details>
+        
+		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
+        <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+        <bundle dependency="true">mvn:org.osgi/org.osgi.service.jdbc/1.0.0</bundle>
+        <bundle>mvn:org.apache.karaf.jdbc/org.apache.karaf.jdbc.core/${karaf.version}</bundle>
+    </feature>
+
+	<feature name='encryptedquery-kafka'>
+        <bundle>wrap:mvn:org.apache.kafka/kafka-clients/${kafka.version}</bundle>
+        <bundle>wrap:mvn:org.apache.flink/flink-connector-kafka_${flink.scala.version}/${flink.version}</bundle>
+    </feature>
 
 	<feature name="encryptedquery-responder-core" version="${project.version}" description="Provides the EncryptedQuery Responder Core">
 
@@ -33,7 +47,12 @@
      	<config name="org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl">
      	</config>
      	<config name="org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck">
-     		.ignore.component=["org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl", "org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner", "org.enquery.encryptedquery.responder.standalone.runner.StandaloneQueryRunner"]
+     		.ignore.component=[\
+     			"org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl", \
+     			"org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner", \
+     			"org.enquery.encryptedquery.responder.standalone.runner.StandaloneQueryRunner", \
+     			"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner" \
+     			]
      	</config>
      	
      	<config name="org.enquery.encryptedquery.healthcheck.impl.CamelHealthCheck">
@@ -56,6 +75,22 @@
      		context.path=${context.path}
      	</config>
      	
+     	<config name="org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme">
+     		paillier.prime.certainty=128
+			paillier.encrypt.query.task.count=2
+			paillier.modulusBitSize=3072
+			paillier.encrypt.query.method=Fast
+			paillier.column.processor=Basic
+			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+     	</config>
+     	
+		<!--
+		<config name="org.enquery.encryptedquery.encryption.nullcipher.NullCipherCryptoScheme">
+			nullcipher.plaintext.byte.size=383
+			nullcipher.padding.byte.size=385
+		</config>
+		-->
+
      	<!-- needed for XML generation see data-schema module -->
   	    <bundle>mvn:com.sun.xml.bind/jaxb-core/2.3.0</bundle>
      	
@@ -76,18 +111,23 @@
 		<feature>hibernate</feature>
         <feature>transaction</feature>
 		<feature version="${aries.jpa.version}">jpa</feature>
-		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
-        <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+
+		<feature>encryptedquery-jdbc</feature>
         <feature>encryptedquery-jackson</feature>
+        <feature>encryptedquery-kafka</feature>
 				
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
  		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>
         
+        <bundle>mvn:${project.groupId}/encryptedquery-health-status/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-jpa/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-core/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-xml/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
-        <bundle>mvn:${project.groupId}/encryptedquery-core/${project.version}</bundle>
-        <bundle>mvn:${project.groupId}/encryptedquery-health-status/${project.version}</bundle>
+  		<bundle>mvn:${project.groupId}/encryptedquery-paillier-encryption/${project.version}</bundle>
+		<!--
+		<bundle>mvn:${project.groupId}/encryptedquery-nullcipher-encryption/${project.version}</bundle>
+		-->
   
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}</bundle>
@@ -99,6 +139,7 @@
 		<!-- the query runners -->
         <bundle>mvn:${project.groupId}/encryptedquery-flink-jdbc-runner/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-standalone-runner/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-flink-kafka-runner/${project.version}</bundle>
 	</feature>    	
     	
     <feature name="encryptedquery-responder-mariadb" version="${project.version}"
@@ -116,6 +157,8 @@
     		hibernate.show_sql=true
     		hibernate.format_sql=true
     		hibernate.hbm2ddl.auto=none
+    		hibernate.id.new_generator_mappings=true
+    		hibernate.order_inserts=trues
      	</config>
 
 		<feature>encryptedquery-responder-core</feature>
@@ -138,14 +181,14 @@
     		hibernate.show_sql=false
     		hibernate.format_sql=true
     		hibernate.hbm2ddl.auto=none
+    		hibernate.id.new_generator_mappings=true
+    		hibernate.order_inserts=true
     	</config>
-
+    	
 		<feature>encryptedquery-responder-core</feature>
      
-     	 <bundle>mvn:org.apache.derby/derby/${derby-db.version}</bundle>
-     	 <bundle>wrap:mvn:org.apache.derby/derbytools/${derby-db.version}</bundle>
-         <bundle>mvn:org.ops4j.pax.jdbc/pax-jdbc-derby/${pax-jdbc.version}</bundle>
-         <bundle>mvn:${project.groupId}/encryptedquery-responder-data-derby/${project.version}</bundle>
+     	<bundle>mvn:org.apache.derby/derby/${derby-db.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-data-derby/${project.version}</bundle>
     </feature>
 </features>
 

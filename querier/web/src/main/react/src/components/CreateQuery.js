@@ -15,24 +15,8 @@ class CreateQuery extends React.Component {
 
     this.state = {
       dataSchemas: [],
-      dataSchemaId: [],
-      dataSchemaUri: [],
-      dataSchemaName: [],
       querySchemas: [],
-      querySchemaUri: [],
-      querySchemaId: [],
-      queryName: [],
-      querySchemaName: [],
-      queriesUri: [],
       dataSources: [],
-      dataSourceName: [],
-      dataSourceUri: [],
-      selectedId: [],
-      action: [],
-      bitSet: 32,
-      certainty: 128,
-      hashBitSize: 15,
-      paillierBitSize: 3072,
       dataChunkSize: 3,
       embedSelector: [],
       selectorField: [],
@@ -40,7 +24,7 @@ class CreateQuery extends React.Component {
       selectorValues: []
     };
 
-    this.handleChange = this.handleChange.bind(this);
+    this.dataSchemaChange = this.dataSchemaChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
@@ -79,7 +63,7 @@ class CreateQuery extends React.Component {
       .catch(error => console.log(error.response));
   }
 
-  handleChange = e => {
+  dataSchemaChange = e => {
     const dataSchema = this.state.dataSchemas.find(
       dataSchema => dataSchema.name === e.target.value
     );
@@ -97,18 +81,12 @@ class CreateQuery extends React.Component {
           console.log(dataSchema.id);
           this.setState(
             {
-              querySchemaId: response.data.data[0].id,
-              querySchemaName: response.data.data[0].name,
-              querySchemaUri: response.data.data[0].selfUri,
-              querySchemas: response.data.data,
-              selectedId: dataSchema.id
+              querySchemaSelfUri: response.data.data[0].selfUri,
+              querySchemas: response.data.data
             },
             () => {
-              console.log(this.state.querySchemaId);
-              console.log(this.state.querySchemaName);
-              console.log(this.state.querySchemaUri);
+              console.log(this.state.querySchemaSelfUri);
               console.log(this.state.querySchemas);
-              console.log(this.state.selectedId);
             }
           );
         })
@@ -121,15 +99,21 @@ class CreateQuery extends React.Component {
       querySchema => querySchema.name === e.target.value
     );
     if (querySchema) {
-      const { id, name } = querySchema;
-      this.setState({
-        querySchemaId: id,
-        querySchemaName: name
-      });
+      const { id, name, selfUri } = querySchema;
+      this.setState(
+        {
+          querySchemaId: id,
+          querySchemaName: name,
+          querySchemaSelfUri: selfUri
+        },
+        () => {
+          console.log(this.state.querySchemaId);
+          console.log(this.state.querySchemaSelfUri);
+        }
+      );
       axios({
         method: "get",
-        url: `/querier/api/rest/dataschemas/${this.state
-          .selectedId}/queryschemas/${id}`,
+        url: `${selfUri}`,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
@@ -138,18 +122,17 @@ class CreateQuery extends React.Component {
           console.log(response);
           this.setState(
             {
-              querySchemaId: response.data.data.id,
-              querySchemaUri: response.data.data.selfUri,
               querySchemaName: response.data.data.name,
-              selectorField: response.data.data.selectorField
+              selectorField: response.data.data.selectorField,
+              queriesUri: response.data.data.queriesUri
             },
             () => {
-              console.log(this.state.querySchemaId);
-              console.log(this.state.querySchemaUri);
               console.log(this.state.querySchemaName);
               console.log(this.state.selectorField);
+              console.log(this.state.queriesUri);
             }
           );
+          localStorage.setItem("queriesUri", this.state.queriesUri);
         })
         .catch(error => console.log(error.response));
     }
@@ -168,19 +151,12 @@ class CreateQuery extends React.Component {
     this.setState({ embedSelector: e.target.value });
   };
 
-  updateAction = e => {
-    this.setState({ action: e.target.value });
-  };
-
-  updateMethod = e => {
-    this.setState({ method: e.target.value });
-  };
-
   handleSubmit(e) {
     e.preventDefault();
+    const queriesUri = localStorage.getItem("queriesUri");
     axios({
       method: "post",
-      url: `${this.state.querySchemaUri}/queries`,
+      url: `${queriesUri}`,
       headers: {
         Accept: "application/vnd.encryptedquery.enclave+json; version=1",
         "Content-Type": "application/json"
@@ -188,11 +164,7 @@ class CreateQuery extends React.Component {
       data: JSON.stringify({
         name: this.state.queryName,
         parameters: {
-          dataChunkSize: this.state.dataChunkSize,
-          hashBitSize: this.state.hashBitSize,
-          paillierBitSize: this.state.paillierBitSize,
-          bitSet: this.state.bitSet,
-          certainty: this.state.certainty
+          dataChunkSize: this.state.dataChunkSize
         },
         selectorValues: this.state.selectorValues,
         embedSelector: this.state.embedSelector
@@ -229,12 +201,9 @@ class CreateQuery extends React.Component {
         <form onSubmit={this.handleSubmit}>
           <fieldset>
             <legend>Query Information</legend>
-            <div>
+            <div className="CreateQuery-selectboxes">
               <div>
-                <label>
-                  {" "}
-                  <h4>Query name (will be saved as):</h4>
-                </label>
+                <label> Query name (will be saved as): </label>
                 <input
                   value={this.state.queryName}
                   onChange={this.updateQueryName}
@@ -242,12 +211,14 @@ class CreateQuery extends React.Component {
                   required
                 />
               </div>
-              <br />
               <div>
                 <label>
-                  Pick a DataSchema to filter down available QuerySchemas:
+                  Pick a DataSchema to filter available QuerySchemas:
                 </label>{" "}
-                <select value={this.state.value} onChange={this.handleChange}>
+                <select
+                  value={this.state.value}
+                  onChange={this.dataSchemaChange}
+                >
                   <option value="">Choose DataSchema..</option>
                   {dataSchemas &&
                     dataSchemas.length > 0 &&
@@ -260,13 +231,11 @@ class CreateQuery extends React.Component {
                     })}
                 </select>
               </div>
-              <br />
-              <br />
               <div>
                 <label>Pick the QuerySchema to build the query:</label>{" "}
                 <select
                   value={this.state.value}
-                  onChange={this.handleChange}
+                  onChange={this.dataSchemaChange}
                   onChange={this.querySchemaChange}
                   required
                 >
@@ -281,108 +250,56 @@ class CreateQuery extends React.Component {
                     })}
                 </select>
               </div>
-              <br />
-              <br />
-              <label>SelectorField used to create querySchema:</label>
-              <input value={this.state.selectorField} />
-              <br />
+              <div>
+                <label>SelectorField used to create querySchema:</label>
+                <input value={this.state.selectorField} />
+              </div>
             </div>
           </fieldset>
           <br />
           <br />
           <fieldset>
             <legend>Run Parameters For Query Generation</legend>
-            <br />
-            <br />
-            <label>BitSet:</label>
-            <input
-              value={this.state.bitSet}
-              onChange={this.onChange}
-              type="number"
-              name="bitSet"
-              min="0"
-              placeholder="32"
-              required
-            />
-            <br />
-            <br />
-            <label>Certainty:</label>
-            <input
-              value={this.state.certainty}
-              onChange={this.onChange}
-              type="number"
-              name="certainty"
-              min="0"
-              placeholder="128"
-              required
-            />
-            <br />
-            <br />
-            <label>hashBitSize:</label>
-            <input
-              value={this.state.hashBitSize}
-              onChange={this.onChange}
-              type="number"
-              name="hashBitSize"
-              placeholder="15"
-              min="8"
-              max="22"
-              required
-            />
-            <br />
-            <br />
-            <label>paillierBitSize:</label>
-            <input
-              value={this.state.paillierBitSize}
-              onChange={this.onChange}
-              type="number"
-              name="paillierBitSize"
-              min="1024"
-              max="3072"
-              placeholder="3072"
-              step="1024"
-              required
-            />
-            <br />
-            <br />
-            <label>dataChunkSize:</label>
-            <input
-              value={this.state.dataChunkSize}
-              onChange={this.onChange}
-              type="number"
-              name="dataChunkSize"
-              placeholder="1"
-              min="1"
-              step="1"
-              max="50"
-              required
-            />
-            <br />
-            <br />
-            <label>Embed Selector:</label>
-            <select
-              value={this.state.embedSelector}
-              onChange={this.updateEmbedSelector}
-              required
-            >
-              <option value="">True or False ...</option>
-              <option value="true">True</option>
-              <option value="false">False</option>
-            </select>
-            <br />
-            <br />
-            <div>
-              <label>Selector Values:</label>{" "}
-              <input
-                type="text"
-                value={this.state.selectorValue}
-                placeholder="Enter selector value"
-                onChange={this.handleSelectorValueChange}
-                required={!this.state.selectorValues.length}
-              />
-              <button type="button" onClick={this.addSelectorValue}>
-                Add
-              </button>
+            <div className="CreateQuery-runParams">
+              <div>
+                <label>dataChunkSize:</label>
+                <input
+                  value={this.state.dataChunkSize}
+                  onChange={this.onChange}
+                  type="number"
+                  name="dataChunkSize"
+                  placeholder="1"
+                  min="1"
+                  step="1"
+                  max="50"
+                  required
+                />
+              </div>
+              <div>
+                <label>Embed Selector:</label>
+                <select
+                  value={this.state.embedSelector}
+                  onChange={this.updateEmbedSelector}
+                  required
+                >
+                  <option value="">True or False ...</option>
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              </div>
+              <div>
+                <label>Selector Values:</label>{" "}
+                <input
+                  type="text"
+                  value={this.state.selectorValue}
+                  placeholder="Enter selector value"
+                  onChange={this.handleSelectorValueChange}
+                  required={!this.state.selectorValues.length}
+                />
+                <button type="button" onClick={this.addSelectorValue}>
+                  Add
+                </button>
+              </div>
               <ul>
                 {this.state.selectorValues.map((value, index) => {
                   return (
@@ -398,7 +315,6 @@ class CreateQuery extends React.Component {
                   );
                 })}
               </ul>
-              <br />
             </div>
           </fieldset>
           <div className="btn-group">

@@ -46,7 +46,6 @@ import javax.sql.DataSource;
 import org.apache.camel.CamelContext;
 import org.apache.commons.io.FileUtils;
 import org.enquery.encryptedquery.healthcheck.SystemHealthCheck;
-import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.service.DataSchemaRepository;
 import org.enquery.encryptedquery.querier.data.service.DataSourceRepository;
 import org.enquery.encryptedquery.querier.data.service.DecryptionRepository;
@@ -174,6 +173,9 @@ public abstract class AbstractQuerierItest {
 				replaceConfigurationFile("etc/org.ops4j.pax.logging.cfg",
 						getResourceAsFile("/etc/org.ops4j.pax.logging.cfg")),
 
+				replaceConfigurationFile("etc/org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme.cfg",
+						getResourceAsFile("/etc/org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme.cfg")),
+
 				replaceConfigurationFile("etc/org.ops4j.pax.web.cfg",
 						getResourceAsFile("/etc/org.ops4j.pax.web.cfg")),
 
@@ -195,8 +197,8 @@ public abstract class AbstractQuerierItest {
 				editConfigurationFilePut("etc/encrypted.query.querier.rest.cfg",
 						"camel.trace.enabled", "true"),
 
-				editConfigurationFilePut("etc/org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery.cfg",
-						QuerierProperties.NUMTHREADS, "4"),
+				// editConfigurationFilePut("etc/org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery.cfg",
+				// QuerierProperties.NUMTHREADS, "4"),
 
 				replaceConfigurationFile("etc/org.ops4j.datasource-querier.cfg",
 						getResourceAsFile("/etc/org.ops4j.datasource-querier-" + dbEngine + ".cfg")),

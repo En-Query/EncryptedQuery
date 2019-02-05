@@ -23,6 +23,15 @@
 		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
 	</feature>
 		
+	<feature name="encryptedquery-jdbc" description="JDBC service and commands">
+        <details>JDBC support providing service, commands, and MBean.</details>
+        
+		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
+        <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+        <bundle dependency="true">mvn:org.osgi/org.osgi.service.jdbc/1.0.0</bundle>
+        <bundle>mvn:org.apache.karaf.jdbc/org.apache.karaf.jdbc.core/${karaf.version}</bundle>
+    </feature>
+		
     <feature name="encryptedquery-querier-core" version="${project.version}"
     	description="Provides the EncryptedQuery Querier Web Application">
     	
@@ -56,6 +65,22 @@
      		context.path=${context.path}
      	</config>
   	
+  		<config name="org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme">
+     		paillier.prime.certainty=128
+			paillier.encrypt.query.task.count=2
+			paillier.modulus.bit.size=3072
+			paillier.encrypt.query.method=Fast
+			paillier.column.processor=Basic
+			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+     	</config>
+
+		<!--
+		<config name="org.enquery.encryptedquery.encryption.nullcipher.NullCipherCryptoScheme">
+		nullcipher.plaintext.byte.size=383
+		nullcipher.padding.byte.size=385
+		</config>
+		-->
+     	
   		<!-- needed for XML generation see data-schema module -->
   	    <bundle>mvn:com.sun.xml.bind/jaxb-core/2.3.0</bundle>
   	
@@ -74,9 +99,9 @@
 		<feature>jndi</feature>
 		<feature>hibernate</feature>
         <feature>transaction</feature>
-		<feature version="${aries.jpa.version}">jpa</feature>
-		<feature version="${pax-jdbc.version}">pax-jdbc</feature>
-        <feature version="${pax-jdbc.version}">pax-jdbc-config</feature>
+        <feature version="${aries.jpa.version}">jpa</feature>
+      
+		<feature>encryptedquery-jdbc</feature>
 		<feature>encryptedquery-jackson</feature>
 				
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
@@ -87,7 +112,14 @@
         <bundle>mvn:${project.groupId}/encryptedquery-core/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-xml/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
+		<bundle>mvn:${project.groupId}/encryptedquery-paillier-encryption/${project.version}</bundle>
+		<!--
+		<bundle>mvn:${project.groupId}/encryptedquery-null-encryption/${project.version}</bundle>
+		-->
+
+        <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}</bundle>
+
         <bundle>mvn:${project.groupId}/encryptedquery-querier-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-data/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-integration/${project.version}</bundle>
@@ -107,6 +139,8 @@
     		hibernate.show_sql=true
     		hibernate.format_sql=true
     		hibernate.hbm2ddl.auto=none
+    		hibernate.id.new_generator_mappings=true
+    		hibernate.order_inserts=true
      	</config>
 
 		<feature>encryptedquery-querier-core</feature>
@@ -129,14 +163,14 @@
     		hibernate.show_sql=false
     		hibernate.format_sql=true
     		hibernate.hbm2ddl.auto=none
+    		hibernate.id.new_generator_mappings=true
+    		hibernate.order_inserts=true
     	</config>
-
+	
 		<feature>encryptedquery-querier-core</feature>
      
-     	 <bundle>mvn:org.apache.derby/derby/${derby-db.version}</bundle>
-     	 <bundle>wrap:mvn:org.apache.derby/derbytools/${derby-db.version}</bundle>
-         <bundle>mvn:org.ops4j.pax.jdbc/pax-jdbc-derby/${pax-jdbc.version}</bundle>
-         <bundle>mvn:${project.groupId}/encryptedquery-querier-data-derby/${project.version}</bundle>
+    	<bundle>mvn:org.apache.derby/derby/${derby-db.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-querier-data-derby/${project.version}</bundle>
     </feature>
 </features>
 

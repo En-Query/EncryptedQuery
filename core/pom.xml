@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- 
   EncryptedQuery is an open source project allowing user to query databases 
   with queries under homomorphic encryption to securing the query and
@@ -25,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-parent</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.1.0</version>
 		<relativePath>../parent</relativePath>
 	</parent>
 
@@ -86,135 +87,5 @@
 			</plugin>
 		</plugins>
 	</build>
-	<profiles>
-		<profile>
-			<id>native-libs</id>
-			<properties>
-				<native.build.dir>${project.build.directory}/native-builds</native.build.dir>
-				<jni.headers.dir>${native.build.dir}/generated-headers</jni.headers.dir>
-				<gmp.build.dir>${native.build.dir}/gmp</gmp.build.dir>
-			</properties>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-compiler-plugin</artifactId>
-						<configuration>
-							<compilerArgs>
-								<arg>-h</arg>
-								<arg>${jni.headers.dir}</arg>
-							</compilerArgs>
-						</configuration>
-					</plugin>
-					<plugin>
-						<!-- build native C code -->
-						<groupId>org.apache.maven.plugins</groupId>
-	          			<artifactId>maven-antrun-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>build-native</id>
-								<phase>compile</phase>
-								<goals>
-									<goal>run</goal>
-								</goals>
-								<configuration>
-									<target name="build-native" description="compiles native code">
-										<property name="make.cmd" value="make" />
-										<property name="javac.cmd" value="${java.home}/../bin/javac" />
-										<property name="gmp.src.dir" value="src/main/native/gmp" />
-										<property name="querier.src.dir" value="src/main/native/querier" />
-										<property name="responder.src.dir" value="src/main/native/responder" />
-										<property name="gmp.install.dir" value="${project.build.directory}/gmp" />
-										<property name="native.install.dir" value="${project.build.directory}/lib/native" />
-										<property name="querier.build.dir" value="${native.build.dir}/querier" />
-
-										<mkdir dir="${native.build.dir}" />
-										<mkdir dir="${native.build.dir}/gmp" />
-										<mkdir dir="${querier.build.dir}" />
-										<mkdir dir="${native.build.dir}/responder" />
-										<mkdir dir="${native.install.dir}" />
-
-										<!-- Build GMP -->
-										<get src="https://ftp.gnu.org/gnu/gmp/gmp-${gmp.version}.tar.bz2" dest="${gmp.build.dir}" skipexisting="true" />
-
-										<exec dir="${gmp.build.dir}" executable="tar" failonerror="true">
-											<arg line="-xjf" />
-											<arg line="${gmp.build.dir}/gmp-${gmp.version}.tar.bz2" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
-											<arg line="--prefix=${gmp.install.dir}" />
-											<arg line="--enable-fat" />
-											<arg line="--disable-static" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
-											<arg line="--prefix=${gmp.install.dir}" />
-											<arg line="--enable-fat" />
-											<arg line="--disable-static" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="${make.cmd}" failonerror="true">
-											<arg line="all" />
-											<arg line="check" />
-											<arg line="install" />
-										</exec>
-
-										<!-- Build Querier -->
-										<exec dir="${querier.src.dir}" executable="${make.cmd}" failonerror="true">
-											<arg line="install" />
-											<arg line="JAVA_HOME=${java.home}/.." />
-											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
-											<arg line="BUILD_DIR=${querier.build.dir}" />
-											<arg line="INSTALL_DIR=${native.install.dir}" />
-											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
-										</exec>
-
-										<!-- Build Responder -->
-										<exec dir="${responder.src.dir}" executable="${make.cmd}" failonerror="true">
-											<arg line="install" />
-											<arg line="JAVA_HOME=${java.home}/.." />
-											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
-											<arg line="BUILD_DIR=${native.build.dir}/responder" />
-											<arg line="INSTALL_DIR=${native.install.dir}" />
-											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
-										</exec>
-
-										<copy todir="${native.install.dir}">
-											<fileset dir="${gmp.install.dir}/lib" />
-										</copy>
-									</target>
-								</configuration>
-							</execution>
-						</executions>
-						<dependencies>
-							<dependency>
-								<groupId>org.apache.ant</groupId>
-								<artifactId>ant</artifactId>
-								<version>1.10.3</version>
-							</dependency>
-						</dependencies>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-assembly-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>native-assembly</id>
-								<phase>package</phase>
-								<goals>
-									<goal>single</goal>
-								</goals>
-								<configuration>
-									<descriptors>
-										<descriptor>src/assembly/native-libs.xml</descriptor>
-									</descriptors>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
+	
 </project>

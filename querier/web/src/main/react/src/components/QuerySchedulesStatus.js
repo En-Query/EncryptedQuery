@@ -20,17 +20,14 @@ class QuerySchedulesStatus extends React.Component {
       date: [],
       type: [],
       results: [],
-      scheduleStatus: [],
-      scheduleSelfUri: [],
-      dataSourceName: localStorage.getItem("dataSourceName")
+      scheduleSelfUri: []
     };
 
     //this.handleChange = this.handleChange.bind(this)
   }
 
   componentDidMount = () => {
-    var dataSourceName = localStorage.getItem("dataSourceName");
-    var querySelfUri = localStorage.getItem("querySelfUri");
+    const querySelfUri = localStorage.getItem("querySelfUri");
     axios({
       method: "get",
       url: `${querySelfUri}`,
@@ -49,7 +46,7 @@ class QuerySchedulesStatus extends React.Component {
           }
         );
         localStorage.setItem("querySchedulesUri", this.state.querySchedulesUri);
-        var querySchedulesUri = localStorage.getItem("querySchedulesUri");
+        const querySchedulesUri = localStorage.getItem("querySchedulesUri");
         return axios({
           method: "get",
           url: `${querySchedulesUri}`,
@@ -63,19 +60,15 @@ class QuerySchedulesStatus extends React.Component {
         this.setState(
           {
             schedules: response.data.data,
-            scheduleTime: response.data.data[0].startTime,
-            scheduleSelfUri: response.data.data[0].selfUri,
-            scheduleStatus: response.data.data[0].status
+            scheduleSelfUri: response.data.data[0].selfUri
           },
           () => {
-            console.log(this.state.scheduleStatus);
-            console.log(this.state.schedulesSelfUri);
+            console.log(this.state.scheduleSelfUri);
           }
         );
-        localStorage.setItem("scheduleSelfUri", this.state.scheduleSelfUri);
         this.getUpdatedStatus();
       })
-      .catch(error => console.log(error.response));
+      .catch(error => console.log(error));
   };
 
   //prevent memory leak
@@ -85,30 +78,56 @@ class QuerySchedulesStatus extends React.Component {
 
   getUpdatedStatus = () => {
     //fetch updated status,
-    var scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
-    axios({
-      method: "get",
-      url: `${scheduleSelfUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        if (response.data.data.status !== "Complete" && "Failed") {
-          this.timeout = setTimeout(() => this.getUpdatedStatus(), 20000);
-        }
-        console.log(response);
-        this.setState(
-          {
-            dataSourceName: response.data.included[3].name,
-            scheduleStatus: response.data.data.status
-          },
-          () => {
-            console.log(this.state.scheduleStatus);
+    const schedules = this.state.schedules;
+    Promise.all(
+      schedules.map(schedule =>
+        axios({
+          method: "get",
+          url: schedule.selfUri,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
           }
+        })
+      )
+    )
+      .then(response => {
+        console.log(response);
+        const isIncomplete = response.some(
+          response => response.data.data.status !== "Complete"
         );
+        //console.log(response.data.data), this will cause the setTimeout not to fire.
+        const dataSourceNames = response.flatMap(
+          ({ data: { included } }, index) =>
+            included.reduce((memo, { type, name }) => {
+              if (type === "DataSource") {
+                memo.push(name);
+              }
+              return memo;
+            }, [])
+        );
+        console.log(dataSourceNames);
+
+        if (isIncomplete) {
+          this.timeout = setTimeout(() => this.getUpdatedStatus(), 20000);
+        } else {
+          this.setState(prevState => ({
+            schedules: prevState.schedules.map(schedule => {
+              if (schedule.status === "Pending") {
+                return {
+                  ...schedule,
+                  status: "Complete",
+                  dataSourceNames: dataSourceNames
+                };
+              }
+              return {
+                ...schedule,
+                dataSourceNames
+              };
+            })
+          }));
+        }
       })
-      .catch(error => console.log(error.response));
+      .catch(error => console.log(error));
   };
 
   handleButtonView = (status, scheduleSelfUri) => {
@@ -139,11 +158,12 @@ class QuerySchedulesStatus extends React.Component {
     e.preventDefault();
     await this.setState({ scheduleSelfUri });
     console.log(this.state.scheduleSelfUri);
+    localStorage.setItem("scheduleSelfUri", this.state.scheduleSelfUri);
     this.props.history.push(`/querier/queryresults`);
   };
 
   render() {
-    const { schedule, schedules, scheduleStatus } = this.state;
+    const { schedule, schedules, dataSourceInfo, dataSourceNames } = this.state;
     const { match, location, history } = this.props;
     const { match: { params: { scheduleSelfUri } } } = this.props;
 
@@ -157,27 +177,28 @@ class QuerySchedulesStatus extends React.Component {
             <th>Date</th>
             <th>Status</th>
             <th>Type</th>
+            <th>Schedule_ID</th>
             <th>Data Source</th>
             <th>Results</th>
           </tr>
-          <React.Fragment>
-            {this.state.schedules.map(schedule => {
-              return (
-                <tr>
-                  <td>{moment(schedule.startTime).format("llll")}</td>
-                  <td>{this.state.scheduleStatus}</td>
-                  <td>{schedule.type}</td>
-                  <td> {this.state.dataSourceName} </td>
-                  <td>
-                    {this.handleButtonView(
-                      this.state.scheduleStatus,
-                      schedule.selfUri
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </React.Fragment>
+          {Object.values(schedules).map((schedule, index) => {
+            return (
+              <tr>
+                <td>{moment(schedule.startTime).format("llll")}</td>
+                <td>{schedule.status}</td>
+                <td>{schedule.type}</td>
+                <td>{schedule.id}</td>
+                <td>
+                  {schedule.dataSourceNames && (
+                    <div>{schedule.dataSourceNames[index]}</div>
+                  )}
+                </td>
+                <td>
+                  {this.handleButtonView(schedule.status, schedule.selfUri)}
+                </td>
+              </tr>
+            );
+          })}
         </table>
       </div>
     );

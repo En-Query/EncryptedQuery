@@ -18,7 +18,7 @@ package org.enquery.encryptedquery.pig.storage;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
+import java.util.Map;
 import java.util.TreeMap;
 
 import javax.xml.bind.JAXBException;
@@ -28,8 +28,9 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.pig.data.Tuple;
-import org.enquery.encryptedquery.query.wideskies.QueryInfo;
-import org.enquery.encryptedquery.response.wideskies.Response;
+import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 
 /**
@@ -42,7 +43,7 @@ public class XMLRecordWriter extends
 	 * the outputstream to write out on
 	 */
 	private DataOutputStream out;
-	private TreeMap<Integer, BigInteger> treeMap = new TreeMap<>();
+	private Map<Integer, CipherText> treeMap = new TreeMap<>();
 	private QueryInfo queryInfo;
 
 	/**
@@ -87,7 +88,7 @@ public class XMLRecordWriter extends
 			treeMap = new TreeMap<>();
 		}
 
-		treeMap.put((Integer) t.get(0), (BigInteger) t.get(1));
+		treeMap.put((Integer) t.get(0), (CipherText) t.get(1));
 	}
 
 	public QueryInfo getQueryInfo() {

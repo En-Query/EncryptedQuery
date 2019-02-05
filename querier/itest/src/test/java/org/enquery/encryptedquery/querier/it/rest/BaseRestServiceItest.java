@@ -671,7 +671,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 		return mock;
 	}
 
-	protected QueryResponse createQueryAndWaitForEncryption(Query q) throws Exception {
+	protected QueryResponse createQueryAndWaitForEncryption(Query query) throws Exception {
 		org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema ds = sampleData.createDataSchema();
 		dataSchemaRepo.add(ds);
 
@@ -684,7 +684,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 		org.enquery.encryptedquery.querier.data.entity.json.QuerySchema querySchema =
 				retrieveQuerySchemaForName(qs1.getName(), dataSchema).getData();
 
-		return createQueryAndWaitForEncryption(querySchema.getQueriesUri(), q);
+		return createQueryAndWaitForEncryption(querySchema.getQueriesUri(), query);
 	}
 
 	protected QueryResponse createQueryAndWaitForEncryption(String uri, Query q) throws Exception {
@@ -706,7 +706,8 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 											.toString());
 				},
 				null);
-		return retrieved;
+
+		return retrieveQuery(queryResponse.getData().getSelfUri());
 	}
 
 	protected org.enquery.encryptedquery.querier.data.entity.json.QuerySchemaResponse retrieveQuerySchemaForName(String querySchemaName, org.enquery.encryptedquery.querier.data.entity.json.DataSchemaResponse dataSchema) {

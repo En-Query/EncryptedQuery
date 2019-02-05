@@ -30,7 +30,10 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 
@@ -98,10 +101,22 @@ public class Driver {
 
 		config = FileIOUtils.loadPropertyFile(Paths.get(getValue(configPropertyFileOption)));
 
-		QueryTypeConverter converter = new QueryTypeConverter();
+		final CryptoScheme crypto = CryptoSchemeFactory.make(config);
+		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId == null) return null;
+				if (schemeId.equals(crypto.name())) return crypto;
+				return null;
+			}
+		};
+
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(registry);
+		queryConverter.initialize();
 
 		try (FileInputStream fis = new FileInputStream(queryFileName.toFile())) {
-			query = converter.toCoreQuery(converter.unmarshal(fis));
+			query = queryConverter.toCoreQuery(queryConverter.unmarshal(fis));
 		}
 	}
 

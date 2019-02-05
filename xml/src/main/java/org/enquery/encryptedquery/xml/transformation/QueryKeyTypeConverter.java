@@ -2,11 +2,14 @@ package org.enquery.encryptedquery.xml.transformation;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.net.URL;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.xml.XMLConstants;
@@ -19,24 +22,32 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
-import org.apache.camel.Converter;
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QueryKey;
+import org.enquery.encryptedquery.data.QueryKey;
+import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.xml.schema.Keys;
 import org.enquery.encryptedquery.xml.schema.ObjectFactory;
-import org.enquery.encryptedquery.xml.schema.Paillier;
 import org.enquery.encryptedquery.xml.schema.QueryKey.EmbedSelectorMap;
 import org.enquery.encryptedquery.xml.schema.QueryKey.EmbedSelectorMap.Entry;
 import org.enquery.encryptedquery.xml.schema.QueryKey.Selectors;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.xml.sax.SAXException;
 
-@Converter
+@Component(service = QueryKeyTypeConverter.class)
 public class QueryKeyTypeConverter {
 
 	private static final String XSD_PATH = "/org/enquery/encryptedquery/xml/schema/queryKey.xsd";
+	// needs to match version attribute in the XSD resource (most current version)
+	private static final BigDecimal CURRENT_XSD_VERSION = new BigDecimal("2.0");
 
 	private Schema xmlSchema;
 	private JAXBContext jaxbContext;
 	private ObjectFactory objectFactory;
+
+	@Reference
+	private CryptoSchemeRegistry keyConverter;
 
 	public QueryKeyTypeConverter() {
 		SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
@@ -51,6 +62,7 @@ public class QueryKeyTypeConverter {
 		}
 		objectFactory = new ObjectFactory();
 	}
+
 
 	public void marshal(org.enquery.encryptedquery.xml.schema.QueryKey qk, OutputStream os) throws JAXBException {
 		Marshaller marshaller = jaxbContext.createMarshaller();
@@ -68,73 +80,62 @@ public class QueryKeyTypeConverter {
 		return element.getValue();
 	}
 
-	@Converter
-	public static QueryKey toCore(org.enquery.encryptedquery.xml.schema.QueryKey queryKey) {
+	public QueryKey toCore(org.enquery.encryptedquery.xml.schema.QueryKey queryKey) {
 
 		List<String> selectors = queryKey.getSelectors().getEntry()
 				.stream()
 				.map(e -> e.getValue())
 				.collect(Collectors.toList());
 
-		org.enquery.encryptedquery.encryption.Paillier paillier = fromXMLPaillier(queryKey.getPaillier());
 		Map<Integer, String> embedSelectorMap = fromXMLEmbededSelectorMap(queryKey.getEmbedSelectorMap());
-		UUID id = UUID.fromString(queryKey.getIdentifier());
-		return new QueryKey(selectors, paillier, embedSelectorMap, id);
+		String queryId = queryKey.getQueryId();
+
+		KeyPair keyPair = deserializeKeyPair(queryKey.getKeys());
+		String cryptoId = queryKey.getKeys().getCryptoSchemeId();
+
+		return new QueryKey(selectors, keyPair, embedSelectorMap, queryId, cryptoId);
 	}
 
-	@Converter
-	public static org.enquery.encryptedquery.xml.schema.QueryKey toXMLQueryKey(QueryKey qk) {
+	/**
+	 * @param keys
+	 * @return
+	 */
+	public KeyPair deserializeKeyPair(Keys keys) {
+		Validate.notNull(keys);
+		final String schemeId = keys.getCryptoSchemeId();
+		Validate.notBlank(schemeId);
+
+		final CryptoScheme scheme = keyConverter.cryptoSchemeByName(schemeId);
+		final PrivateKey privateKey = scheme.privateKeyFromBytes(keys.getPrivate());
+		final PublicKey publicKey = scheme.publicKeyFromBytes(keys.getPublic());
+		return new KeyPair(publicKey, privateKey);
+	}
+
+	public org.enquery.encryptedquery.xml.schema.QueryKey toXMLQueryKey(QueryKey qk) {
 		org.enquery.encryptedquery.xml.schema.QueryKey result = new org.enquery.encryptedquery.xml.schema.QueryKey();
 
-		result.setIdentifier(qk.getIdentifier().toString());
+		result.setQueryId(qk.getQueryId());
 		result.setEmbedSelectorMap(toXMLEmbededSelectorMap(qk.getEmbedSelectorMap()));
 		result.setSelectors(toXMLSelectors(qk.getSelectors()));
-		result.setPaillier(toXMLPaillier(qk.getPaillier()));
+		result.setKeys(toXMLKeys(qk.getCryptoSchemeId(), qk.getKeyPair()));
+		result.setSchemaVersion(CURRENT_XSD_VERSION);
 
 		return result;
 	}
 
-	private static Paillier toXMLPaillier(org.enquery.encryptedquery.encryption.Paillier paillier) {
-		Paillier result = new Paillier();
-		result.setBitLength(paillier.getBitLength());
-		result.setN(paillier.getN());
-		result.setNSquared(paillier.getNSquared());
-		result.setP(paillier.getP());
-		result.setPBasePoint(paillier.getPBasePoint());
-		result.setPMaxExponent(paillier.getPMaxExponent());
-		result.setPMinusOne(paillier.getpMinusOne());
-		result.setPSquared(paillier.getPSquared());
-		result.setQ(paillier.getQ());
-		result.setQBasePoint(paillier.getQBasePoint());
-		result.setQMaxExponent(paillier.getQMaxExponent());
-		result.setQMinusOne(paillier.getQMinusOne());
-		result.setQSquared(paillier.getQSquared());
-		result.setWp(paillier.getWp());
-		result.setWq(paillier.getWq());
+	private Keys toXMLKeys(String cryptoSchemeId, KeyPair keyPair) {
+		Keys result = new Keys();
+		result.setCryptoSchemeId(cryptoSchemeId);
+		result.setPrivate(keyPair.getPrivate().getEncoded());
+		result.setPublic(keyPair.getPublic().getEncoded());
 		return result;
 	}
 
-	public static org.enquery.encryptedquery.encryption.Paillier fromXMLPaillier(Paillier xmlPaillier) {
-		org.enquery.encryptedquery.encryption.Paillier result = new org.enquery.encryptedquery.encryption.Paillier();
-		result.setBitLength(xmlPaillier.getBitLength());
-		result.setN(xmlPaillier.getN());
-		result.setNSquared(xmlPaillier.getNSquared());
-		result.setP(xmlPaillier.getP());
-		result.setPBasePoint(xmlPaillier.getPBasePoint());
-		result.setPMaxExponent(xmlPaillier.getPMaxExponent());
-		result.setPMinusOne(xmlPaillier.getPMinusOne());
-		result.setPSquared(xmlPaillier.getPSquared());
-		result.setQ(xmlPaillier.getQ());
-		result.setQBasePoint(xmlPaillier.getQBasePoint());
-		result.setQMaxExponent(xmlPaillier.getQMaxExponent());
-		result.setQMinusOne(xmlPaillier.getQMinusOne());
-		result.setQSquared(xmlPaillier.getQSquared());
-		result.setWp(xmlPaillier.getWp());
-		result.setWq(xmlPaillier.getWq());
-		return result;
+	public KeyPair fromXMLPaillier(Keys xmlKeys) {
+		return null;
 	}
 
-	private static EmbedSelectorMap toXMLEmbededSelectorMap(Map<Integer, String> embedSelectorMap) {
+	private EmbedSelectorMap toXMLEmbededSelectorMap(Map<Integer, String> embedSelectorMap) {
 		EmbedSelectorMap result = new EmbedSelectorMap();
 		embedSelectorMap.forEach((key, value) -> {
 			Entry entry = new Entry();
@@ -145,7 +146,7 @@ public class QueryKeyTypeConverter {
 		return result;
 	}
 
-	private static Map<Integer, String> fromXMLEmbededSelectorMap(EmbedSelectorMap embedSelectorMap) {
+	private Map<Integer, String> fromXMLEmbededSelectorMap(EmbedSelectorMap embedSelectorMap) {
 		Map<Integer, String> result = new HashMap<>();
 		embedSelectorMap.getEntry()
 				.stream()
@@ -155,7 +156,7 @@ public class QueryKeyTypeConverter {
 		return result;
 	}
 
-	private static Selectors toXMLSelectors(List<String> selectors) {
+	private Selectors toXMLSelectors(List<String> selectors) {
 		Selectors result = new Selectors();
 		for (String selector : selectors) {
 			org.enquery.encryptedquery.xml.schema.QueryKey.Selectors.Entry entry = new org.enquery.encryptedquery.xml.schema.QueryKey.Selectors.Entry();

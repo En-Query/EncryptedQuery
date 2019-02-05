@@ -19,8 +19,8 @@ package org.enquery.encryptedquery.encryption.impl;
 import java.math.BigInteger;
 import java.util.Map;
 
+import org.enquery.encryptedquery.core.CoreConfigurationProperties;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -37,7 +37,7 @@ public class ModPowAbstractionGMPImpl implements ModPowAbstraction {
 
 	@Activate
 	void activate(Map<String, String> config) {
-		useGMPConstantTimeMethods = Boolean.parseBoolean(config.getOrDefault(ResponderProperties.PAILLIER_GMP_CONSTANT_TIME_MODE, "false"));
+		useGMPConstantTimeMethods = Boolean.parseBoolean(config.getOrDefault(CoreConfigurationProperties.GMP_CONSTANT_TIME_MODE, "false"));
 	}
 
 	@Override

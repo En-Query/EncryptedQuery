@@ -64,7 +64,7 @@ public class ResultRepositoryIT extends AbstractResponderItest {
 	public void addAndList() throws IOException, InterruptedException, Exception {
 		SampleData sampleData = new SampleData();
 		DataSchema dataSchema = dataSchemaSvc.add(sampleData.createDataSchema());
-		DataSource dataSource = installDataSource("test", dataSchema.getName());
+		DataSource dataSource = installFlinkJdbcDataSource("test", dataSchema.getName());
 		Execution execution = executionRepo.add(sampleData.createExecution(dataSchema, dataSource));
 
 		Assert.assertEquals(0, resultRepo.listForExecution(execution).size());
@@ -82,7 +82,7 @@ public class ResultRepositoryIT extends AbstractResponderItest {
 	public void addPayload() throws IOException, InterruptedException, Exception {
 		SampleData sampleData = new SampleData();
 		DataSchema dataSchema = dataSchemaSvc.add(sampleData.createDataSchema());
-		DataSource dataSource = installDataSource("test", dataSchema.getName());
+		DataSource dataSource = installFlinkJdbcDataSource("test", dataSchema.getName());
 		Execution execution = executionRepo.add(sampleData.createExecution(dataSchema, dataSource));
 
 		Assert.assertEquals(0, resultRepo.listForExecution(execution).size());

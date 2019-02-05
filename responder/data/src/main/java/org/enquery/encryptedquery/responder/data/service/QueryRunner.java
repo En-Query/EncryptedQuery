@@ -19,7 +19,7 @@ package org.enquery.encryptedquery.responder.data.service;
 import java.io.OutputStream;
 import java.util.Map;
 
-import org.enquery.encryptedquery.query.wideskies.Query;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 
 /**
@@ -28,7 +28,7 @@ import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
  * The job of a QueryRunner is to invoke an external application that executes PIR on a particular
  * environment/platform/datasource.
  * 
- * A QueryRunner should not implement the PIR directly, but it is an iterface to execute an
+ * A QueryRunner should not implement the PIR directly, but it is an interface to execute an
  * externally implemented one.
  * 
  * A QueryRunner can load the data it needs from the Responder local database to pass in to the
@@ -41,9 +41,11 @@ public interface QueryRunner {
 	 * output is captured in the provided stdOutFileName file.
 	 * 
 	 * @param query
+	 * @param parameters
 	 * @param responseFileName
+	 * @param stdOutput
 	 */
-	void run(Map<String, String> parameters, Query query, String responseFileName, OutputStream stdOutput);
+	void run(Query query, Map<String, String> parameters, String responseFileName, OutputStream stdOutput);
 
 	/**
 	 * Unique name of this Query Runner.

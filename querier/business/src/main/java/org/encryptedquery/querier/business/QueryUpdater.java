@@ -26,13 +26,12 @@ import java.util.concurrent.Future;
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.service.QueryRepository;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.Querier;
-import org.enquery.encryptedquery.querier.wideskies.encrypt.QueryKey;
+import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.xml.transformation.QueryKeyTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -43,14 +42,10 @@ public class QueryUpdater {
 	private QueryRepository queryRepo;
 	@Reference
 	private ExecutorService threadPool;
+	@Reference
 	private QueryTypeConverter queryTypeConverter;
+	@Reference
 	private QueryKeyTypeConverter queryKeyTypeConverter;
-
-	@Activate
-	void activate() {
-		queryTypeConverter = new QueryTypeConverter();
-		queryKeyTypeConverter = new QueryKeyTypeConverter();
-	}
 
 	/**
 	 * Update query error message from the passed Exception. This error could be during encryption.
@@ -107,7 +102,7 @@ public class QueryUpdater {
 	 * @throws JAXBException
 	 * @throws IOException
 	 */
-	private Query saveQueryBytes(int queryId, org.enquery.encryptedquery.query.wideskies.Query coreQuery) {
+	private Query saveQueryBytes(int queryId, org.enquery.encryptedquery.data.Query coreQuery) {
 		org.enquery.encryptedquery.xml.schema.Query xml =
 				queryTypeConverter.toXMLQuery(coreQuery);
 
@@ -138,7 +133,6 @@ public class QueryUpdater {
 	 * @throws JAXBException
 	 * @throws IOException
 	 */
-	@SuppressWarnings("static-access")
 	private Query saveKey(int queryId, QueryKey queryKey) {
 		try {
 			org.enquery.encryptedquery.xml.schema.QueryKey xml =

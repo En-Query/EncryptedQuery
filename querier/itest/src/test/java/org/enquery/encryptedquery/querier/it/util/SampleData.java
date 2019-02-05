@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.enquery.encryptedquery.querier.QuerierProperties;
 import org.enquery.encryptedquery.querier.data.entity.DataSourceType;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
@@ -36,7 +35,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.QuerySchema;
 import org.enquery.encryptedquery.querier.data.entity.json.QuerySchemaField;
 import org.enquery.encryptedquery.querier.data.entity.json.Resource;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -151,11 +149,11 @@ public class SampleData {
 		// map.put("param2", "value2");
 		// map.put("windowSizeInSeconds", 1000);
 		// map.put("windowIterations", 30);
-		map.put(ResponderProperties.COMPUTE_THRESHOLD, 30000);
-		map.put(QuerierProperties.METHOD, "basic");
+		// map.put(ResponderProperties.COMPUTE_THRESHOLD, 30000);
+		// map.put(QuerierProperties.METHOD, "basic");
 		// map.put("pauseTimeForQueueCheck", 1);
 		// map.put("maxQueueSize", 10000);
-		map.put("processingThreads", 1);
+		// map.put("processingThreads", 1);
 		return map;
 	}
 

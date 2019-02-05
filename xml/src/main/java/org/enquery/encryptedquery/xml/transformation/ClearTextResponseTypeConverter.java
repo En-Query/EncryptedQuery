@@ -46,10 +46,6 @@ public class ClearTextResponseTypeConverter {
 	private ObjectFactory objectFactory;
 
 	public ClearTextResponseTypeConverter() {
-		initSchemas();
-	}
-
-	private void initSchemas() {
 		SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 
 		URL resource = getClass().getResource(XSD_PATH);

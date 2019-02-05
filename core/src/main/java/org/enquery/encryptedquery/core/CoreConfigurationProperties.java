@@ -20,14 +20,7 @@ package org.enquery.encryptedquery.core;
  * Properties constants for the Responder
  */
 public interface CoreConfigurationProperties {
-	String JNI_LIBRARIES = "jni.library.path";
-	String CERTAINTY = "certainty";
-	String BIT_SET = "bitSet";
-	String PAILLIER_BIT_SIZE = "paillierBitSize";
-	String HASH_BIT_SIZE = "hashBitSize";
-	String DATA_CHUNK_SIZE = "dataChunkSize";
-	String PAILLIER_SECURE_RANDOM_ALG = "pallier.secureRandom.algorithm";
-	String PAILLIER_SECURE_RANDOM_PROVIDER = "paillier.secureRandom.provider";
-	String PAILLIER_GMP_CONSTANT_TIME_MODE = "paillier.GMPConstantTimeMode";
 	String MOD_POW_CLASS_NAME = "mod.pow.class.name";
+	String GMP_CONSTANT_TIME_MODE = "gmp.constant.time.mode";
+	String CRYPTO_SCHEME_CLASS_NAME = "crypto.scheme.class.name";
 }

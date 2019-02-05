@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.1.0</version>
 	</parent>
     
     <artifactId>encryptedquery-responder-itests</artifactId>
@@ -44,22 +44,6 @@
             <scope>test</scope>
             <version>1.0</version>
         </dependency>  
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>encryptedquery-responder-data</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-        	<groupId>org.enquery.encryptedquery</groupId>
-        	<artifactId>encryptedquery-flink-jdbc-runner</artifactId>
-        	<version>${project.version}</version>
-        </dependency>
-		 <dependency>
-        	<groupId>org.enquery.encryptedquery</groupId>
-        	<artifactId>encryptedquery-standalone-runner</artifactId>
-        	<version>${project.version}</version>
-        </dependency>
         
         <!-- Derby needed for testing Flink-Jdbc queries -->
     	<dependency>
@@ -87,7 +71,6 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-		
         <dependency>
             <groupId>org.apache.karaf.features</groupId>
             <artifactId>enterprise</artifactId>
@@ -192,6 +175,27 @@
 			<artifactId>encryptedquery-health-status</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>encryptedquery-responder-data</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+        	<groupId>org.enquery.encryptedquery</groupId>
+        	<artifactId>encryptedquery-flink-jdbc-runner</artifactId>
+        	<version>${project.version}</version>
+        </dependency>
+		<dependency>
+        	<groupId>org.enquery.encryptedquery</groupId>
+        	<artifactId>encryptedquery-standalone-runner</artifactId>
+        	<version>${project.version}</version>
+        </dependency>
+        <dependency>
+        	<groupId>org.enquery.encryptedquery</groupId>
+        	<artifactId>encryptedquery-flink-kafka-runner</artifactId>
+        	<version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <profiles>
@@ -225,11 +229,12 @@
 									<goal>wget</goal>
 								</goals>
 								<configuration>
+									<retries>1</retries>
 									<!-- when flink version is changed, the url and sha512 need to be updated -->
 									<url>http://apache.cs.utah.edu/flink/flink-${flink.version}/flink-${flink.version}-bin-scala_${flink.scala.version}.tgz</url>
 									<unpack>true</unpack>
 									<outputDirectory>${project.build.directory}/flink</outputDirectory>
-									<sha512>80db12d0f108e2d3e6f5e6c300d9147b68fbc823d0344f9ef7547dbfb9fe0d0ffaede289cd5c97383105c1a868a5931adf4790f54e7db8ded8bf2b1fbc2fd93e</sha512>
+									<sha512>89418d8b06786b47aae9e04447b2527b2b39b37e1745e2e453b7d930a27ba42b3b6dbc1cbcc21855e7d237b3c12b376c6f41492029fb1550c1200a3d6e51522b</sha512>
 								</configuration>
 							</execution>
 							<execution>

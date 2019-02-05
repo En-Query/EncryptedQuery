@@ -143,6 +143,9 @@ class ExtendedGCD {
  * results.
  */
 public class ChineseRemainder implements Serializable {
+
+	private static final long serialVersionUID = -6162122529224878513L;
+
 	private BigInteger e;
 	private BigInteger f;
 

@@ -16,14 +16,14 @@
  */
 package org.enquery.encryptedquery.flink;
 
-import org.enquery.encryptedquery.responder.ResponderProperties;
-
 /**
  * Properties constants for the Stand Alone Executor
  */
-public interface FlinkConfigurationProperties extends ResponderProperties {
-	String MAX_HITS_PER_SELECTOR = "maxHitsPerSelector";
-	String COLUMN_ENCRYPTION_PARTITION_COUNT = "column.encryption.partition.count";
-	String WINDOW_LENGTH = "stream.window.length";
-	String WINDOW_ITERATIONS = "stream.window.iterations";
+public interface FlinkConfigurationProperties {
+	String COLUMN_ENCRYPTION_PARTITION_COUNT = "flink.column.encryption.partition.count";
+	String WINDOW_LENGTH_IN_SECONDS = "stream.window.length.seconds";
+	String STREAM_RUNTIME_SECONDS = "stream.runtime.seconds";
+	String COMPUTE_THRESHOLD = "flink.compute.threshold";
+	String MAX_HITS_PER_SELECTOR = "flink.max.hits.per.selector";
+	String KAFKA_GROUP_ID = "kafka.groupId";
 }

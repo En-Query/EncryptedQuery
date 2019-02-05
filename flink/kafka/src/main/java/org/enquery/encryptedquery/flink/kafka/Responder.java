@@ -16,24 +16,27 @@
  */
 package org.enquery.encryptedquery.flink.kafka;
 
-import java.sql.ResultSet;
-import java.util.Properties;
+import java.nio.file.Files;
 
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
- import org.apache.flink.types.Row;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.types.Row;
 import org.enquery.encryptedquery.flink.BaseQueryExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Responder extends BaseQueryExecutor {
+
+	static final private Logger log = LoggerFactory.getLogger(Responder.class);
 
 	private String brokers;
 	private String topic;
 	private String groupId;
 	private Boolean forceFromStart;
 	private String offsetLocation;
-
 
 	public String getBrokers() {
 		return brokers;
@@ -60,7 +63,7 @@ public class Responder extends BaseQueryExecutor {
 	}
 
 	public Boolean getForceFromStart() {
-    	return forceFromStart;
+		return forceFromStart;
 	}
 
 	public void setForceFromStart(Boolean forceFromStart) {
@@ -75,32 +78,51 @@ public class Responder extends BaseQueryExecutor {
 		this.offsetLocation = offsetLocation;
 	}
 
+	private SourceFunction<String> createStringConsumerForTopic(String topic, String kafkaAddress, String kafkaGroup) {
 
-	private FlinkKafkaConsumer<String> createStringConsumerForTopic(
-			  String topic, String kafkaAddress, String kafkaGroup ) {
-			  
-			    Properties props = new Properties();
-			    props.setProperty("bootstrap.servers", kafkaAddress);
-			    props.setProperty("group.id",kafkaGroup);
-			    FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>(
-			      topic, new SimpleStringSchema(), props);
-			 
-			    return consumer;
-			}
+		TimedKafkaConsumer result = new TimedKafkaConsumer(topic,
+				kafkaAddress,
+				kafkaGroup,
+				forceFromStart,
+				runtimeSeconds,
+				outputFileName);
 
-    FlinkKafkaConsumer<String> flinkKafkaConsumer = createStringConsumerForTopic(
-    	      topic, brokers, groupId);
-    
-	@Override
-	protected DataSet<Row> initSource(ExecutionEnvironment env) {
-//		JDBCInputFormat inputBuilder = JDBCInputFormat.buildJDBCInputFormat()
-//				.setDrivername(driverClassName)
-//				.setDBUrl(connectionUrl)
-//				.setQuery(sqlQuery)
-//				.setRowTypeInfo(getRowTypeInfo())
-//				.setResultSetType(ResultSet.TYPE_SCROLL_INSENSITIVE)
-//				.finish();
+		return result;
+	}
 
-		return env.createInput(null);
+	public void run() throws Exception {
+		log.info("Starting Responder");
+
+		jobName += "->" + outputFileName;
+		final boolean debugging = log.isDebugEnabled();
+
+		initializeCommon();
+		initializeStreaming();
+
+		// For streaming, output file name is just a directory containing each window results,
+		// create it early
+		Files.createDirectories(outputFileName);
+
+		// final long startTime = System.currentTimeMillis();
+		// set up the streaming execution environment
+		final StreamExecutionEnvironment streamingEnv = StreamExecutionEnvironment.getExecutionEnvironment();
+		streamingEnv.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
+
+		DataStreamSource<String> source = streamingEnv.addSource(
+				createStringConsumerForTopic(topic, brokers, groupId));
+
+
+		int index = selectorFieldIndex;
+
+		DataStream<Row> stream = source
+				.map(new ParseJson(querySchema, rowTypeInfo))
+				.filter(row -> {
+					if (debugging) log.debug("Filtering row: {}", row);
+					boolean present = row.getField(index) != null;
+					if (debugging) log.debug("Selector field index {} present: {}", index, present);
+					return present;
+				});
+
+		run(streamingEnv, stream);
 	}
 }

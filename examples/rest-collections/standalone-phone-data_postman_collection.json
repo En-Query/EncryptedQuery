@@ -1,0 +1,370 @@
+{
+	"info": {
+		"_postman_id": "5d861763-3fa7-4f91-a16f-0b6cbfb1bb50",
+		"name": "Phone-Data-Query",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get DataSchemas",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create QuerySchema",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483603",
+						"queryschemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get DataSources",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/datasources",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"3",
+						"datasources"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Encrypt Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\":\"Q-Phone-Data\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":10\r\n     },\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n],\r\n  \"embedSelector\":\"true\"\r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas/2147483601/queries",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483603",
+						"queryschemas",
+						"2147483601",
+						"queries"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Schedule Query",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"startTime\":\"2019-01-31T19:04:59.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":1000\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483606\r\n    }\r\n  \r\n}"
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas/2147483601/queries/2147483603/schedules",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"2147483603",
+						"queryschemas",
+						"2147483601",
+						"queries",
+						"2147483603",
+						"schedules"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Results",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"12",
+						"queryschemas",
+						"14",
+						"queries",
+						"14",
+						"schedules",
+						"28",
+						"results"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve Results",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results/1/retrievals",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"12",
+						"queryschemas",
+						"14",
+						"queries",
+						"14",
+						"schedules",
+						"28",
+						"results",
+						"1",
+						"retrievals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Decrypt Results",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results/1/retrievals/1/decryptions",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"12",
+						"queryschemas",
+						"14",
+						"queries",
+						"14",
+						"schedules",
+						"28",
+						"results",
+						"1",
+						"retrievals",
+						"1",
+						"decryptions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Encryption status",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.encryptedquery.enclave+json; version=1",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/queryschemas/1/queries/1",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"200",
+						"58"
+					],
+					"port": "8182",
+					"path": [
+						"querier",
+						"api",
+						"rest",
+						"dataschemas",
+						"3",
+						"queryschemas",
+						"1",
+						"queries",
+						"1"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

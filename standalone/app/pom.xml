@@ -25,7 +25,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-standalone-parent</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.1.0</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<artifactId>encryptedquery-standalone-app</artifactId>
@@ -65,6 +65,12 @@
 			<artifactId>log4j</artifactId>
 			<scope>compile</scope>
 		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-paillier-encryption</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		
 
 		<!-- test dependencies -->
 		<dependency>

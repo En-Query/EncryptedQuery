@@ -43,6 +43,7 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
@@ -180,17 +181,18 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		return postSchedule(query.getSchedulesUri(), jsonDataSource.getData().getId(), dataSourceParams());
 	}
 
-	private Query createQueryAndWaitForEncryption(QuerySchema querySchema) throws Exception {
+	protected Query createQueryAndWaitForEncryption(QuerySchema querySchema) throws Exception {
 		Query query = createQuery();
-		// submit the Query and wait for its encryption
 		return createQueryAndWaitForEncryption(querySchema.getQueriesUri(), query).getData();
 	}
 
-	private Map<String, String> dataSourceParams() {
-		return new HashMap<>();
+	protected Map<String, String> dataSourceParams() {
+		Map<String, String> result = new HashMap<>();
+		result.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "1000");
+		return result;
 	}
 
-	private QuerySchema createQuerySchema(DataSchema dataSchema) {
+	protected QuerySchema createQuerySchema(DataSchema dataSchema) {
 		QuerySchema result = new QuerySchema();
 
 		result.setName("Query Schema " + querySchemaCount++);
@@ -203,10 +205,16 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		QuerySchemaField field = new QuerySchemaField();
 		field.setLengthType("fixed");
 		field.setName("author");
-		field.setSize(128);
-		field.setMaxArrayElements(100);
+		field.setSize(100);
+		field.setMaxArrayElements(1);
 		List<QuerySchemaField> fields = new ArrayList<>();
 		fields.add(field);
+		QuerySchemaField field2 = new QuerySchemaField();
+		field2.setLengthType("fixed");
+		field2.setName("title");
+		field2.setSize(100);
+		field2.setMaxArrayElements(1);
+		fields.add(field2);
 		result.setFields(fields);
 
 		return createQuerySchema(dataSchema.getQuerySchemasUri(), result).getData();
@@ -216,12 +224,11 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		org.enquery.encryptedquery.querier.data.entity.json.Query q = new org.enquery.encryptedquery.querier.data.entity.json.Query();
 		q.setName("Test Query " + ++queryCount);
 
+		// TODO: replace params with specific properties
 		Map<String, String> params = new HashMap<>();
 		params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
-		params.put(QuerierProperties.HASH_BIT_SIZE, "9");
-		params.put(QuerierProperties.PAILLIER_BIT_SIZE, "384");
-		params.put(QuerierProperties.CERTAINTY, "128");
-		params.put(QuerierProperties.BIT_SET, "32");
+		params.put(QuerierProperties.HASH_BIT_SIZE, "8");
+		// params.put(QuerierProperties.CERTAINTY, "128");
 		q.setParameters(params);
 
 		List<String> selectorValues = new ArrayList<>();

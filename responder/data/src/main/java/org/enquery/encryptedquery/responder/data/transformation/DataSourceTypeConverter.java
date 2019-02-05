@@ -37,7 +37,9 @@ public class DataSourceTypeConverter {
 	public static DataSourceResources toXMLDataSources(Collection<DataSource> javaDataSources,
 			Exchange exchange) {
 
-		log.info("Converting {} to XML DataSourceResources.", javaDataSources);
+		if (log.isDebugEnabled()) {
+			log.debug("Converting {} to XML DataSourceResources.", javaDataSources);
+		}
 
 		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
 
@@ -73,7 +75,9 @@ public class DataSourceTypeConverter {
 	@Converter
 	public static DataSourceResource toXMLDataSources(DataSource javaDataSource, Exchange exchange) {
 
-		log.info("Converting {} to XML DataSourceResource.", javaDataSource);
+		if (log.isDebugEnabled()) {
+			log.debug("Converting {} to XML DataSourceResource.", javaDataSource);
+		}
 
 		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
 
