@@ -25,6 +25,7 @@ import javax.inject.Inject;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
+import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
 import org.enquery.encryptedquery.responder.it.util.ThrowingPredicate;
 import org.junit.Assert;
@@ -48,10 +49,12 @@ public class DataSourceRegistryIT extends AbstractResponderItest {
 	private DataSourceRegistry dsRegistry;
 	@Inject
 	private ConfigurationAdmin confAdmin;
+	private FlinkDriver flinkDriver = new FlinkDriver();
 
 	@Configuration
 	public Option[] configuration() {
-		return super.baseOptions();
+		return combineOptions(super.baseOptions(),
+				flinkDriver.configuration());
 	}
 
 	@Override

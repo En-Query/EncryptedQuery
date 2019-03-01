@@ -31,11 +31,23 @@ public class ExecutionXMLExtractor implements Closeable {
 	private static final QName EXECUTION = new QName(EXECUTION_NAMESPACE, "execution");
 	private static final QName SCHEDULED_FOR = new QName(EXECUTION_NAMESPACE, "scheduledFor");
 	private static final QName CONFIGURATION = new QName(EXECUTION_NAMESPACE, "configuration");
+	private static final QName SUBMITTED_ON = new QName(EXECUTION_NAMESPACE, "submittedOn");
+	private static final QName STARTED_ON = new QName(EXECUTION_NAMESPACE, "startedOn");
+	private static final QName COMPLETED_ON = new QName(EXECUTION_NAMESPACE, "completedOn");
+	private static final QName ERROR_MSG = new QName(EXECUTION_NAMESPACE, "errorMessage");
+	private static final QName CANCELLED = new QName(EXECUTION_NAMESPACE, "cancelled");
+
 	private static final QName ENTRY = new QName(EXECUTION_NAMESPACE, "entry");
 	private static final QName KEY_ATTR = new QName(null, "key");
 	private static final QName VALUE_ATTR = new QName(null, "value");
 
 	private Date scheduleDate;
+	private Date submittedOn;
+	private Date startedOn;
+	private Date completedOn;
+	private String errorMessage;
+	private boolean cancelled;
+
 	private InputStream queryInputStream;
 	private ExecutorService threadPool;
 	private Future<?> queryStreamerFuture;
@@ -46,6 +58,39 @@ public class ExecutionXMLExtractor implements Closeable {
 		this.threadPool = threadPool;
 	}
 
+	public Date getScheduleDate() {
+		return scheduleDate;
+	}
+
+
+	public Map<String, String> getConfig() {
+		return config;
+	}
+
+	public Date getSubmittedOn() {
+		return submittedOn;
+	}
+
+	public Date getStartedOn() {
+		return startedOn;
+	}
+
+	public Date getCompletedOn() {
+		return completedOn;
+	}
+
+	public String getErrorMessage() {
+		return errorMessage;
+	}
+
+	public boolean isCancelled() {
+		return cancelled;
+	}
+
+	public InputStream getQueryInputStream() {
+		return queryInputStream;
+	}
+
 	public void parse(InputStream inputStream) throws IOException {
 		Validate.notNull(inputStream);
 		try {
@@ -53,16 +98,34 @@ public class ExecutionXMLExtractor implements Closeable {
 			// the order in which we parse these elements is the order they appear in the XML
 			// for a forward-only processing
 			seekToRootNode(reader);
-			scheduleDate = parseScheduleDate(reader);
+			scheduleDate = parseDate(reader, SCHEDULED_FOR);
 			config = parseConfig(reader);
+			submittedOn = parseDate(reader, SUBMITTED_ON);
+			startedOn = parseDate(reader, STARTED_ON);
+			completedOn = parseDate(reader, COMPLETED_ON);
+			errorMessage = parseString(reader, ERROR_MSG);
+			cancelled = parseBoolean(reader, CANCELLED);
+
 			queryInputStream = parseQuery(reader);
 		} catch (Exception e) {
 			throw new IOException("Error parsing xml", e);
 		}
 	}
 
+	/**
+	 * @param reader
+	 * @param cancelled2
+	 * @return
+	 * @throws XMLStreamException
+	 */
+	private boolean parseBoolean(XMLEventReader reader, QName qName) throws XMLStreamException {
+		String s = parseString(reader, qName);
+		if (s == null) return false;
+		return Boolean.parseBoolean(s);
+	}
+
 	private void seekToRootNode(XMLEventReader reader) throws XMLStreamException {
-		StartElement startElement = nextElement(reader);
+		StartElement startElement = nextStartElement(reader);
 		Validate.isTrue(EXECUTION.equals(startElement.getName()));
 	}
 
@@ -71,12 +134,15 @@ public class ExecutionXMLExtractor implements Closeable {
 
 		XMLEvent peek = reader.peek();
 		// configuration node is optional
-		if (!isConfigNode(peek)) return null;
+		if (!isStartNode(peek, CONFIGURATION)) return null;
 
 		Map<String, String> result = new HashMap<>();
-		StartElement element = nextElement(reader);
-		Validate.isTrue(isConfigNode(element));
+		nextStartElement(reader);
 		parseConfigEntries(reader, result);
+
+		skipCharacters(reader);
+		peek = reader.peek();
+		if (isEndNode(peek, CONFIGURATION)) skipEndElement(reader);
 
 		return result;
 	}
@@ -107,27 +173,38 @@ public class ExecutionXMLExtractor implements Closeable {
 		return ENTRY.equals(event.asStartElement().getName());
 	}
 
-	private boolean isConfigNode(XMLEvent event) {
-		if (!event.isStartElement()) return false;
-		return CONFIGURATION.equals(event.asStartElement().getName());
-	}
+	private Date parseDate(XMLEventReader reader, QName qName) throws XMLStreamException {
+		skipCharacters(reader);
+		XMLEvent peek = reader.peek();
 
-	private boolean isScheduledDate(StartElement startElement) {
-		return SCHEDULED_FOR.equals(startElement.getName());
-	}
-
-	private Date parseScheduleDate(XMLEventReader reader) throws XMLStreamException {
-		Date result = null;
-		StartElement startElement = nextElement(reader);
-
-		if (isScheduledDate(startElement)) {
-			XMLGregorianCalendar cal = XMLFactories.dtf.newXMLGregorianCalendar(reader.getElementText());
-			result = toLocalTime(cal);
-		}
-
+		// handle optional nodes
+		if (!isStartNode(peek, qName)) return null;
+		nextStartElement(reader);
+		XMLGregorianCalendar cal = XMLFactories.dtf.newXMLGregorianCalendar(reader.getElementText());
+		Date result = XMLFactories.toUTCDate(cal);
+		log.info("XML Date: {}, in UTC: {}", cal, result);
 		return result;
 	}
 
+	private boolean isStartNode(XMLEvent event, QName qName) {
+		if (!event.isStartElement()) return false;
+		return qName.equals(event.asStartElement().getName());
+	}
+
+	private boolean isEndNode(XMLEvent event, QName qName) {
+		if (!event.isEndElement()) return false;
+		return qName.equals(event.asEndElement().getName());
+	}
+
+	private String parseString(XMLEventReader reader, QName qName) throws XMLStreamException {
+		skipCharacters(reader);
+		XMLEvent peek = reader.peek();
+
+		// handle optional nodes
+		if (!isStartNode(peek, qName)) return null;
+		nextStartElement(reader);
+		return reader.getElementText();
+	}
 
 	private InputStream parseQuery(XMLEventReader inputStream) throws IOException {
 		PipedOutputStream out = new PipedOutputStream();
@@ -135,23 +212,6 @@ public class ExecutionXMLExtractor implements Closeable {
 		QueryXMLStreamer qs = new QueryXMLStreamer(inputStream, out);
 		queryStreamerFuture = threadPool.submit(qs);
 		return in;
-	}
-
-	private static Date toLocalTime(XMLGregorianCalendar c) {
-		if (c == null) return null;
-		return c.toGregorianCalendar().getTime();
-	}
-
-	public Date getScheduleDate() {
-		return scheduleDate;
-	}
-
-	public InputStream getQueryInputStream() {
-		return queryInputStream;
-	}
-
-	public Map<String, String> getConfig() {
-		return config;
 	}
 
 	@Override
@@ -162,7 +222,7 @@ public class ExecutionXMLExtractor implements Closeable {
 		}
 	}
 
-	private StartElement nextElement(XMLEventReader reader) throws XMLStreamException {
+	private StartElement nextStartElement(XMLEventReader reader) throws XMLStreamException {
 		final boolean isDebugging = log.isDebugEnabled();
 
 		while (reader.hasNext()) {
@@ -181,6 +241,14 @@ public class ExecutionXMLExtractor implements Closeable {
 		while (reader.hasNext()) {
 			XMLEvent event = reader.peek();
 			if (!event.isCharacters()) break;
+			reader.nextEvent();
+		}
+	}
+
+	private void skipEndElement(XMLEventReader reader) throws XMLStreamException {
+		while (reader.hasNext()) {
+			XMLEvent event = reader.peek();
+			if (!event.isEndElement()) break;
 			reader.nextEvent();
 		}
 	}

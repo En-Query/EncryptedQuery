@@ -19,6 +19,8 @@ package org.enquery.encryptedquery.querier.data.entity.json;
 import java.util.Date;
 import java.util.Map;
 
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
+
 import com.fasterxml.jackson.annotation.JsonView;
 
 public class Schedule extends Resource {
@@ -32,6 +34,7 @@ public class Schedule extends Resource {
 
 	private Resource query;
 	private Resource dataSource;
+	private String errorMsg;
 
 	public Schedule() {
 		setType(TYPE);
@@ -98,4 +101,11 @@ public class Schedule extends Resource {
 		return builder.toString();
 	}
 
+	public String getErrorMsg() {
+		return errorMsg;
+	}
+
+	public void setErrorMsg(String errorMsg) {
+		this.errorMsg = errorMsg;
+	}
 }

@@ -34,6 +34,8 @@ public class ResultXMLExtractor implements Closeable {
 	private static final QName URI = new QName(RESOURCE_NS, "selfUri");
 	private static final QName RESULT_RESOURCE = new QName(RESULT_NS, "resultResource");
 	private static final QName CREATED_ON = new QName(RESULT_NS, "createdOn");
+	private static final QName WINDOW_START = new QName(RESULT_NS, "windowStart");
+	private static final QName WINDOW_END = new QName(RESULT_NS, "windowEnd");
 	private static final QName PAYLOAD = new QName(RESULT_NS, "payload");
 	private static final QName EXECUTION = new QName(RESULT_NS, "execution");
 	private static final QName RESPONSE = new QName(RESPONSE_NS, "response");
@@ -47,6 +49,8 @@ public class ResultXMLExtractor implements Closeable {
 	private int resultId;
 	private String resultUri;
 	private Date creationDate;
+	private Date windowStart;
+	private Date windowEnd;
 	private InputStream payloadInputStream;
 	private int executionId;
 	private String executionUri;
@@ -91,7 +95,10 @@ public class ResultXMLExtractor implements Closeable {
 			seekToRootNode(reader);
 			resultId = parseId(reader);
 			resultUri = parseUri(reader);
-			creationDate = parseScheduleDate(reader);
+			creationDate = parseDate(extractElementText(reader, CREATED_ON));
+			windowStart = parseDate(extractElementText(reader, WINDOW_START));
+			windowEnd = parseDate(extractElementText(reader, WINDOW_END));
+
 			skipStartElement(reader, EXECUTION);
 			executionId = parseId(reader);
 			executionUri = parseUri(reader);
@@ -134,10 +141,8 @@ public class ResultXMLExtractor implements Closeable {
 		Validate.isTrue(qName.equals(element.getName()));
 	}
 
-	private Date parseScheduleDate(XMLEventReader reader) throws XMLStreamException {
-		return XMLFactories.toLocalTime(
-				XMLFactories.dtf.newXMLGregorianCalendar(
-						extractElementText(reader, CREATED_ON)));
+	private Date parseDate(String text) {
+		return XMLFactories.toUTCDate(XMLFactories.dtf.newXMLGregorianCalendar(text));
 	}
 
 	private InputStream parsePayload(XMLEventReader reader) throws IOException, XMLStreamException {
@@ -227,6 +232,22 @@ public class ResultXMLExtractor implements Closeable {
 			}
 		}
 		return null;
+	}
+
+	public Date getWindowStart() {
+		return windowStart;
+	}
+
+	public void setWindowStart(Date windowStart) {
+		this.windowStart = windowStart;
+	}
+
+	public Date getWindowEnd() {
+		return windowEnd;
+	}
+
+	public void setWindowEnd(Date windowEnd) {
+		this.windowEnd = windowEnd;
 	}
 
 }

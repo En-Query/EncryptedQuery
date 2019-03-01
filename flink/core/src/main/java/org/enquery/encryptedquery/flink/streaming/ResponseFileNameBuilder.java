@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter;
 public class ResponseFileNameBuilder {
 
 	private static final String DEFAULT_FORMAT_STRING = "HHmmss";
-	private static final ZoneId zoneId = ZoneId.systemDefault();
+	private static final ZoneId zoneId = ZoneId.of("UTC");
 	private static final DateTimeFormatter fileNameDateTimeFormatter = DateTimeFormatter.ofPattern(DEFAULT_FORMAT_STRING).withZone(zoneId);
 	public static final String IN_PROGRESS_SUFFIX = "inProgress";
 

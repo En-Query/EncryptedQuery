@@ -3,9 +3,11 @@ import PropTypes from "prop-types";
 import { withRouter } from "react-router-dom";
 import createHistory from "history/createBrowserHistory";
 
-import HomePage from "../routes/HomePage";
+import LogoSection from "./logo-section.js";
 import CreateQuerySchema from "./CreateQuerySchema";
 import CreateQuery from "./CreateQuery";
+import VerticalNavBar from "./NavigationBar.js";
+
 import "../css/QueryStatus.css";
 
 import axios from "axios";
@@ -56,19 +58,14 @@ class QueryStatus extends React.Component {
     clearTimeout(this.timeout);
   }
 
-  updateQuerySchema = e => {
-    this.setState({ querySchemaName: e.target.value });
-  };
-
   dataSchemaChange = e => {
     const dataSchema = this.state.dataSchemas.find(
       dataSchema => dataSchema.name === e.target.value
     );
-    const querySchemasUri = localStorage.getItem("querySchemasUri");
     if (dataSchema) {
       axios({
         method: "get",
-        url: `${querySchemasUri}`,
+        url: `${dataSchema.selfUri}/queryschemas`,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
@@ -197,7 +194,7 @@ class QueryStatus extends React.Component {
       "This query will be used to load info on the next page:",
       this.state.querySelfUri
     );
-    this.props.history.push(`/querier/schedulequery`);
+    this.props.history.push(`/schedulequery`);
   };
 
   viewSchedules = async (e, querySelfUri) => {
@@ -210,7 +207,7 @@ class QueryStatus extends React.Component {
       "This query will be used to load info on the next page:",
       this.state.querySelfUri
     );
-    this.props.history.push(`/querier/queryschedulesstatus`);
+    this.props.history.push(`/queryschedulesstatus`);
   };
 
   scheduleAgain = async (e, querySelfUri) => {
@@ -222,7 +219,7 @@ class QueryStatus extends React.Component {
       "This query will be used to load info on the next page:",
       this.state.querySelfUri
     );
-    this.props.history.push(`/querier/schedulequery`);
+    this.props.history.push(`/schedulequery`);
   };
 
   render() {
@@ -238,11 +235,16 @@ class QueryStatus extends React.Component {
       query,
       status
     } = this.state;
-    const { match: { params: { querySelfUri } } } = this.props;
+    const {
+      match: {
+        params: { querySelfUri }
+      }
+    } = this.props;
 
     return (
       <div>
-        <HomePage />
+        <LogoSection />
+        <VerticalNavBar />
         <form onSubmit={this.handleSubmit}>
           <fieldset>
             <legend>Query Status</legend>

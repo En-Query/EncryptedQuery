@@ -78,7 +78,7 @@ public class YaoJNIColumnProcessor implements ColumnProcessor {
 		JNILoader.load();
 		// JNILoader.loadLibrary(config.get(PaillierProperties.JNI_LIBRARIES));
 
-		this.hContext = yaoNew(publicKey.getNSquared().toByteArray(), maxRowIndex, dataChunkSize);
+		this.hContext = yaoNew(publicKey.getNSquared().toByteArray(), maxRowIndex, 8 * dataChunkSize);
 		if (0L == this.hContext) {
 			throw new NullPointerException("failed to allocate context from native code");
 		}

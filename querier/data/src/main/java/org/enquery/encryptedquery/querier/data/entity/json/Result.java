@@ -16,6 +16,8 @@
  */
 package org.enquery.encryptedquery.querier.data.entity.json;
 
+import java.util.Date;
+
 import com.fasterxml.jackson.annotation.JsonView;
 
 public class Result extends Resource {
@@ -25,6 +27,10 @@ public class Result extends Resource {
 	private ResultStatus status;
 	private String retrievalsUri;
 	private Resource schedule;
+	@JsonView(Views.ListView.class)
+	private Date windowStartTime;
+	@JsonView(Views.ListView.class)
+	private Date windowEndTime;
 
 	public Result() {
 		setType(TYPE);
@@ -61,19 +67,31 @@ public class Result extends Resource {
 		this.schedule = schedule;
 	}
 
+	public Date getWindowStartTime() {
+		return windowStartTime;
+	}
+
+	public void setWindowStartTime(Date windowStartTime) {
+		this.windowStartTime = windowStartTime;
+	}
+
+	public Date getWindowEndTime() {
+		return windowEndTime;
+	}
+
+	public void setWindowEndTime(Date windowEndTime) {
+		this.windowEndTime = windowEndTime;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Result [status=")
-				.append(status)
-				.append(", schedule=")
-				.append(schedule)
-				.append(", retrievalsUri=")
-				.append(retrievalsUri)
-				.append(", id=")
-				.append(id)
-				.append(", selfUri=")
-				.append(selfUri).append("]");
+		builder.append("Result [status=").append(status)
+				.append(", retrievalsUri=").append(retrievalsUri)
+				.append(", schedule=").append(schedule)
+				.append(", windowStartTime=").append(windowStartTime)
+				.append(", windowEndTime=").append(windowEndTime)
+				.append("]");
 		return builder.toString();
 	}
 

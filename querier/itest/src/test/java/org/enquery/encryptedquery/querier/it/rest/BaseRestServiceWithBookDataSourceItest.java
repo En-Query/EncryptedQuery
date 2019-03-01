@@ -248,7 +248,7 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		RetrievalResponse r = postRetrieval(resultResponse);
 		Resource retrieval = r.getData();
 
-		tryUntilTrue(60,
+		tryUntilTrue(120,
 				2_000,
 				"Timed out waiting for retrieval completion",
 				uri -> retrieveRetrieval(uri).getData().getStatus() == RetrievalStatus.Complete,

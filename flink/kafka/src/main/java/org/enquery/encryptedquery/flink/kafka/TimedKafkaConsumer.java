@@ -18,15 +18,19 @@ package org.enquery.encryptedquery.flink.kafka;
 
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
+import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.configuration.Configuration;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
@@ -41,78 +45,126 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 	private static final long serialVersionUID = -1098744497121999913L;
 	private static final Logger log = LoggerFactory.getLogger(TimedKafkaConsumer.class);
 
+	public static enum StartOffset {
+		fromEarliest, fromLatest, fromLatestCommit
+	};
+
 	private final String bootstrap_servers;
-	private final String group_Id;
+	private final String groupId;
 	private final String topic;
-	private final Boolean startFromBeginning;
+	private final StartOffset startOffset;
 	private int recordCount = 0;
+
+	private Properties properties;
+	private Consumer<Long, String> consumer;
+
 
 	public TimedKafkaConsumer(String topic,
 			String bootstrapServers,
 			String groupId,
-			Boolean startFromBeginning,
+			StartOffset startOffset,
 			Long runtimeInSeconds,
 			Path outputPath) {
 
 		super(runtimeInSeconds, outputPath);
 
 		this.bootstrap_servers = bootstrapServers;
-		this.group_Id = groupId;
+		this.groupId = groupId;
 		this.topic = topic;
-		this.startFromBeginning = startFromBeginning;
+		this.startOffset = startOffset;
 
-		log.info("Starting TimedKafkaConsumer with runtimeInSeconds={}", runtimeInSeconds);
+		log.info("Created TimedKafkaConsumer with runtimeInSeconds={}, topic={}, groupId={}, startOffset={}, bootstrap_servers={}",
+				runtimeInSeconds,
+				topic,
+				groupId,
+				startOffset,
+				bootstrap_servers);
 	}
 
-	private Consumer<Long, String> createConsumer(String topic, String bootstrap_servers, String group_Id) {
-		final Properties props = new Properties();
-		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap_servers);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, group_Id);
-		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+	private Properties makeProperties() {
+		final Properties result = new Properties();
+		result.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap_servers);
+		result.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+		result.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
+		result.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+		result.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+
+		// control initial offset if this the first time this group id consumes
+		if (startOffset == StartOffset.fromLatest) {
+			result.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+		} else {
+			result.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		}
+
+		// Set client ID, (only useful for logging, metrics, etc.) use this Flink task name and the
+		// parallel subtask index
+		RuntimeContext runtimeContext = getRuntimeContext();
+		result.put(ConsumerConfig.CLIENT_ID_CONFIG, String.format("%s#%d)", runtimeContext.getTaskName(), runtimeContext.getIndexOfThisSubtask()));
+		return result;
+	}
+
+
+	@Override
+	public void open(Configuration configuration) throws Exception {
+		properties = makeProperties();
 
 		// Create the consumer using props.
-		final Consumer<Long, String> consumer = new KafkaConsumer<>(props);
-
-		// TODO: Figure out how to set to read from latest or from beginning of kafka topic
+		consumer = new KafkaConsumer<>(properties);
 
 		// Subscribe to the topic.
-		consumer.subscribe(Collections.singletonList(topic));
-		if (startFromBeginning) {
-			log.info("Kafka Consumer Force from Beginning");
-			consumer.seekToBeginning(consumer.assignment());
+		List<TopicPartition> partitions = consumer.partitionsFor(topic)
+				.stream()
+				.map(p -> new TopicPartition(p.topic(), p.partition()))
+				.collect(Collectors.toList());
+
+		log.info("Partitions: {}", partitions);
+
+		consumer.assign(partitions);
+		// fromLatestCommit is the default
+		if (startOffset == StartOffset.fromEarliest) {
+			consumer.seekToBeginning(partitions);
+		} else if (startOffset == StartOffset.fromLatest) {
+			consumer.seekToEnd(partitions);
 		}
-		return consumer;
 	}
+
+	@Override
+	public void close() throws Exception {
+		if (consumer != null) {
+			consumer.close();
+			consumer = null;
+		}
+	}
+
 
 	@Override
 	public void run(SourceContext<String> ctx) throws Exception {
 		beginRun();
-
-		final Consumer<Long, String> enqueryKafkaConsumer = createConsumer(topic, bootstrap_servers, group_Id);
 		try {
 			while (canRun()) {
-				final ConsumerRecords<Long, String> consumerRecords = enqueryKafkaConsumer.poll(Duration.ofMillis(1000));
+				final ConsumerRecords<Long, String> consumerRecords = consumer.poll(Duration.ofMillis(1000));
 
 				if (!canRun()) {
 					break;
 				}
 
 				ingestRecords(ctx, consumerRecords);
-				enqueryKafkaConsumer.commitAsync();
+				consumer.commitAsync();
 				log.info("Ingested {} records.", consumerRecords.count());
 			}
+
+
+			log.info("Read a total of {} records from Kafka", recordCount);
+		} catch (Exception e) {
+			log.error("Unexpected error encountered", e);
+			setAsFailed();
 		} finally {
-			enqueryKafkaConsumer.close();
+			endRun();
 		}
-
-		log.info("Read a total of {} records from Kafka", recordCount);
-
-		endRun();
 	}
 
 
-	private void ingestRecords(SourceContext<String> ctx, ConsumerRecords<Long, String> consumerRecords) {
+	private void ingestRecords(SourceContext<String> ctx, ConsumerRecords<Long, String> consumerRecords) throws Exception {
 		Iterator<ConsumerRecord<Long, String>> iterator = consumerRecords.iterator();
 		while (canRun() && iterator.hasNext()) {
 			ConsumerRecord<Long, String> record = iterator.next();
@@ -124,14 +176,21 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 				}
 				recordCount++;
 			} catch (Exception e) {
-				log.error("Exception ingesting kafka record key {}:", record.key());
-				log.error("   Record partition: {}", record.partition());
-				log.error("   Record offset: {}", record.offset());
-				log.error("   Record Value: {}", record.value());
-				log.error("   Exception: {}", e.getMessage());
+				// records may be malformed, so skip to the next record
+				if (log.isWarnEnabled()) {
+					log.warn("Skipping record due to error.\n"
+							+ "Record key: {}\n"
+							+ "Record partition: {}\n"
+							+ "Record offset: {}\n"
+							+ "Record value:  {}\n"
+							+ "Exception: ",
+							record.key(),
+							record.partition(),
+							record.offset(),
+							record.value(),
+							e);
+				}
 			}
 		}
 	}
-
-
 }

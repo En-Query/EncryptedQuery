@@ -17,18 +17,16 @@
 package org.encryptedquery.querier.business;
 
 import java.io.IOException;
-import java.sql.Date;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
-import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.service.DataSourceRepository;
 import org.enquery.encryptedquery.querier.data.service.ScheduleRepository;
 import org.enquery.encryptedquery.querier.data.transformation.JSONConverter;
@@ -45,14 +43,27 @@ public class ScheduleUpdater {
 	@Reference
 	private DataSourceRepository dataSourceRepo;
 
+	ScheduleRepository getScheduleRepo() {
+		return scheduleRepo;
+	}
+
+	void setScheduleRepo(ScheduleRepository scheduleRepo) {
+		this.scheduleRepo = scheduleRepo;
+	}
+
+	DataSourceRepository getDataSourceRepo() {
+		return dataSourceRepo;
+	}
+
+	void setDataSourceRepo(DataSourceRepository dataSourceRepo) {
+		this.dataSourceRepo = dataSourceRepo;
+	}
+
 	public Schedule create(org.enquery.encryptedquery.querier.data.entity.json.Schedule json, Query query) {
 		Schedule result = new Schedule();
 
-		// JSON Dates are in UTC
-		Instant instant = json.getStartTime().toInstant();
-		ZonedDateTime zonedDateTime = instant.atZone(ZoneId.systemDefault());
-		java.util.Date localDateTime = Date.from(zonedDateTime.toInstant());
-		result.setStartTime(localDateTime);
+		// JSON Dates are in UTC, database timestamps also in UTC
+		result.setStartTime(json.getStartTime());
 		result.setParameters(JSONConverter.toString(json.getParameters()));
 
 		Integer dataSourceId = Integer.valueOf(json.getDataSource().getId());
@@ -62,6 +73,32 @@ public class ScheduleUpdater {
 		result.setStatus(ScheduleStatus.Pending);
 		result.setQuery(query);
 		return scheduleRepo.add(result);
+	}
+
+	public Schedule updateWithError(int scheduleId, Exception exception) {
+		Validate.notNull(exception);
+
+		Schedule schedule = scheduleRepo.find(scheduleId);
+		Validate.notNull(schedule, "Schedule with id %d not found.", scheduleId);
+
+		schedule.setStatus(ScheduleStatus.Failed);
+		schedule.setResponderId(null);
+		schedule.setResponderUri(null);
+		schedule.setResponderResultsUri(null);
+		schedule.setErrorMessage(exceptionToString(exception));
+
+		return scheduleRepo.update(schedule);
+	}
+
+	/**
+	 * @param exception
+	 * @return
+	 */
+	private String exceptionToString(Exception exception) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		exception.printStackTrace(pw);
+		return sw.toString();
 	}
 
 	public Schedule updateFromExecution(int scheduleId, ExecutionResource execution) throws JAXBException, IOException {
@@ -74,19 +111,29 @@ public class ScheduleUpdater {
 		schedule.setResponderId(execution.getId());
 		schedule.setResponderUri(execution.getSelfUri());
 		schedule.setResponderResultsUri(execution.getResultsUri());
+		schedule.setErrorMessage(execution.getExecution().getErrorMessage());
+
 		return scheduleRepo.update(schedule);
 	}
 
 	private ScheduleStatus resolveStatus(Execution execution) {
-		ScheduleStatus result = ScheduleStatus.Pending;
-		if (execution.getStartedOn() != null) {
-			if (execution.getCompletedOn() == null) {
-				result = ScheduleStatus.InProgress;
-			} else {
-				result = ScheduleStatus.Complete;
-			}
-		}
-		return result;
-	}
 
+		if (execution.getStartedOn() == null) {
+			return ScheduleStatus.Pending;
+		}
+
+		if (execution.getErrorMessage() != null) {
+			return ScheduleStatus.Failed;
+		}
+
+		if (Boolean.TRUE.equals(execution.isCancelled())) {
+			return ScheduleStatus.Cancelled;
+		}
+
+		if (execution.getCompletedOn() != null) {
+			return ScheduleStatus.Complete;
+		}
+
+		return ScheduleStatus.InProgress;
+	}
 }

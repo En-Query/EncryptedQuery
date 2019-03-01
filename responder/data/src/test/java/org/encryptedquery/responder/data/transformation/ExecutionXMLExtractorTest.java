@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,6 +41,7 @@ import org.enquery.encryptedquery.xml.schema.Query.QueryElements;
 import org.enquery.encryptedquery.xml.schema.QueryInfo;
 import org.enquery.encryptedquery.xml.schema.QuerySchema;
 import org.enquery.encryptedquery.xml.transformation.ExecutionXMLExtractor;
+import org.enquery.encryptedquery.xml.transformation.XMLFactories;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -57,6 +59,7 @@ public class ExecutionXMLExtractorTest {
 	private Schema xmlSchema;
 	private JAXBContext jaxbContext;
 	private ObjectFactory objectFactory;
+	private ExecutorService es;
 
 
 	@Before
@@ -74,11 +77,7 @@ public class ExecutionXMLExtractorTest {
 		}
 
 		objectFactory = new ObjectFactory();
-
-		try (OutputStream os = new FileOutputStream(EXECUTION_FILE_NAME.toFile())) {
-			marshal(makeExecution(), os);
-		}
-
+		es = Executors.newCachedThreadPool();
 		log.info("Finished initializing test.");
 	}
 
@@ -87,12 +86,28 @@ public class ExecutionXMLExtractorTest {
 	 * @return
 	 * @throws Exception
 	 */
-	private Execution makeExecution() throws Exception {
+	private Execution makeExecution(String error, Boolean cancelled, Date expectedStart, Date expectedCompletion) throws Exception {
 		DatatypeFactory dtf = DatatypeFactory.newInstance();
 		Execution execution = new Execution();
 		execution.setScheduledFor(dtf.newXMLGregorianCalendar(new GregorianCalendar()));
 		execution.setQuery(makeQuery());
 		execution.setConfiguration(makeConfiguration());
+		execution.setSubmittedOn(dtf.newXMLGregorianCalendar(new GregorianCalendar()));
+
+		if (expectedCompletion != null) {
+			execution.setCompletedOn(XMLFactories.toUTCXMLTime(expectedCompletion));
+		}
+
+		if (expectedStart != null) {
+			execution.setStartedOn(XMLFactories.toUTCXMLTime(expectedStart));
+		}
+		execution.setErrorMessage(error);
+		execution.setCancelled(cancelled);
+
+		try (OutputStream os = new FileOutputStream(EXECUTION_FILE_NAME.toFile())) {
+			marshal(execution, os);
+		}
+
 		return execution;
 	}
 
@@ -208,30 +223,58 @@ public class ExecutionXMLExtractorTest {
 
 	@Test
 	public void xmlParse() throws FileNotFoundException, IOException, Exception {
-		ExecutorService es = Executors.newCachedThreadPool();
 
+		test("Failed", true, new Date(), null);
+		test(null, true, new Date(), null);
+		test(null, false, new Date(), null);
+		test(null, null, new Date(), new Date());
+		test(null, true, null, new Date());
+		test(null, false, null, new Date());
+		test(null, null, null, new Date());
+	}
+
+
+	private void test(String expectedError, Boolean expectedCancelled, Date expectedStart, Date expectedCompletion) throws Exception, IOException, JAXBException, FileNotFoundException {
+		makeExecution(expectedError, expectedCancelled, expectedStart, expectedCompletion);
 		try (InputStream fis = new FileInputStream(EXECUTION_FILE_NAME.toFile());
 				ExecutionXMLExtractor extractor = new ExecutionXMLExtractor(es);) {
-
 			extractor.parse(fis);
-			assertNotNull(extractor.getScheduleDate());
-			assertNotNull(extractor.getQueryInputStream());
-			assertNotNull(extractor.getConfig());
+			validateParsed(extractor, expectedError, expectedCancelled, expectedStart, expectedCompletion);
+		}
+	}
 
-			assertEquals("sample.txt", extractor.getConfig().get("input"));
-			assertEquals("result.xml", extractor.getConfig().get("output"));
 
-			Query query = unmarshal(extractor.getQueryInputStream());
-			assertEquals(QUERY_ID, query.getQueryInfo().getQueryId());
-			assertEquals(5, query.getQueryElements().getEntry().size());
+	/**
+	 * @param extractor
+	 * @param expectedError
+	 * @param expectedCancelled
+	 * @param expectedStart
+	 * @param expectedCompletion
+	 * @throws JAXBException
+	 */
+	private void validateParsed(ExecutionXMLExtractor extractor, String expectedError, Boolean expectedCancelled, Date expectedStart, Date expectedCompletion) throws JAXBException {
+		assertNotNull(extractor.getScheduleDate());
+		assertNotNull(extractor.getConfig());
+		assertNotNull(extractor.getSubmittedOn());
+		assertEquals(expectedStart, extractor.getStartedOn());
+		assertEquals(expectedError, extractor.getErrorMessage());
+		assertEquals(expectedCompletion, extractor.getCompletedOn());
+		assertEquals(expectedCancelled == null ? false : expectedCancelled, extractor.isCancelled());
+		assertNotNull(extractor.getQueryInputStream());
 
-			int index = 0;
-			for (org.enquery.encryptedquery.xml.schema.Query.QueryElements.Entry e : query.getQueryElements().getEntry()) {
-				assertEquals(index, e.getKey());
-				String value = new String(e.getValue());
-				assertEquals(String.format(ENTRY_VALUE_PATTERN, index), value);
-				++index;
-			}
+		assertEquals("sample.txt", extractor.getConfig().get("input"));
+		assertEquals("result.xml", extractor.getConfig().get("output"));
+
+		Query query = unmarshal(extractor.getQueryInputStream());
+		assertEquals(QUERY_ID, query.getQueryInfo().getQueryId());
+		assertEquals(5, query.getQueryElements().getEntry().size());
+
+		int index = 0;
+		for (org.enquery.encryptedquery.xml.schema.Query.QueryElements.Entry e : query.getQueryElements().getEntry()) {
+			assertEquals(index, e.getKey());
+			String value = new String(e.getValue());
+			assertEquals(String.format(ENTRY_VALUE_PATTERN, index), value);
+			++index;
 		}
 	}
 }

@@ -18,9 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.flink.streaming.api.TimeCharacteristic;
-import org.apache.flink.streaming.api.datastream.DataStreamSource;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.DataSchema;
@@ -31,7 +28,6 @@ import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
-import org.enquery.encryptedquery.flink.BaseQueryExecutor;
 import org.enquery.encryptedquery.flink.FlinkTypes;
 import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
@@ -125,6 +121,7 @@ public class ResponderTest implements FlinkTypes {
 		int[] hitCount = {0};
 		int[] recordCount = {0};
 		for (ClearTextQueryResponse answer : responses) {
+			log.info(answer.toString());
 			answer.forEach(sel -> {
 				assertEquals(sel.toString(), "text", sel.getName());
 				hitCount[0] += sel.hitCount();
@@ -149,18 +146,16 @@ public class ResponderTest implements FlinkTypes {
 	@Test
 	public void pCapMultipleResponses() throws Exception {
 
-		List<String> selectors = Collections.singletonList("eth:ethertype:ip:tcp:mysql");// Arrays.asList(new
-																							// String[]
-																							// {"eth:ethertype:ip:tcp:mysql"});
+		List<String> selectors = Collections.singletonList("eth:ethertype:ip:tcp:mysql");
 		QuerySchema querySchema = createPcapQuerySchema();
 
 		Querier querier = createQuerier(selectors, querySchema);
 
-		// run for max 1 minute with up to 5 seconds delay between records
-		runJob(PCAP_FILE_NAME, querySchema, 60L, 3000);
+		// run for max 1 minute with up to 1 seconds delay between records
+		runJob(PCAP_FILE_NAME, querySchema, 60L, 5_000);
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
-		assertTrue(responses.size() >= 6);
+		assertTrue(responses.size() == 6 || responses.size() == 7);
 	}
 
 	@Test
@@ -173,7 +168,7 @@ public class ResponderTest implements FlinkTypes {
 
 		Querier querier = createQuerier(selectors, querySchema);
 
-		// run for max 1 minute with up to 5 seconds delay between records
+		// run for max 100 seconds, no delay between records, single result
 		runJob(PCAP_FILE_NAME, querySchema, 100L, 0);
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
@@ -190,7 +185,7 @@ public class ResponderTest implements FlinkTypes {
 				assertEquals("eth:ethertype:ip:tcp:mysql", h.getSelectorValue());
 				recordCount[0] += h.recordCount();
 				h.forEachRecord(r -> {
-					assertTrue(r.toString(), r.fieldCount() == 6);
+					assertTrue(r.toString(), r.fieldCount() == 5);
 				});
 			});
 		});
@@ -223,7 +218,7 @@ public class ResponderTest implements FlinkTypes {
 
 					recordCount[0] += h.recordCount();
 					h.forEachRecord(r -> {
-						assertTrue(r.toString(), r.fieldCount() == 6);
+						assertTrue(r.toString(), r.fieldCount() == 5);
 					});
 				});
 			});
@@ -234,32 +229,18 @@ public class ResponderTest implements FlinkTypes {
 	}
 
 	private void runJob(Path fileName, QuerySchema querySchema, long maxRuntime, int maxDelayBetweenRows) throws Exception {
-		// final long startTime = System.currentTimeMillis();
-		// set up the streaming execution environment
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.setMaxParallelism(4);
-		env.setParallelism(4);
-		env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
 
-		BaseQueryExecutor responder = new BaseQueryExecutor();
+		Responder responder = new Responder();
 		responder.setConfig(config);
 		responder.setInputFileName(QUERY_FILE_NAME);
 		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.initializeCommon();
-		responder.initializeStreaming();
 
-		DataStreamSource<String> dataSource = env.addSource(//
-				new FileTestSource(fileName, RESPONSE_FILE_NAME,
-						maxRuntime,
-						maxDelayBetweenRows));
+		FileTestSource source = new FileTestSource(fileName,
+				RESPONSE_FILE_NAME,
+				maxRuntime,
+				maxDelayBetweenRows);
 
-		// env.readTextFile(fileName.toString());
-		// DataStreamSource<String> endOfTimeSource = env.addSource(new RuntimeSource(30));
-		// DataStream<String> joinedSource = dataSource.union(endOfTimeSource);
-		// joinedSource.filter(s -> s != null).map(new ParseJson(querySchema,
-		// responder.getRowTypeInfo()));
-
-		responder.run(env, dataSource.map(new ParseJson(querySchema, responder.getRowTypeInfo())));
+		responder.runWithSource(source);
 		log.info("Flink job ended.");
 
 		assertTrue(!Files.exists(RESPONSE_FILE_NAME.resolve("job-running")));
@@ -272,9 +253,7 @@ public class ResponderTest implements FlinkTypes {
 		responder.setConfig(config);
 		responder.setInputFileName(QUERY_FILE_NAME);
 		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.setBrokers("pirk.envieta.com:9092");
-		// responder.setTopic(TOPIC);
-		responder.setGroupId("test");
+		responder.setBrokers("192.168.200.57:9092");
 		responder.run();
 	}
 

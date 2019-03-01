@@ -35,6 +35,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
+import org.enquery.encryptedquery.flink.kafka.TimedKafkaConsumer.StartOffset;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +46,8 @@ public class App {
 
 	private String brokers;
 	private String topic;
-	private String groupId;
 
-	private Boolean forceFromStart;
-	private String offsetLocation;
+	private StartOffset startOffset;
 	private Path queryFileName;
 	private Path outputFileName;
 	private CommandLine commandLine;
@@ -124,9 +123,7 @@ public class App {
 		Responder q = new Responder();
 		q.setBrokers(brokers);
 		q.setTopic(topic);
-		q.setGroupId(groupId);
-		q.setForceFromStart(forceFromStart);
-		q.setOffsetLocation(offsetLocation);
+		q.setStartOffset(startOffset);
 		q.setInputFileName(queryFileName);
 		q.setOutputFileName(outputFileName);
 		q.setConfig(config);
@@ -148,21 +145,18 @@ public class App {
 		topic = p.getProperty(KafkaConfigurationProperties.TOPIC);
 		Validate.notBlank(topic);
 
-		groupId = p.getProperty(KafkaConfigurationProperties.GROUP_ID);
-		// Validate.notBlank(groupId);
-
-		offsetLocation = p.getProperty(KafkaConfigurationProperties.OFFSET);
-		if (offsetLocation != null) {
-			forceFromStart = false;
+		String val = p.getProperty(KafkaConfigurationProperties.OFFSET);
+		if (val != null) {
+			startOffset = StartOffset.valueOf(val);
 		} else {
-			forceFromStart = Boolean.valueOf(p.getProperty(KafkaConfigurationProperties.FORCE_FROM_START));
+			startOffset = StartOffset.fromLatestCommit;
 		}
+
 		log.info("Kafka Properties: ");
 		log.info("   Brokers: {}", brokers);
 		log.info("   Topic: {}", topic);
-		log.info("   groupId: {}", groupId);
-		log.info("   OffsetLocation: {}", offsetLocation);
-		log.info("   forceFromStart: {}", forceFromStart);
+		// log.info(" groupId: {}", groupId);
+		log.info("   OffsetLocation: {}", startOffset);
 	}
 
 }

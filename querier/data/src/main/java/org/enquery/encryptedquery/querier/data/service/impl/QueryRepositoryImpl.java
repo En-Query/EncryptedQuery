@@ -15,8 +15,6 @@ import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
@@ -24,17 +22,17 @@ import org.enquery.encryptedquery.querier.data.service.BlobRepository;
 import org.enquery.encryptedquery.querier.data.service.QueryRepository;
 import org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.querier.data.transformation.URIUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class QueryRepositoryImpl implements QueryRepository {
 
 	private static final String QUERY_FILE_NAME = "query.xml";
 	private static final String QUERY_KEYS_FILE_NAME = "query-key.xml";
-
-	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
 
 	@Reference
 	private BlobRepository blobRepo;
@@ -45,17 +43,33 @@ public class QueryRepositoryImpl implements QueryRepository {
 	@Reference(target = "(type=query-key)")
 	private ResourceUriRegistry queryKeysRegistry;
 
+	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
+
+
 	@Override
 	public Query find(int id) {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.find(Query.class, id, fetchAllAssociationsHint(em)));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Query.class, id, fetchAllAssociationsHint(em)));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Query findByName(String name) {
-		return (Query) jpa.txExpr(TransactionType.Supports,
-				em -> em
+		return (Query) txControl
+				.build()
+				.readOnly()
+				.supports(() -> em
 						.createQuery("Select q From Query q Where q.name = :name")
 						.setParameter("name", name)
 						.getResultList()
@@ -67,32 +81,41 @@ public class QueryRepositoryImpl implements QueryRepository {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Query> list() {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select q From Query q").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select q From Query q").getResultList());
 	}
 
 	@Override
 	public Query add(Query q) {
-		jpa.tx(em -> {
-			em.persist(q);
-		});
-		return q;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(q);
+					return q;
+				});
 	}
 
 	@Override
 	public Query update(Query q) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(q));
+		return txControl
+				.build()
+				.required(() -> em.merge(q));
 	}
 
 	@Override
 	public void delete(int id) {
-		jpa.tx(em -> {
-			Query q = find(id);
-			if (q != null) {
-				em.remove(q);
-				deleteQueryBlobs(q);
-			}
-		});
+		txControl
+				.build()
+				.required(() -> {
+					Query q = find(id);
+					if (q != null) {
+						em.remove(q);
+						deleteQueryBlobs(q);
+					}
+					return 0;
+				});
 	}
 
 	/**
@@ -117,39 +140,45 @@ public class QueryRepositoryImpl implements QueryRepository {
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			list().forEach(q -> {
-				em.remove(q);
-				deleteQueryBlobs(q);
-			});
-		});
+		txControl
+				.build()
+				.required(() -> {
+					list().forEach(q -> {
+						em.remove(q);
+						deleteQueryBlobs(q);
+					});
+					return 0;
+				});
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<String> listNames() {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select q.name From Query q").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select q.name From Query q").getResultList());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<Query> withQuerySchema(int querySchemaId) {
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> em
-						.createQuery("Select q From Query q "
-								+ "  Join q.querySchema qs "
-								+ "  Where qs.id = :querySchemaId")
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select q From Query q "
+						+ "  Join q.querySchema qs "
+						+ "  Where qs.id = :querySchemaId")
 						.setParameter("querySchemaId", querySchemaId)
 						.getResultList());
 	}
 
 	@Override
 	public boolean isGenerated(int queryId) {
-		Long result = jpa.txExpr(
-				TransactionType.Supports,
-				em -> {
+		Long result = txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					TypedQuery<Long> query = em.createQuery(
 							"Select count(q) From Query q "
 									+ "  Where q.id  = :queryId"
@@ -165,9 +194,10 @@ public class QueryRepositoryImpl implements QueryRepository {
 	public Query findForQuerySchema(QuerySchema querySchema, int id) {
 		Validate.notNull(querySchema);
 
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> em.createQuery("From Query q "
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("From Query q "
 						+ "Where q.id = :id "
 						+ "And   q.querySchema = :querySchema ",
 						Query.class)
@@ -183,9 +213,9 @@ public class QueryRepositoryImpl implements QueryRepository {
 	@Override
 	public Query updateQueryBytes(int queryId, InputStream inputStream) throws IOException {
 
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.required(() -> {
 					URL url = makeUrl(queryLocation, find(queryId), QUERY_FILE_NAME);
 					blobRepo.save(inputStream, url);
 
@@ -222,9 +252,9 @@ public class QueryRepositoryImpl implements QueryRepository {
 
 	@Override
 	public Query updateQueryKeyBytes(int queryId, InputStream inputStream) throws IOException {
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.required(() -> {
 					URL url = makeUrl(queryKeysRegistry, find(queryId), QUERY_KEYS_FILE_NAME);
 					blobRepo.save(inputStream, url);
 

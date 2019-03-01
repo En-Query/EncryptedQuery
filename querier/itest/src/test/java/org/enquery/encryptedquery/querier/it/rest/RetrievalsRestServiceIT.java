@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.enquery.encryptedquery.querier.data.entity.RetrievalStatus;
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
@@ -38,7 +39,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
@@ -144,6 +144,7 @@ public class RetrievalsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest
 
 	@Test
 	public void createWhenResponderNotOnline() throws Exception {
+
 		ResultResponse resultResponse = postScheduleAndWaitForResult();
 
 		// emulate Responder not reachable

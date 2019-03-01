@@ -88,6 +88,7 @@
 		<feature>apache-commons</feature>
 		<feature>aries-blueprint</feature>
 		<feature>war</feature>
+		<feature>webconsole</feature>
  		<feature>camel-core</feature>
 		<feature>camel-servlet</feature>
 		<feature>camel-blueprint</feature>
@@ -104,6 +105,9 @@
 		<feature>encryptedquery-jdbc</feature>
 		<feature>encryptedquery-jackson</feature>
 				
+		<bundle dependency="true">mvn:org.apache.aries.tx-control/tx-control-service-local/${aries.tx-control.version}</bundle>
+        <bundle dependency="true">mvn:org.apache.aries.tx-control/tx-control-provider-jpa-local/${aries.tx-control.version}</bundle>
+		
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
  		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>
 
@@ -141,6 +145,7 @@
     		hibernate.hbm2ddl.auto=none
     		hibernate.id.new_generator_mappings=true
     		hibernate.order_inserts=true
+    		hibernate.jdbc.time_zone=UTC
      	</config>
 
 		<feature>encryptedquery-querier-core</feature>

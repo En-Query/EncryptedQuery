@@ -48,6 +48,7 @@ public class WindowResultSink implements SinkFunction<WindowFinalResult> {
 		initialized = true;
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public void invoke(WindowFinalResult window, Context context) throws Exception {
 

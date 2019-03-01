@@ -26,7 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.flink.api.common.functions.StoppableFunction;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.enquery.encryptedquery.flink.TimestampFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Abstract base class takes care of ending the source when a maximum runtime has elapsed.
  */
-public abstract class TimeBoundStoppableConsumer<E> implements SourceFunction<E>, StoppableFunction {
+public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E> implements StoppableFunction {
 
 	/**
 	 * 
@@ -49,7 +49,8 @@ public abstract class TimeBoundStoppableConsumer<E> implements SourceFunction<E>
 	private final String responseFilePath;
 
 	private transient volatile boolean isRunning = true;
-	private transient long stopTime;
+	private transient volatile boolean failed = false;
+	private transient Long stopTime = null;
 
 
 	/**
@@ -76,21 +77,27 @@ public abstract class TimeBoundStoppableConsumer<E> implements SourceFunction<E>
 	 * @throws IOException
 	 */
 	private boolean inProgressFileExists() throws IOException {
-		final Path path = Paths.get(responseFilePath);
-		// safety precaution, create the dir
-		Files.createDirectories(path);
-		Path found = Files.walk(path)
-				.filter(p -> Files.isRegularFile(p))
-				.filter(f -> {
-					boolean inProgress = f.getFileName().toString().endsWith(ResponseFileNameBuilder.IN_PROGRESS_SUFFIX);
-					// log.info("file: {}, inProgress: {}", f, inProgress);
-					return inProgress;
-				})
-				.findFirst()
-				.orElse(null);
+		try {
+			final Path path = Paths.get(responseFilePath);
+			// safety precaution, create the dir
+			// Files.createDirectories(path);
+			Path found = Files.walk(path)
+					.filter(p -> Files.isRegularFile(p))
+					.filter(f -> {
+						boolean inProgress = f.getFileName().toString().endsWith(ResponseFileNameBuilder.IN_PROGRESS_SUFFIX);
+						// log.info("file: {}, inProgress: {}", f, inProgress);
+						return inProgress;
+					})
+					.findFirst()
+					.orElse(null);
 
-		log.info("Inprogress file found: {}", found);
-		return found != null;
+			log.info("Inprogress file found: {}", found);
+			return found != null;
+		} catch (NoSuchFileException e) {
+			// this exception means some of the parent directories are not found or have been
+			// deleted in the middle of scanning
+			return false;
+		}
 	}
 
 	@Override
@@ -103,34 +110,48 @@ public abstract class TimeBoundStoppableConsumer<E> implements SourceFunction<E>
 		cancel();
 	}
 
+	protected void setAsFailed() {
+		failed = true;
+	}
+
 	protected void beginRun() throws IOException {
-		stopTime = System.currentTimeMillis() + (runtimeInSeconds * 1000);
+		if (runtimeInSeconds != null) {
+			stopTime = System.currentTimeMillis() + (runtimeInSeconds * 1000);
+			log.info("Will run until: " + TimestampFormatter.format(stopTime));
+		} else {
+			log.info("Will run forever.");
+		}
 
 		createJobRunningFileMarker();
-		log.info("Will run until: " + TimestampFormatter.format(stopTime));
 		isRunning = true;
 	}
 
 	private Path jobRunningMarkerFile() throws IOException {
 		Path path = Paths.get(responseFilePath);
-		Files.createDirectories(path.getParent());
+		Files.createDirectories(path);
 		Path file = path.resolve(JOB_RUNNING_MARKER_FILE_NAME);
 		return file;
 	}
 
 	protected boolean canRun() {
-		return isRunning && System.currentTimeMillis() < stopTime;
+		return isRunning && (stopTime == null || System.currentTimeMillis() < stopTime);
 	}
 
 	protected void endRun() throws InterruptedException, IOException {
-		if (System.currentTimeMillis() >= stopTime) {
+		if (failed) {
+			log.info("Failed.");
+		} else if (stopTime != null && System.currentTimeMillis() >= stopTime) {
 			log.info("Exceeded allowed runtime.");
 		} else if (!isRunning) {
 			log.info("Source was externally cancelled.");
 		} else {
 			log.info("Source is exhausted.");
 		}
-		waitForPendingWindows();
+
+		if (!failed) {
+			waitForPendingWindows();
+		}
+
 		deleteJobRunningMarkerFile();
 	}
 
@@ -144,8 +165,12 @@ public abstract class TimeBoundStoppableConsumer<E> implements SourceFunction<E>
 	private void createJobRunningFileMarker() throws IOException {
 		Path file = jobRunningMarkerFile();
 		try (BufferedWriter w = Files.newBufferedWriter(file)) {
-			w.write("Running until: ");
-			w.write(TimestampFormatter.format(stopTime));
+			if (stopTime != null) {
+				w.write("Running until: ");
+				w.write(TimestampFormatter.format(stopTime));
+			} else {
+				w.write("Running forever.");
+			}
 		}
 	}
 

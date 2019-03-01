@@ -50,7 +50,6 @@ import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.responder.QueueRecord;
 import org.enquery.encryptedquery.responder.RecordPartitioner;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
@@ -92,7 +91,6 @@ public class Responder {
 	private AtomicLong lineNumber;
 	private List<Future<Response>> futures;
 	private CryptoScheme crypto;
-	private List<String> querySchemaElementNames;
 
 	public Responder() {}
 
@@ -111,9 +109,9 @@ public class Responder {
 			String mqs = runParameters.get(StandaloneConfigurationProperties.MAX_QUEUE_SIZE).toString();
 			maxQueueSize = Integer.parseInt(mqs);
 		}
-		
+
 		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
-			maxHitsPerSelector = Integer.parseInt(runParameters.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)); 
+			maxHitsPerSelector = Integer.parseInt(runParameters.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR));
 		}
 
 		log.info("Standalone Query Configuration:");
@@ -196,7 +194,8 @@ public class Responder {
 	private void processLine(String line) {
 		Map<String, Object> jsonData = null;
 		try {
-			jsonData = JSONStringConverter.toStringObjectMapFromList(querySchemaElementNames, line);
+			jsonData = JSONStringConverter.toStringObjectFlatMap(line);
+			// .toStringObjectMapFromList(querySchemaElementNames, line);
 		} catch (Exception e) {
 			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
 			return;
@@ -263,7 +262,6 @@ public class Responder {
 		selectorNullCount = 0;
 		lineNumber = new AtomicLong(0);
 		crypto = CryptoSchemeFactory.make(runParameters);
-		querySchemaElementNames = query.getQueryInfo().getQuerySchema().getElementNames();
 
 		// Create a Queue for each thread
 		for (int i = 0; i < numberOfProcessorThreads; i++) {

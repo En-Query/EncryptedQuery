@@ -28,7 +28,8 @@
 		<routeContextRef ref="data-schema-routes"/>
 		<routeContextRef ref="data-source-routes"/>
 		<routeContextRef ref="execution-routes"/>
-		<routeContextRef ref="result-routes"/> 
+		<routeContextRef ref="result-routes"/>
+		<routeContextRef ref="dataschema-inbox-routes"/>  
 		
 		<dataFormats>
 			<jaxb id="queryFormat"
@@ -43,6 +44,11 @@
 			<jaxb id="executionFormat"
 				 contextPath="org.enquery.encryptedquery.xml.schema"
 				 schema="classpath:/org/enquery/encryptedquery/xml/schema/execution-resources.xsd"
+			/>
+
+			<jaxb  id="dataSchemaFormat"
+				 contextPath="org.enquery.encryptedquery.xml.schema"
+				 schema="classpath:/org/enquery/encryptedquery/xml/schema/data-schema.xsd"
 			/>
 		</dataFormats>
 		

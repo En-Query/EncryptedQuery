@@ -12,18 +12,18 @@
 	
 	<changeSet id="1" author="asoto">
 		<preConditions onFail="MARK_RAN">
-			<not>
-				<dbms type="mariadb"/>
-			</not>
-			<not>
-				<dbms type="mysql"/>
-			</not>
+			<dbms type="derby"/>
 		</preConditions>
 		
-		<createSequence sequenceName="dschema_seq" startValue="1"/>
-		<createSequence sequenceName="dschema_field_seq" startValue="1"/>
-		<createSequence sequenceName="dsource_seq" startValue="1"/>
-		<createSequence sequenceName="ids_sequence" startValue="1"/>
+		<!-- For Derby we use a table generator, other options are not working correctly  -->
+		<createTable tableName="sequences">
+			<column name="name" type="varchar(100)">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="next_hi_value" type="int">
+                <constraints nullable="false"/>
+            </column>
+		</createTable>
 	</changeSet>
 
     <changeSet id="2" author="asoto">
@@ -302,5 +302,18 @@
 			referencedColumnNames="id" />
 			
     </changeSet>
+    
+    <changeSet id="add-result-timestamps" author="asoto">
+		<addColumn tableName="results">
+            <column name="window_start_ts" type="timestamp"/>
+            <column name="window_end_ts" type="timestamp"/>
+		</addColumn>
+		<addUniqueConstraint columnNames="schedule_id,window_start_ts,window_end_ts" tableName="results"/>
+	</changeSet>
 
+	<changeSet id="add-schedule-error-msg" author="asoto">
+		<addColumn tableName="schedules">
+			<column name="error_msg" type="clob"/>
+		</addColumn>
+	</changeSet>
 </databaseChangeLog>

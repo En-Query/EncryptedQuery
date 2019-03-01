@@ -123,6 +123,8 @@
 			<removeHeader headerName="CamelHttpQuery"/>
 			
 			<to uri="direct:get-from-responder"/>
+<!-- 			<log message="Got results from responder: ${body}"/>  -->
+			<log message="Recieved results update from responder."/>
 			
 			<unmarshal ref="resultFormat"/>
 			

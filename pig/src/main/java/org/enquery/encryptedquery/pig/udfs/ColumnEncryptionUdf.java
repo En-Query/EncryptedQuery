@@ -17,7 +17,6 @@
 package org.enquery.encryptedquery.pig.udfs;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.pig.backend.executionengine.ExecException;
@@ -27,12 +26,11 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
-import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.responder.ResponderProperties;
 
 public class ColumnEncryptionUdf extends AbstractUdf<CipherText> implements PigTypes, ResponderProperties {
 	transient private ColumnProcessor cec;
-	transient private CryptoScheme scheme;
+	// transient private CryptoScheme scheme;
 
 
 	public ColumnEncryptionUdf(String queryFileName, String configFileName) {
@@ -46,10 +44,9 @@ public class ColumnEncryptionUdf extends AbstractUdf<CipherText> implements PigT
 		return encryptColumn(input);
 	}
 
-	@SuppressWarnings("unchecked")
 	private void initializeQueryParams() throws IOException {
 		initializeQuery(q -> {
-			Map<Integer, CipherText> queryElements = q.getQueryElements();
+			// Map<Integer, CipherText> queryElements = q.getQueryElements();
 
 			// TODO: initialize ColumnProcessor and Scheme
 

@@ -2,31 +2,47 @@ package org.enquery.encryptedquery.querier.data.service.impl;
 
 import java.util.Collection;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Result;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
 import org.enquery.encryptedquery.querier.data.service.ResultRepository;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class ResultRepoImpl implements ResultRepository {
 
 	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
 
 	@Override
 	public Result find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(Result.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Result.class, id));
 	}
 
 	@Override
 	public Result findForSchedule(Schedule schedule, int id) {
 		Validate.notNull(schedule);
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery(
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
 						"   Select r From Result r "
 								+ " Join r.schedule s "
 								+ " Where  s = :schedule  "
@@ -45,8 +61,10 @@ public class ResultRepoImpl implements ResultRepository {
 	public Collection<Result> listForSchedule(Schedule schedule) {
 		Validate.notNull(schedule);
 
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select r From Result r Join r.schedule s Where  s = :schedule  ",
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select r From Result r Join r.schedule s Where  s = :schedule  ",
 						Result.class)
 						.setParameter("schedule", em.find(Schedule.class, schedule.getId()))
 						.getResultList());
@@ -55,35 +73,52 @@ public class ResultRepoImpl implements ResultRepository {
 	@Override
 	public Result add(Result r) {
 		Validate.notNull(r);
-		jpa.tx(em -> em.persist(r));
+		txControl
+				.build()
+				.required(() -> {
+					em.persist(r);
+					return 0;
+				});
 		return r;
 	}
 
 	@Override
 	public Result update(Result r) {
 		Validate.notNull(r);
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(r));
+		return txControl
+				.build()
+				.required(() -> em.merge(r));
 	}
 
 	@Override
 	public void delete(Result r) {
 		Validate.notNull(r);
-		jpa.tx(em -> em.remove(find(r.getId())));
+		txControl
+				.build()
+				.required(() -> {
+					em.remove(find(r.getId()));
+					return 0;
+				});
 	}
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			em.createQuery("Select r From Result r", Result.class)
-					.getResultList()
-					.forEach(s -> em.remove(s));
-		});
+		txControl
+				.build()
+				.required(() -> {
+					em.createQuery("Select r From Result r", Result.class)
+							.getResultList()
+							.forEach(s -> em.remove(s));
+					return 0;
+				});
 	}
 
 	@Override
 	public Result findByResponderId(int responderId) {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select r From Result r Where r.responderId = :responderId", Result.class)
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select r From Result r Where r.responderId = :responderId", Result.class)
 						.setParameter("responderId", responderId)
 						.getResultList()
 						.stream()

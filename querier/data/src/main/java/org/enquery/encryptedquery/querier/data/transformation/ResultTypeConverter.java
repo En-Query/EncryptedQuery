@@ -1,6 +1,5 @@
 package org.enquery.encryptedquery.querier.data.transformation;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -44,14 +43,18 @@ public class ResultTypeConverter {
 		initialize(jpa, result);
 		result.setSchedule(scheduleConverter.toResourceIdentifier(jpa.getSchedule()));
 		result.setRetrievalsUri(registry.retrievalsUri(jpa));
+		result.setWindowStartTime(jpa.getWindowStartTime());
+		result.setWindowEndTime(jpa.getWindowEndTime());
 		return result;
 	}
 
-	public org.enquery.encryptedquery.querier.data.entity.jpa.Result toJPA(Result json) throws IOException {
-		Validate.notNull(json);
-		org.enquery.encryptedquery.querier.data.entity.jpa.Result result = new org.enquery.encryptedquery.querier.data.entity.jpa.Result();
-		return result;
-	}
+	// public org.enquery.encryptedquery.querier.data.entity.jpa.Result toJPA(Result json) throws
+	// IOException {
+	// Validate.notNull(json);
+	// org.enquery.encryptedquery.querier.data.entity.jpa.Result result = new
+	// org.enquery.encryptedquery.querier.data.entity.jpa.Result();
+	// return result;
+	// }
 
 	public ResultCollectionResponse toJSONResponse(Collection<org.enquery.encryptedquery.querier.data.entity.jpa.Result> data) {
 		List<Result> result = new ArrayList<>(data.size());

@@ -53,7 +53,7 @@ public class QuerySchema {
 	public static final String ALL_ENTITY_GRAPH = "QuerySchema.all";
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@Column(name = "queryschemaname", nullable = false)

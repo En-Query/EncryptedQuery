@@ -9,13 +9,15 @@ import ScheduleQuery from "./components/ScheduleQuery";
 import QueryStatus from "./components/QueryStatus";
 import QueryResults from "./components/QueryResults";
 import QuerySchedulesStatus from "./components/QuerySchedulesStatus";
+import PageNotFound from "./components/PageNotFound";
 
 import {
   BrowserRouter,
   Router,
   Route,
   Switch,
-  Redirect
+  Redirect,
+  HashRouter
 } from "react-router-dom";
 
 export default () => <Routes />;

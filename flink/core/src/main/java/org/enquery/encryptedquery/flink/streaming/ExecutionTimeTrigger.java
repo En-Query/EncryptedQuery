@@ -38,7 +38,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = LoggerFactory.getLogger(ExecutionTimeTrigger.class);
 
-	private final long maxTimestamp;
+	private final Long maxTimestamp;
 	private final String responseFilePath;
 	private final int maxHitsPerSelector;
 	private transient ReducingStateDescriptor<Integer> hitCounter;
@@ -46,11 +46,10 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	/**
 	 * @param runtimeSeconds
 	 */
-	public ExecutionTimeTrigger(long maxTimestamp,
+	public ExecutionTimeTrigger(Long maxTimestamp,
 			String responseFilePath,
 			int maxHitsPerSelector) {
 
-		Validate.notNull(maxTimestamp);
 		Validate.notNull(responseFilePath);
 		Validate.isTrue(maxHitsPerSelector > 0);
 
@@ -59,7 +58,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 		this.maxHitsPerSelector = maxHitsPerSelector;
 
 		log.info("Initialized with maxTimestamp: {}, responseFilePath: '{}', maxHitsPerSelector: {}",
-				TimestampFormatter.format(maxTimestamp),
+				(maxTimestamp == null) ? "infinite" : TimestampFormatter.format(maxTimestamp),
 				responseFilePath,
 				maxHitsPerSelector);
 	}
@@ -94,7 +93,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 		}
 
 		// Discard any window that is started after maxTimestamp
-		if (start > maxTimestamp) {
+		if (maxTimestamp != null && start > maxTimestamp) {
 			if (debugging) log.debug("Window {} starts after maxTimestamp. Discarding.",
 					windowInfo);
 			return TriggerResult.PURGE;
@@ -120,7 +119,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 
 		// adjust the window trigger time to run on maxTimestamp if spans beyond maxTimestamp
 		long triggerTime = window.maxTimestamp();
-		if (triggerTime > maxTimestamp) {
+		if (maxTimestamp != null && triggerTime > maxTimestamp) {
 			if (debugging) log.debug("Window overlaps maxTimestamp. Trimming.");
 			triggerTime = maxTimestamp;
 		}
@@ -151,8 +150,18 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	@Override
 	public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) throws Exception {
 
+		final boolean debugging = log.isDebugEnabled();
+
 		long start = window.getStart();
 		long end = window.maxTimestamp();
+
+		if (maxTimestamp != null && start > maxTimestamp) {
+			if (debugging) log.debug("Window from {} to {} starts after maxTimestamp. Discarding.",
+					TimestampFormatter.format(start),
+					TimestampFormatter.format(end));
+
+			return TriggerResult.PURGE;
+		}
 
 		if (time < end) return TriggerResult.CONTINUE;
 
@@ -161,6 +170,11 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	}
 
 	private void fireWindow(long start, long end) throws IOException {
+		if (log.isDebugEnabled()) {
+			log.debug("Creating in-progress file for window from {} to {}.",
+					TimestampFormatter.format(start),
+					TimestampFormatter.format(end));
+		}
 		ResponseFileNameBuilder.createEmptyInProgressFile(responseFilePath, start, end);
 	}
 
@@ -202,9 +216,13 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 		// only register a timer if the time is not yet past the end of the merged window
 		// this is in line with the logic in onElement(). If the time is past the end of
 		// the window onElement() will fire and setting a timer here would fire the window twice.
+
 		long fireTimestamp = window.maxTimestamp();
-		if (fireTimestamp > maxTimestamp) {
-			fireTimestamp = maxTimestamp;
+
+		if (maxTimestamp != null) {
+			if (fireTimestamp > maxTimestamp) {
+				fireTimestamp = maxTimestamp;
+			}
 		}
 
 		long currentTimestamp = ctx.getCurrentProcessingTime();

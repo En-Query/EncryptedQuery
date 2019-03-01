@@ -45,6 +45,19 @@
 			<cm:property name="api.latest.version" value="1"/>
 	        <cm:property name="api.media.type" value="application/vnd.encryptedquery.responder+xml"/>
 	        <cm:property name="api.root.path" value="/api/rest"/>
+	        
+	        
+	        <cm:property name="inbox.dir" value="/var/EQResponder/inbox"/>
+	        <cm:property name="inbox.initial-delay" value="60000"/>
+	        <cm:property name="inbox.read-lock-min-age" value="30s"/>
+	        <cm:property name="inbox.check-interval" value="60000"/>
+	        <cm:property name="inbox.read-lock-timeout" value="150000"/>
+	        
+	        <!-- properties for cron job that updates execution status -->
+	        <cm:property name="execution.status.updater.scheduling.startDelaySeconds" value="60"/>
+	        <cm:property name="execution.status.updater.scheduling.misfireThreshold" value="60000"/>
+	        <cm:property name="execution.status.updater.scheduling.cron" value="0 0/5 * ? * * *"/>
+	        
 		</cm:default-properties>
 		
 	</cm:property-placeholder>
@@ -102,7 +115,18 @@
 	<reference id="resultConverter"
 		interface="org.enquery.encryptedquery.responder.data.transformation.ResultTypeConverter"
 		ext:proxy-method="classes"/>		
-		
-	<reference id="streamingResultsCollector"
-		interface="org.enquery.encryptedquery.responder.business.results.StreamingResultCollector"/>
-</blueprint>
+ 
+ 	<reference id="executionStatusUpdater" interface="org.enquery.encryptedquery.responder.business.execution.ExecutionStatusUpdater"
+	 		ext:proxy-method="classes"/> 
+ 
+ 	<bean id="execution-status-updater-quartz" class="org.apache.camel.component.quartz2.QuartzComponent">
+	    <property name="startDelayedSeconds" value="#{execution.status.updater.scheduling.startDelaySeconds}"/>
+	    <property name="properties">
+	    	<props>
+	    		<prop key="org.quartz.threadPool.threadCount">1</prop>
+	    		<prop key="org.quartz.jobStore.misfireThreshold">#{execution.status.updater.scheduling.misfireThreshold}</prop>
+	    	</props>
+	    </property>
+	</bean>
+	
+ </blueprint>

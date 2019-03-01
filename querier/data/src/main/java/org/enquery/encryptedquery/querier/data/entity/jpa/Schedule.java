@@ -36,7 +36,7 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
-import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 
 @Entity
 @Table(name = "schedules")
@@ -63,7 +63,7 @@ public class Schedule {
 	public static final String ALL_ENTITY_GRAPH = "Schedule.all";
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@Column(nullable = false, name = "start_time")
@@ -94,6 +94,9 @@ public class Schedule {
 
 	@Column(name = "responder_results_uri")
 	private String responderResultsUri;
+
+	@Column(name = "error_msg")
+	private String errorMessage;
 
 	public Schedule() {}
 
@@ -191,6 +194,14 @@ public class Schedule {
 		this.responderId = responderId;
 	}
 
+	public String getErrorMessage() {
+		return errorMessage;
+	}
+
+	public void setErrorMessage(String errorMessage) {
+		this.errorMessage = errorMessage;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -229,4 +240,5 @@ public class Schedule {
 		builder.append("Schedule [id=").append(id).append("]");
 		return builder.toString();
 	}
+
 }

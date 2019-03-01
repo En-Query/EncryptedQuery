@@ -34,6 +34,8 @@ public interface ExecutionRepository {
 
 	Collection<Execution> list();
 
+	Collection<Execution> listIncomplete();
+
 	Collection<Execution> list(DataSchema dataSchema, DataSource dataSource);
 
 	Execution add(Execution ex);

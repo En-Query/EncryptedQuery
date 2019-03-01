@@ -1,22 +1,22 @@
-.HomePage {
+.LogoSection {
   text-align: center;
 }
 
-.HomePage-logo {
+.LogoSection-logo {
   height: 80px;
 }
 
-.HomePage-header {
+.LogoSection-header {
   background-color: #222;
-  height: 150px;
+  height: 200px;
   padding: 20px;
   color: white;
 }
 
-.HomePage-title {
+.LogoSection-title {
   font-size: 1.5em;
 }
 
-.HomePage-intro {
+.LogoSection-intro {
   font-size: large;
 }

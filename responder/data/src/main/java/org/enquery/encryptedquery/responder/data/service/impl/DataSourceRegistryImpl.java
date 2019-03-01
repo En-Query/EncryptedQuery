@@ -21,8 +21,8 @@ import java.util.Collection;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
@@ -37,6 +37,8 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ReferencePolicyOption;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,15 +49,19 @@ public class DataSourceRegistryImpl implements DataSourceRegistry {
 
 	private Collection<DataSource> dataSources = new CopyOnWriteArrayList<>();
 
-	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
-	private JpaTemplate jpa;
-
 	@Reference
 	private DataSchemaService dataSchemaRepo;
 
+	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
 	@Activate
-	void activate() {
+	void init() {
 		log.info("Activating Data Source Registry");
+		em = provider.getResource(txControl);
 		resolveReferences();
 	}
 
@@ -75,8 +81,14 @@ public class DataSourceRegistryImpl implements DataSourceRegistry {
 	}
 
 	private void resolveReferences() {
-		resolveDataSourceIds();
-		resolveDataSchemaReferences();
+		if (txControl == null) return;
+		txControl
+				.build()
+				.required(() -> {
+					resolveDataSourceIds();
+					resolveDataSchemaReferences();
+					return 0;
+				});
 	}
 
 	@Deactivate
@@ -111,9 +123,11 @@ public class DataSourceRegistryImpl implements DataSourceRegistry {
 	}
 
 	private Integer generateId(String name) {
-		if (jpa == null) return null;
-		return jpa.txExpr(TransactionType.Required,
-				em -> {
+		if (txControl == null) return null;
+
+		return txControl
+				.build()
+				.required(() -> {
 					DataSourceId dataSourceId = em
 							.createQuery(
 									"Select ds From DataSourceId ds Where ds.name = :name",

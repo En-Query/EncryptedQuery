@@ -6,7 +6,9 @@ import moment from "moment";
 
 import createHistory from "history/createBrowserHistory";
 
-import HomePage from "../routes/HomePage";
+import LogoSection from "./logo-section.js";
+import VerticalNavBar from "./NavigationBar.js";
+
 import "../css/QuerySchedulesStatus.css";
 
 class QuerySchedulesStatus extends React.Component {
@@ -95,7 +97,6 @@ class QuerySchedulesStatus extends React.Component {
         const isIncomplete = response.some(
           response => response.data.data.status !== "Complete"
         );
-        //console.log(response.data.data), this will cause the setTimeout not to fire.
         const dataSourceNames = response.flatMap(
           ({ data: { included } }, index) =>
             included.reduce((memo, { type, name }) => {
@@ -133,7 +134,7 @@ class QuerySchedulesStatus extends React.Component {
   handleButtonView = (status, scheduleSelfUri) => {
     switch (status) {
       case `Pending`:
-        return <button className="btnNoAction"> NO ACTION ... </button>;
+        return <button className="btnNoAction"> PENDING ... </button>;
       case `InProgress`:
         return <button> IN PROGRESS ... </button>;
       case `Complete`:
@@ -146,7 +147,7 @@ class QuerySchedulesStatus extends React.Component {
           </button>
         );
       case `Failed`:
-        return <button> Failed </button>;
+        return <button> FAILED </button>;
       default:
         return null;
     }
@@ -159,7 +160,29 @@ class QuerySchedulesStatus extends React.Component {
     await this.setState({ scheduleSelfUri });
     console.log(this.state.scheduleSelfUri);
     localStorage.setItem("scheduleSelfUri", this.state.scheduleSelfUri);
-    this.props.history.push(`/querier/queryresults`);
+    try {
+      const schedulesSelfUri = localStorage.getItem("scheduleSelfUri");
+      const response = await axios({
+        method: "get",
+        url: `${schedulesSelfUri}`,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      const resultsUri = response.data.data.resultsUri;
+
+      this.setState({ resultsUri: resultsUri }, () => {
+        console.log(
+          "ResultsUri being stored to localStorage from scheduleSelfUri response",
+          resultsUri
+        );
+      });
+      localStorage.setItem("resultsUri", resultsUri);
+    } catch (error) {
+      return "Error assigning resultsUri to localStorage", error;
+    }
+
+    this.props.history.push(`/queryresults`);
   };
 
   render() {
@@ -169,8 +192,8 @@ class QuerySchedulesStatus extends React.Component {
 
     return (
       <div>
-        <HomePage />
-
+        <LogoSection />
+        <VerticalNavBar />
         <table id="queries">
           <caption> Query Schedules Status </caption>
           <tr>

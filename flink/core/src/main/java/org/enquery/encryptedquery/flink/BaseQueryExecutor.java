@@ -83,7 +83,7 @@ public class BaseQueryExecutor implements FlinkTypes {
 	protected boolean initialized;
 	protected long windowSizeInSeconds;
 	protected Long runtimeSeconds;
-	protected String jobName = "Encrypted Query Streaming";
+	protected String jobName;
 
 	public Map<String, String> getConfig() {
 		return config;
@@ -177,7 +177,7 @@ public class BaseQueryExecutor implements FlinkTypes {
 				.setParallelism(1);
 
 		// execute program
-		env.execute("Encrypted Query Batch");
+		env.execute(jobName);
 	}
 
 	public void initializeCommon() throws Exception {
@@ -222,6 +222,7 @@ public class BaseQueryExecutor implements FlinkTypes {
 								selectorFieldName,
 								queryInfo.getEmbedSelector()));
 
+		jobName = "Encrypted Query -> " + outputFileName.getFileName().toString();
 		initialized = true;
 	}
 

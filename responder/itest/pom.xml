@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.1.0</version>
+		<version>2.1.1</version>
 	</parent>
     
     <artifactId>encryptedquery-responder-itests</artifactId>
@@ -44,7 +44,15 @@
             <scope>test</scope>
             <version>1.0</version>
         </dependency>  
-        
+        <dependency>
+			<groupId>org.apache.aries.tx-control</groupId>
+			<artifactId>tx-control-service-local</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.apache.aries.tx-control</groupId>
+		    <artifactId>tx-control-provider-jpa-local</artifactId>
+		</dependency>
+		
         <!-- Derby needed for testing Flink-Jdbc queries -->
     	<dependency>
 			<groupId>org.apache.derby</groupId>
@@ -196,6 +204,12 @@
         	<artifactId>encryptedquery-flink-kafka-runner</artifactId>
         	<version>${project.version}</version>
         </dependency>
+		<dependency>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-clients</artifactId>
+			<version>${kafka.version}</version>
+			<scope>compile</scope>
+		</dependency>
     </dependencies>
 
     <profiles>
@@ -238,6 +252,21 @@
 								</configuration>
 							</execution>
 							<execution>
+								<id>download-kafka</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>wget</goal>
+								</goals>
+								<configuration>
+									<retries>1</retries>
+									<!-- when Kafka version is changed, the url and sha512 need to be updated -->
+									<url>http://us.mirrors.quenda.co/apache/kafka/${kafka.version}/kafka_${kafka.scala.version}-${kafka.version}.tgz</url>
+									<unpack>true</unpack>
+									<outputDirectory>${project.build.directory}/kafka</outputDirectory>
+									<sha512>05a07e928c439b1084a6b3f6835f067f9636ac47f9473dcaaf7040d339cbd0a4561b7478531b237aa69e27f50fe3a2e7f4d0f2ba99a6422592a89ecf1187fa25</sha512>
+								</configuration>
+							</execution>
+							<execution>
 								<!-- download the Derby JDBC Drive onto the Flink installation's lib directory. -->
 								<id>download-derby-jar</id>
 								<phase>integration-test</phase>
@@ -274,6 +303,23 @@
 		            				</artifactItems>
 		            			</configuration>
 		            		</execution>
+		            		<execution>
+		            			<!-- get the Flink-Kafka application jar so we can run it -->
+		            			<id>download-flink-kafka</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>copy</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-flink-kafka</artifactId>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
 		            	</executions>
 		            </plugin>
 		            <plugin>
@@ -300,7 +346,9 @@
 		            		<!-- pass the downloaded artifact's directories as system properties -->
 		            		<systemPropertyVariables>
 		            			<flink.install.dir>${project.build.directory}/flink/flink-${flink.version}</flink.install.dir>
+		            			<kafka.install.dir>${project.build.directory}/kafka/kafka_${kafka.scala.version}-${kafka.version}</kafka.install.dir>
 		            			<flink.jdbc.app>${project.build.directory}/dependency/encryptedquery-flink-jdbc-${project.version}.jar</flink.jdbc.app>
+		            			<flink.kafka.app>${project.build.directory}/dependency/encryptedquery-flink-kafka-${project.version}.jar</flink.kafka.app>
 			                	<db.engine>derbydb</db.engine>
 		            		</systemPropertyVariables>
 		            	</configuration>

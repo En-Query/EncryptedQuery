@@ -27,13 +27,11 @@ import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  *
  */
-@Ignore("not deleting files for now for testing")
 public class ResponseFileVisitorTest {
 
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
@@ -44,7 +42,36 @@ public class ResponseFileVisitorTest {
 	}
 
 	@Test
-	public void test() throws IOException {
+	public void strangeFilePresentParentDirNotDeleted() throws IOException, InterruptedException {
+		Path day1 = RESPONSE_FILE_NAME.resolve("2019").resolve("11").resolve("1");
+		Files.createDirectories(day1);
+		Path strangeFile = day1.resolve("job-running");
+		createSampleFile(strangeFile);
+		Files.walkFileTree(RESPONSE_FILE_NAME, new ResponseFileVisitor(info -> true));
+		assertTrue(Files.exists(day1));
+		assertTrue(Files.exists(strangeFile));
+	}
+
+	@Test
+	public void testYoungFileNotDeleted() throws IOException, InterruptedException {
+		Path day1 = RESPONSE_FILE_NAME.resolve("2019").resolve("11").resolve("1");
+		Files.createDirectories(day1);
+		Path response1 = day1.resolve("073512-074513.xml");
+		createSampleFile(response1);
+		Files.walkFileTree(RESPONSE_FILE_NAME, new ResponseFileVisitor(info -> {
+			assertEquals(info.path, response1);
+			assertEquals(2019, info.year);
+			assertEquals(11, info.month);
+			assertEquals(1, info.day);
+			return true;
+		}));
+
+		assertTrue(Files.exists(day1));
+		assertTrue(Files.exists(response1));
+	}
+
+	@Test
+	public void testDeep() throws IOException, InterruptedException {
 		Path day1 = RESPONSE_FILE_NAME.resolve("2019").resolve("11").resolve("1");
 		Files.createDirectories(day1);
 
@@ -76,6 +103,9 @@ public class ResponseFileVisitorTest {
 		Files.createDirectories(badDay);
 		Path responseBadDay = badDay.resolve("233005-233506.xml");
 		createSampleFile(responseBadDay);
+
+		// wait a little because it won't delete files younger than 5 seconds
+		Thread.sleep(5000);
 
 		Files.walkFileTree(RESPONSE_FILE_NAME,
 				new ResponseFileVisitor(info -> {

@@ -17,7 +17,7 @@
 package org.enquery.encryptedquery.responder.it.util;
 
 import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
-import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.editConfigurationFilePut;
+import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -68,9 +68,8 @@ public class DerbyBookDatabase {
 	// @Configuration
 	public Option[] configuration() {
 		return CoreOptions.options(
-				editConfigurationFilePut("etc/system.properties",
-						"derby.language.logStatementText",
-						"true"),
+				systemProperty("derby.language.logStatementText")
+						.value("true"),
 				mavenBundle()
 						.groupId("org.apache.derby")
 						.artifactId("derbyclient")

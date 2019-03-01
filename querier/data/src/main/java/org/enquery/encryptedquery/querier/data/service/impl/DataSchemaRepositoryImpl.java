@@ -21,16 +21,17 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.stream.Collectors;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.service.DataSchemaRepository;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 /**
  * A {@link org.enquery.encryptedquery.responder.data.entity.DataSource} service which we rest
@@ -39,12 +40,16 @@ import org.slf4j.LoggerFactory;
 @Component
 public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 
-	private static final Logger log = LoggerFactory.getLogger(DataSchemaRepositoryImpl.class);
-
 	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
 
-	public DataSchemaRepositoryImpl() {}
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -53,7 +58,10 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 	 */
 	@Override
 	public DataSchema find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(DataSchema.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(DataSchema.class, id));
 	}
 
 	/*
@@ -64,9 +72,10 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<DataSchema> list() {
-		log.info("Listing all Data Schemas");
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds From DataSchema ds").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds From DataSchema ds").getResultList());
 	}
 
 	/*
@@ -76,7 +85,9 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 	 */
 	@Override
 	public DataSchema update(DataSchema ds) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(ds));
+		return txControl
+				.build()
+				.required(() -> em.merge(ds));
 	}
 
 	@Override
@@ -97,40 +108,52 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 				qs.getFields().stream().filter(e -> e.getId() != null).collect(Collectors.toList()).isEmpty(),
 				"At least one field id is not null.");
 
-		jpa.tx(em -> {
-			em.persist(qs);
-		});
-		return qs;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(qs);
+					return qs;
+				});
 	}
 
 	@Override
 	public void delete(int id) {
-		jpa.tx(em -> {
-			DataSchema schema = find(id);
-			if (schema != null) em.remove(schema);
-		});
+		txControl
+				.build()
+				.required(() -> {
+					DataSchema schema = find(id);
+					if (schema != null) em.remove(schema);
+					return 0;
+				});
 	}
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			list().forEach(ds -> em.remove(ds));
-		});
+		txControl
+				.build()
+				.required(() -> {
+					list().forEach(ds -> em.remove(ds));
+					return 0;
+				});
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<String> listNames() {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds.name From DataSchema ds").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds.name From DataSchema ds").getResultList());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public DataSchema findByName(String name) {
 		Validate.notBlank(name);
-		return jpa.txExpr(TransactionType.Supports,
-				em -> {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					Iterator<DataSchema> iter = em
 							.createQuery("Select ds From DataSchema ds Where ds.name = :name)")
 							.setParameter("name", name)
@@ -144,23 +167,24 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 		Validate.notNull(dataSchema);
 		Validate.notNull(dataSchema.getFields());
 
-		DataSchema[] result = {dataSchema};
-		jpa.tx(em -> {
-			DataSchema prev = findByName(dataSchema.getName());
-			if (prev != null) {
-				prev.getFields().clear();
-				prev = em.merge(prev);
-				em.flush();
+		return txControl
+				.build()
+				.required(() -> {
+					DataSchema prev = findByName(dataSchema.getName());
+					if (prev != null) {
+						prev.getFields().clear();
+						prev = em.merge(prev);
+						em.flush();
 
-				for (DataSchemaField f : dataSchema.getFields()) {
-					f.setDataSchema(prev);
-					prev.getFields().add(f);
-				}
-				result[0] = em.merge(prev);
-			} else {
-				em.persist(dataSchema);
-			}
-		});
-		return result[0];
+						for (DataSchemaField f : dataSchema.getFields()) {
+							f.setDataSchema(prev);
+							prev.getFields().add(f);
+						}
+						return em.merge(prev);
+					} else {
+						em.persist(dataSchema);
+						return dataSchema;
+					}
+				});
 	}
 }

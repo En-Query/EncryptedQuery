@@ -51,7 +51,7 @@ import org.enquery.encryptedquery.responder.data.entity.Execution;
  * 2019/01/22/090920-090929.xml etc.
  * 
  */
-public interface StreamingResultCollector {
+public interface ResultCollector {
 
 	public void collect(Execution execution) throws IOException;
 

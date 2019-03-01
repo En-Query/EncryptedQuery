@@ -36,6 +36,7 @@ import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceLau
  * mini MapReduce cluster on the local machine and also sets up the environment for Pig to run on
  * top of the mini cluster.
  */
+@SuppressWarnings("deprecation")
 public class MiniCluster extends MiniGenericCluster {
 	private static final File CONF_DIR = new File("target/classes");
 	private static final File CONF_FILE = new File(CONF_DIR, "hadoop-site.xml");

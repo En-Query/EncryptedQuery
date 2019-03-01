@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.responder.it.util.FlinkJdbcRunnerConfigurator;
 import org.enquery.encryptedquery.xml.schema.DataSource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
@@ -45,9 +46,12 @@ public class DataSourceRestServiceIT extends BaseRestServiceItest {
 	@Inject
 	private ConfigurationAdmin confAdmin;
 
+	private FlinkDriver flinkDriver = new FlinkDriver();
+
 	@Configuration
 	public Option[] configuration() {
-		return super.baseOptions();
+		return combineOptions(super.baseOptions(),
+				flinkDriver.configuration());
 	}
 
 	@Before

@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -28,7 +30,6 @@ import javax.inject.Inject;
 import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
@@ -76,15 +77,16 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 
 	@Configuration
 	public Option[] configuration() {
-		return ArrayUtils.addAll(super.baseOptions(),
-				flinkDriver.configuration());
+		return combineOptions(super.baseOptions(),
+				flinkDriver.configuration(),
+				derbyDatabase.configuration());
 	}
 
 	@ProbeBuilder
 	@Override
 	public TestProbeBuilder probeConfiguration(TestProbeBuilder probe) {
 		super.probeConfiguration(probe);
-		flinkDriver.probeConfiguration(probe);
+		derbyDatabase.probeConfiguration(probe);
 		return probe;
 	}
 
@@ -97,8 +99,12 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		booksDataSchema = retrieveDataSchemaByName("Books");
 		installFlinkJdbcDataSource(DATA_SOURCE_NAME, booksDataSchema.getDataSchema().getName());
 		DataSourceResources dataSources = retrieveDataSources("/responder/api/rest/datasources");
-		assertEquals(1, dataSources.getDataSourceResource().size());
-		dataSourceResource = dataSources.getDataSourceResource().get(0);
+		dataSourceResource = dataSources
+				.getDataSourceResource()
+				.stream()
+				.filter(ds -> DATA_SOURCE_NAME.equals(ds.getDataSource().getName()))
+				.findFirst()
+				.get();
 
 		flinkDriver.init();
 		derbyDatabase.init();
@@ -116,6 +122,7 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		Execution ex = new Execution();
 		GregorianCalendar cal = new GregorianCalendar();
 		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
+		log.info("Schedule job: " + ex);
 
 		Querier querier = createQuerier();
 		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
@@ -141,6 +148,33 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		assertEquals(resource.getCreatedOn(), resultWithPayload.getCreatedOn());
 		assertNotNull(resultWithPayload.getPayload());
 		// TODO: download and decrypt the response
+	}
+
+
+	@Test
+	public void fileAlreadyExistsError() throws Exception {
+		Querier querier = createQuerier();
+		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
+
+
+		// schedule for next minute so we have time to create the file to force error
+		DatatypeFactory dtf = DatatypeFactory.newInstance();
+		GregorianCalendar cal = new GregorianCalendar();
+		cal.add(GregorianCalendar.MINUTE, 1);
+
+		// Now add an execution and test its retrieval
+		Execution ex = new Execution();
+		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
+		ex.setQuery(xmlQuery);
+		ExecutionResource created = createExecution(dataSourceResource.getExecutionsUri(), ex);
+
+		Files.createFile(Paths.get("data", "responses", "response-" + created.getId() + ".xml"));
+
+		tryUntilTrue(100,
+				3_000,
+				"Timeout waiting for an execution to have error message.",
+				uri -> retrieveExecution(created.getSelfUri()).getExecution().getErrorMessage() != null,
+				null);
 	}
 
 	private static final Integer DATA_CHUNK_SIZE = 1;

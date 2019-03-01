@@ -9,8 +9,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collection;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Decryption;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval;
@@ -18,37 +18,53 @@ import org.enquery.encryptedquery.querier.data.service.BlobRepository;
 import org.enquery.encryptedquery.querier.data.service.DecryptionRepository;
 import org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.querier.data.transformation.URIUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class DecryptionRepoImpl implements DecryptionRepository {
 
 	private static final String RESPONSE_FILE_NAME = "clear-response.xml";
 
-	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
 	@Reference
 	private BlobRepository blobRepo;
 
 	@Reference(target = "(type=blob)")
 	private ResourceUriRegistry blobLocation;
 
+	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
+
 	@Override
 	public Decryption find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(Decryption.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Decryption.class, id));
 	}
 
 	@Override
 	public Decryption findForRetrieval(Retrieval retrieval, int id) {
 		Validate.notNull(retrieval);
 
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery(
-						"   Select d From Decryption d "
-								+ " Join   d.retrieval r "
-								+ " Where  r = :retrieval  "
-								+ " And    d.id = :id",
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select d From Decryption d "
+						+ " Join   d.retrieval r "
+						+ " Where  r = :retrieval  "
+						+ " And    d.id = :id",
 						Decryption.class)
 						.setParameter("retrieval", em.find(Retrieval.class, retrieval.getId()))
 						.setParameter("id", id)
@@ -63,8 +79,10 @@ public class DecryptionRepoImpl implements DecryptionRepository {
 	public Collection<Decryption> listForRetrieval(Retrieval result) {
 		Validate.notNull(result);
 
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select d From Decryption d Join d.retrieval r Where r = :retrieval ",
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select d From Decryption d Join d.retrieval r Where r = :retrieval ",
 						Decryption.class)
 						.setParameter("retrieval", em.find(Retrieval.class, result.getId()))
 						.getResultList());
@@ -73,26 +91,35 @@ public class DecryptionRepoImpl implements DecryptionRepository {
 	@Override
 	public Decryption add(Decryption r) {
 		Validate.notNull(r);
-		jpa.tx(em -> em.persist(r));
-		return r;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(r);
+					return r;
+				});
 	}
 
 	@Override
 	public Decryption update(Decryption r) {
 		Validate.notNull(r);
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(r));
+		return txControl
+				.build()
+				.required(() -> em.merge(r));
 	}
 
 	@Override
 	public void delete(Decryption retrieval) {
 		Validate.notNull(retrieval);
-		jpa.tx(em -> {
-			Decryption r = find(retrieval.getId());
-			if (r != null) {
-				em.remove(r);
-				deleteDecryptionBlobs(r);
-			}
-		});
+		txControl
+				.build()
+				.required(() -> {
+					Decryption r = find(retrieval.getId());
+					if (r != null) {
+						em.remove(r);
+						deleteDecryptionBlobs(r);
+					}
+					return 0;
+				});
 	}
 
 	private void deleteDecryptionBlobs(Decryption r) {
@@ -107,21 +134,26 @@ public class DecryptionRepoImpl implements DecryptionRepository {
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			em.createQuery("Select d From Decryption d", Decryption.class)
-					.getResultList()
-					.forEach(r -> {
-						em.remove(r);
-						deleteDecryptionBlobs(r);
-					});
-		});
+		txControl
+				.build()
+				.required(() -> {
+					em.createQuery("Select d From Decryption d", Decryption.class)
+							.getResultList()
+							.forEach(r -> {
+								em.remove(r);
+								deleteDecryptionBlobs(r);
+							});
+					return 0;
+				});
 	}
 
 	@Override
 	public InputStream payloadInputStream(Decryption retrieval) throws IOException {
 		Validate.notNull(retrieval);
-		Decryption r = jpa.txExpr(TransactionType.Supports,
-				em -> em.find(Decryption.class, retrieval.getId()));
+		Decryption r = txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Decryption.class, retrieval.getId()));
 
 		Validate.notNull(r, "Decryption with id %d not found.", retrieval.getId());
 
@@ -132,9 +164,10 @@ public class DecryptionRepoImpl implements DecryptionRepository {
 
 	@Override
 	public Decryption updatePayload(Decryption d, InputStream inputStream) throws IOException {
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					Decryption r = em.find(Decryption.class, d.getId());
 					Validate.notNull(r);
 

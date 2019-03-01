@@ -30,7 +30,7 @@ import javax.persistence.Table;
 public class DataSchemaField {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dschema_field_seq")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@ManyToOne()

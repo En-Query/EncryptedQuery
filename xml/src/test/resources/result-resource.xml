@@ -3,6 +3,8 @@
 	<id xmlns="http://enquery.net/encryptedquery/resource">4</id>
 	<selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/5/datasources/5/executions/5/results/4</selfUri>
 	<createdOn>2018-11-12T15:31:05.000-05:00</createdOn>
+	<windowStart>2018-11-12T15:30:00.000-05:00</windowStart>
+	<windowEnd>2018-11-12T15:31:00.000-05:00</windowEnd>
 	<execution>
 		<id xmlns="http://enquery.net/encryptedquery/resource">5</id>
 		<selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/5/datasources/5/executions/5</selfUri>

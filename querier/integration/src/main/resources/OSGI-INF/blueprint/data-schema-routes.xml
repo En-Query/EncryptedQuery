@@ -77,7 +77,8 @@
 		<route id="store-data-schemas">
 			<from uri="direct:store-data-schemas"/>
 		
- 			<log message="Received: ${body}"/>
+ 		<!-- 	<log message="Received: ${body}"/>  -->
+ 		<log message="Received Data Schemas Update from Responder" />
 			<unmarshal ref="dataSchemaFormat"/>
 
 			<split>

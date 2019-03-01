@@ -177,11 +177,17 @@ public class BaseRestServiceItest extends AbstractResponderItest {
 
 	protected ExecutionResource retrieveExecution(String uri) {
 		assertNotNull(uri);
-		return retrieve(uri, 200, DEFAULT_ACCEPT)
-				.getReceivedExchanges()
-				.get(0)
-				.getMessage()
-				.getBody(ExecutionResource.class);
+
+		Map<String, Object> headers = new HashMap<>();
+		headers.put(Exchange.HTTP_PATH, uri);
+		headers.put("Accept", DEFAULT_ACCEPT);
+
+		return testProducer.requestBodyAndHeaders("direct:retrieve", null, headers, ExecutionResource.class);
+		// return retrieve(uri, 200, DEFAULT_ACCEPT)
+		// .getReceivedExchanges()
+		// .get(0)
+		// .getMessage()
+		// .getBody(ExecutionResource.class);
 	}
 
 	protected ResultResource retrieveResult(String uri) {
@@ -273,26 +279,6 @@ public class BaseRestServiceItest extends AbstractResponderItest {
 				.getMessage()
 				.getBody(DataSchemaResources.class);
 	}
-
-	/*-
-		protected String resolveDataSchemasUri() throws InterruptedException {
-			ResourceCollectionResponse resources = invoke("/responder/api/rest/",
-					200,
-					DEFAULT_ACCEPT,
-					resourcesResultMock,
-					"direct:retrieve-resources")
-							.getReceivedExchanges()
-							.get(0)
-							.getMessage()
-							.getBody(ResourceCollectionResponse.class);
-			assertNotNull(resources);
-	
-			return resources.getData().stream()
-					.filter(r -> "dataschema".equals(r.getId()))
-					.findFirst()
-					.get()
-					.getSelfUri();
-		}*/
 
 	private MockEndpoint retrieve(String remoteUri, int expectedResponseCode, String acceptValue) {
 		return invoke(remoteUri,

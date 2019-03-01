@@ -103,7 +103,13 @@ public class RecordExtractor {
 						Object element = partitioner.fieldDataFromPartitionedBytes(parts, partsIndex, dataElement.getDataType(), schemaElement);
 						// logger.info("Extracted field '{}' with value '{}'",
 						// schemaElement.getName(), element);
-						qrRecord.add(schemaElement.getName(), element);
+
+						// We do not need to caputure the selector field in record (redundant)
+						if (!schemaElement.getName().equals(queryInfo.getQuerySchema().getSelectorField())) {
+							qrRecord.add(schemaElement.getName(), element);
+						}
+
+
 						int size = calcElementSize(partitioner, schemaElement, dataElement, element);
 						partsIndex += size;
 						if (partsIndex >= parts.size()) {

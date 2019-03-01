@@ -35,7 +35,7 @@ import javax.persistence.Table;
 public class DataSchema {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dschema_seq")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@Column(name = "name", nullable = false, unique = true)

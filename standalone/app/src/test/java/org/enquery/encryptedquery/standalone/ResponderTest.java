@@ -23,7 +23,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,11 +54,9 @@ import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.utils.RandomProvider;
-import org.enquery.encryptedquery.xml.transformation.QueryKeyTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,7 +132,7 @@ public class ResponderTest {
 	public void testXertaFile() throws Exception {
 
 		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
-		
+
 		querySchema = createXertaQuerySchema();
 
 		List<String> selectors = Arrays.asList(new String[] {"MTX", "LTEC", "S3F", "GBRA", "KCC", "NESR"});
@@ -172,7 +169,9 @@ public class ResponderTest {
 
 		final Map<String, Object> returnedFields = new HashMap<>();
 		Selector selector = answer.selectorByName("Mnemonic");
+		assertNotNull(selector);
 		selector.forEachHits(hits -> {
+			assertEquals("MTX", hits.getSelectorValue());
 			hits.forEachRecord(record -> {
 				record.forEachField(field -> {
 					log.info("Field {}", field);
@@ -180,39 +179,6 @@ public class ResponderTest {
 				});
 			});
 		});
-		
-		assertNotNull(selector);
-
-		assertEquals("MTX", returnedFields.get("Mnemonic"));
-
-
-		// selector.forEachHits(hits -> {
-		// assertEquals("TC1", hits.getSelectorValue());
-		// assertEquals(1, hits.recordCount());
-		// hits.forEachRecord(hit -> {
-		// hit.forEachField(field -> {
-		// log.info("Field {}", field);
-		// if (field.getName().equals("Mnemonic")) {
-		// assertEquals("TC1", field.getValue());
-		// }
-		// });
-		// });
-		// });
-	}
-
-	@SuppressWarnings("static-access")
-	private QueryKey loadQueryKey(Path fileName) throws FileNotFoundException, IOException, JAXBException {
-		QueryKeyTypeConverter qtc = new QueryKeyTypeConverter();
-		try (InputStream is = new FileInputStream(fileName.toFile())) {
-			return qtc.toCore(qtc.unmarshal(is));
-		}
-	}
-
-	private Query loadQuery(Path fileName) throws JAXBException, FileNotFoundException, IOException {
-		QueryTypeConverter qtc = new QueryTypeConverter();
-		try (InputStream is = new FileInputStream(fileName.toFile())) {
-			return qtc.toCoreQuery(qtc.unmarshal(is));
-		}
 	}
 
 	@Test
@@ -324,7 +290,7 @@ public class ResponderTest {
 
 		return qs;
 	}
-	
+
 	private QuerySchema createXertaQuerySchema() {
 		DataSchema ds = new DataSchema();
 		ds.setName("xerta");
@@ -376,7 +342,7 @@ public class ResponderTest {
 		dse7.setIsArray(false);
 		dse7.setPosition(2);
 		ds.addElement(dse7);
-		
+
 		DataSchemaElement dse9 = new DataSchemaElement();
 		dse9.setName("SecurityID");
 		dse9.setDataType(FieldTypes.INT);
@@ -390,14 +356,14 @@ public class ResponderTest {
 		dse10.setIsArray(false);
 		dse10.setPosition(0);
 		ds.addElement(dse10);
-		
+
 		DataSchemaElement dse11 = new DataSchemaElement();
 		dse11.setName("Time");
 		dse11.setDataType(FieldTypes.STRING);
 		dse11.setIsArray(false);
 		dse11.setPosition(7);
 		ds.addElement(dse11);
-		
+
 		QuerySchema qs = new QuerySchema();
 		qs.setName("xerta");
 		qs.setSelectorField("Mnemonic");
@@ -454,5 +420,5 @@ public class ResponderTest {
 
 		return qs;
 	}
-	
+
 }

@@ -28,12 +28,9 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.List;
 
 import javax.persistence.EntityManager;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
@@ -43,59 +40,83 @@ import org.enquery.encryptedquery.responder.data.service.BlobLocationRegistry;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
 import org.enquery.encryptedquery.responder.data.transformation.URIUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class ExecutionRepoImpl implements ExecutionRepository {
 
-	private static final Logger log = LoggerFactory.getLogger(ExecutionRepoImpl.class);
-
 	private static final String QUERY_FILE_NAME = "query.xml";
 	private static final String STD_OUPUT_FILE_NAME = "stdout.log";
 
-	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
-	private JpaTemplate jpa;
 	@Reference
 	private DataSourceRegistry dataSourceRegistry;
 
 	@Reference
 	private BlobLocationRegistry blobLocationRegistry;
 
+	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
+
+
 	@Override
 	public Collection<Execution> list() {
-		log.info("Retrieving all Executions");
-		List<Execution> result = jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery(
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
 						"Select ex From Execution ex",
 						Execution.class).getResultList());
-		log.info("Returning Execution list of size: {}", result.size());
-		return result;
 	}
 
 	@Override
 	public Execution find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(Execution.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Execution.class, id));
 	}
 
 	@Override
 	public Execution add(Execution ex) {
-		return jpa.txExpr(TransactionType.Required, em -> {
-			em.persist(ex);
-			return ex;
-		});
+		Validate.notNull(ex);
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(ex);
+					return ex;
+				});
 	}
 
 	@Override
 	public Execution update(Execution ex) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(ex));
+		return txControl
+				.build()
+				.required(() -> em.merge(ex));
 	}
 
 	@Override
 	public void delete(int id) {
-		jpa.tx(em -> em.remove(find(id)));
+		txControl
+				.build()
+				.required(() -> {
+					Execution ex = find(id);
+					if (ex != null) {
+						em.remove(ex);
+					}
+					return 0;
+				});
 	}
 
 	@Override
@@ -103,9 +124,10 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 		Validate.notNull(dataSchema);
 		Validate.notNull(dataSource);
 
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> em.createQuery("Select ex From Execution ex "
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ex From Execution ex "
 						+ "Where ex.dataSourceName = :dataSourceName "
 						+ "And   ex.dataSchema = :dataSchema ",
 						Execution.class)
@@ -132,9 +154,10 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 	public Execution findForDataSource(DataSource dataSource, int id) {
 		Validate.notNull(dataSource);
 
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					DataSource ds = dataSourceRegistry.find(dataSource.getDataSchema(), dataSource.getId());
 					Validate.notNull(ds, "Data Source not found:" + dataSource);
 
@@ -155,9 +178,11 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 
 	@Override
 	public Execution updateQueryBytes(int executionId, byte[] bytes) throws IOException {
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		Validate.notNull(bytes);
+		Validate.isTrue(bytes.length > 0L, "Query byte[] is empty.");
+		return txControl
+				.build()
+				.required(() -> {
 					Execution execution = find(executionId);
 					Validate.notNull(execution);
 
@@ -182,7 +207,8 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 	private void save(URL url, InputStream is) {
 		try {
 			try (OutputStream os = openURLOutputStream(url)) {
-				IOUtils.copyLarge(is, os);
+				long bytes = IOUtils.copyLarge(is, os);
+				Validate.isTrue(bytes > 0L, "Query stream is empty.");
 			}
 		} catch (IOException e) {
 			throw new RuntimeException("Error saving Query to URL: " + url, e);
@@ -245,9 +271,10 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 
 	@Override
 	public OutputStream executionOutputOutputStream(int executionId) throws IOException {
-		URL url = jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		URL url = txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					Execution execution = find(executionId);
 					Validate.notNull(execution, "Execution id %d not found", executionId);
 					return makeUrl(execution, STD_OUPUT_FILE_NAME);
@@ -258,9 +285,10 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 
 	@Override
 	public InputStream executionOutputInputStream(int executionId) throws IOException {
-		URL url = jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		URL url = txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					Execution execution = find(executionId);
 					Validate.notNull(execution, "Execution id %d not found", executionId);
 					return makeUrl(execution, STD_OUPUT_FILE_NAME);
@@ -274,9 +302,9 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 		Validate.notNull(ex);
 		Validate.notNull(inputStream);
 
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.required(() -> {
 					Execution execution = add(ex);
 					Validate.notNull(execution);
 
@@ -286,6 +314,23 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 					execution.setQueryLocation(url.toString());
 					return update(execution);
 				});
+
+	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.responder.data.service.ExecutionRepository#listIncomplete()
+	 */
+	@Override
+	public Collection<Execution> listIncomplete() {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
+						"Select ex From Execution ex Where ex.endTime is null",
+						Execution.class).getResultList());
 
 	}
 }

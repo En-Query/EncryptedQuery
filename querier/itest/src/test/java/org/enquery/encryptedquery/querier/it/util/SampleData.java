@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.enquery.encryptedquery.querier.data.entity.DataSourceType;
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
@@ -34,7 +35,6 @@ import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
 import org.enquery.encryptedquery.querier.data.entity.json.QuerySchema;
 import org.enquery.encryptedquery.querier.data.entity.json.QuerySchemaField;
 import org.enquery.encryptedquery.querier.data.entity.json.Resource;
-import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

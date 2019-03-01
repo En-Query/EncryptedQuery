@@ -21,7 +21,6 @@ import java.util.Map;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
-import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,14 +31,12 @@ public class ParseJson implements MapFunction<String, Row> {
 	static final Logger log = LoggerFactory.getLogger(ParseJson.class);
 
 	private final RowTypeInfo rowTypeInfo;
-	private final QuerySchema querySchema;
 
 	/**
 	 * @param rowTypeInfo
 	 */
-	public ParseJson(QuerySchema qschema, RowTypeInfo rowTypeInfo) {
+	public ParseJson(RowTypeInfo rowTypeInfo) {
 		this.rowTypeInfo = rowTypeInfo;
-		this.querySchema = qschema;
 	}
 
 	@Override
@@ -47,9 +44,9 @@ public class ParseJson implements MapFunction<String, Row> {
 		final boolean debugging = log.isDebugEnabled();
 
 		if (debugging) log.debug("Parsing JSON string: {}", value);
-		final Map<String, Object> map = JSONStringConverter.toStringObjectMapFromList(querySchema.getDataSchema().elementNames(), value);
+		final Map<String, Object> map = JSONStringConverter.toStringObjectFlatMap(value);
 
-		// if (debugging) log.debug("Converted to map: {}", map.toString());
+		if (debugging) log.debug("Converted to map: {}", map.toString());
 
 		final String[] fieldNames = rowTypeInfo.getFieldNames();
 		final int arity = rowTypeInfo.getArity();
@@ -58,12 +55,18 @@ public class ParseJson implements MapFunction<String, Row> {
 			final String fieldName = fieldNames[i];
 			final Object fieldValue = map.get(fieldName);
 
-			// if (debugging) log.debug("responder ParseJson - Index:{}, name: '{}', value: {}", i,
-			// fieldName, fieldValue);
+			if (debugging) {
+				log.debug("responder ParseJson - Index:{}, name: '{}', value: {}, value type: {}",
+						i,
+						fieldName,
+						fieldValue,
+						(fieldValue != null) ? fieldValue.getClass() : "null value");
+			}
+
 			result.setField(i, fieldValue);
 		}
 
-		if (debugging) log.debug("Parsed to: {}", result);
+		if (debugging) log.debug("Parsed to Row: {}", result);
 		return result;
 	}
 }

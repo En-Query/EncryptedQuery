@@ -18,17 +18,19 @@ package org.enquery.encryptedquery.responder.data.service.impl;
 
 
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +44,15 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	private static final Logger log = LoggerFactory.getLogger(DataSchemaServiceImpl.class);
 
 	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
-	private JpaTemplate jpa;
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
 
-	public DataSchemaServiceImpl() {}
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -53,9 +61,10 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	 */
 	@Override
 	public DataSchema findByName(String name) {
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em
-						.createQuery("Select ds From DataSchema ds Where ds.name = :name", DataSchema.class)
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds From DataSchema ds Where ds.name = :name", DataSchema.class)
 						.setParameter("name", name)
 						.getResultList()
 						.stream()
@@ -65,7 +74,11 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 
 	@Override
 	public DataSchema find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(DataSchema.class, id));
+		// return jpa.txExpr(TransactionType.Supports, em -> em.find(DataSchema.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(DataSchema.class, id));
 	}
 
 	/*
@@ -75,11 +88,13 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	 */
 	@Override
 	public Collection<DataSchema> list() {
-		log.info("Getting all DataSchemas");
-		List<DataSchema> result = jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds From DataSchema ds", DataSchema.class).getResultList());
-		log.info("Returning DataSchema list of size: {}", result.size());
-		return result;
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
+						"Select ds From DataSchema ds",
+						DataSchema.class)
+						.getResultList());
 	}
 
 	/*
@@ -92,8 +107,9 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 		validateDataSchema(ds);
 		Validate.notNull(ds.getId());
 
-		return jpa.txExpr(TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.required(() -> {
 					DataSchema prev = em.find(DataSchema.class, ds.getId());
 					Validate.notNull(prev, "Can't update non existing data schema: %s", ds.toString());
 
@@ -106,8 +122,8 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 						f.setDataSchema(prev);
 						prev.getFields().add(f);
 					}
-
 					return em.merge(prev);
+
 				});
 	}
 
@@ -115,10 +131,12 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	public DataSchema add(DataSchema dataSchema) {
 		validateDataSchema(dataSchema);
 		Validate.isTrue(dataSchema.getId() == null);
-		jpa.tx(em -> {
-			em.persist(dataSchema);
-		});
-		return dataSchema;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(dataSchema);
+					return dataSchema;
+				});
 	}
 
 	private void validateDataSchema(DataSchema dataSchema) {
@@ -142,12 +160,15 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 
 	@Override
 	public void delete(String name) {
-		jpa.tx(em -> {
-			DataSchema dataSchema = findByName(name);
-			if (dataSchema != null) {
-				em.remove(dataSchema);
-			}
-		});
+		txControl
+				.build()
+				.required(() -> {
+					DataSchema dataSchema = findByName(name);
+					if (dataSchema != null) {
+						em.remove(dataSchema);
+					}
+					return 0;
+				});
 	}
 
 	/*
@@ -161,24 +182,27 @@ public class DataSchemaServiceImpl implements DataSchemaService {
 	public DataSchema addOrUpdate(DataSchema dataSchema) {
 		validateDataSchema(dataSchema);
 
-		DataSchema[] result = {dataSchema};
-		jpa.tx(em -> {
-			DataSchema prev = findByName(dataSchema.getName());
-			if (prev != null) {
-				prev.getFields().clear();
-				prev = em.merge(prev);
-				em.flush();
+		return txControl
+				.build()
+				.required(() -> {
+					DataSchema prev = findByName(dataSchema.getName());
+					DataSchema result;
+					if (prev != null) {
+						prev.getFields().clear();
+						prev = em.merge(prev);
+						em.flush();
 
-				for (DataSchemaField f : dataSchema.getFields()) {
-					f.setDataSchema(prev);
-					prev.getFields().add(f);
-				}
-				result[0] = em.merge(prev);
-			} else {
-				em.persist(dataSchema);
-			}
-		});
-		return result[0];
+						for (DataSchemaField f : dataSchema.getFields()) {
+							f.setDataSchema(prev);
+							prev.getFields().add(f);
+						}
+						result = em.merge(prev);
+					} else {
+						em.persist(dataSchema);
+						result = dataSchema;
+					}
+					return result;
+				});
 	}
 
 }

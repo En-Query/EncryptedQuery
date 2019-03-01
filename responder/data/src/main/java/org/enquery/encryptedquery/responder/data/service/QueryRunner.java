@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
+import org.enquery.encryptedquery.responder.data.entity.ExecutionStatus;
 
 /**
  * Base interface encapsulating adapters for external applications implementing the PIR algorithm.
@@ -40,12 +41,24 @@ public interface QueryRunner {
 	 * Executes the given query and store response to the specified responseFileName. The standard
 	 * output is captured in the provided stdOutFileName file.
 	 * 
-	 * @param query
-	 * @param parameters
+	 * @param query Query to run
+	 * @param parameters additional runtime parameters
 	 * @param responseFileName
 	 * @param stdOutput
+	 * @return If not null, an opaque handle that allows client to check if the execution has
+	 *         completed.
 	 */
-	void run(Query query, Map<String, String> parameters, String responseFileName, OutputStream stdOutput);
+	byte[] run(Query query, Map<String, String> parameters, String responseFileName, OutputStream stdOutput);
+
+	/**
+	 * The execution status given a handle as returned by run. Thins includes the completion time
+	 * and any error message in case the execution failed.
+	 * 
+	 * @param handle not null handle as returned by the `run` method.
+	 * @return True if query finished execution, false if still running, null if the status is
+	 *         unknown or unable to determine.
+	 */
+	ExecutionStatus status(byte[] handle);
 
 	/**
 	 * Unique name of this Query Runner.

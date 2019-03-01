@@ -24,22 +24,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import javax.xml.bind.JAXBException;
 
+import org.apache.commons.codec.Charsets;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.CoreConfigurationProperties;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.business.ChildProcessLogger;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
+import org.enquery.encryptedquery.responder.data.entity.ExecutionStatus;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.standalone.StandaloneConfigurationProperties;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
@@ -135,7 +142,7 @@ public class StandaloneQueryRunner implements QueryRunner {
 	}
 
 	@Override
-	public void run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
+	public byte[] run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
@@ -171,32 +178,39 @@ public class StandaloneQueryRunner implements QueryRunner {
 			Process proc = processBuilder.start();
 
 			// capture and log child process output in separate thread
-			threadPool.submit(
+			Future<?> logCaptureFuture = threadPool.submit(
 					new ChildProcessLogger(proc.getInputStream(),
 							log,
 							stdOutput));
 
 			int exitCode = proc.waitFor();
-
+			Date endDate = new Date();
 			log.info("Standalone execution exited with code: {}.", exitCode);
 
+			// wait for log capture to end
+			logCaptureFuture.get();
+
+			ExecutionStatus result = null;
 			if (exitCode != 0) {
-				throw new IOException("Error running Standalone Query Runner.");
+				result = new ExecutionStatus(endDate, "Standalone Query Runner exited with code: " + exitCode, false);
+			} else {
+				result = new ExecutionStatus(endDate, null, false);
 			}
 
-		} catch (IOException | InterruptedException | JAXBException e) {
-			// FileUtils.deleteQuietly(workingTempDir.toFile());
+			return JSONStringConverter.toString(result).getBytes();
+
+		} catch (IOException | InterruptedException | JAXBException | ExecutionException e) {
 			throw new RuntimeException("Error running Standalone Query Runner.", e);
 		} finally {
-			// FileUtils.deleteQuietly(workingTempDir.toFile());
+			FileUtils.deleteQuietly(workingTempDir.toFile());
 		}
 	}
 
 
 	private Path createConfigFile(Path dir, Map<String, String> parameters, Query query) throws FileNotFoundException, IOException {
 		Path result = dir.resolve("config.properties");
-        int maxHitsPerSelector = 1000;
-        
+		int maxHitsPerSelector = 1000;
+
 		Properties p = new Properties();
 
 		if (parameters != null) {
@@ -231,5 +245,21 @@ public class StandaloneQueryRunner implements QueryRunner {
 			queryTypeConverter.marshal(queryTypeConverter.toXMLQuery(query), os);
 		}
 		return result;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.responder.data.service.QueryRunner#status(byte[])
+	 */
+	@Override
+	public ExecutionStatus status(byte[] handle) {
+
+		Map<String, Object> map = JSONStringConverter.toStringObjectMap(new String(handle, Charsets.UTF_8));
+
+		Date endTime = new Date((Long) map.get("endTime"));
+		String error = (String) map.get("error");
+
+		return new ExecutionStatus(endTime, error, false);
 	}
 }

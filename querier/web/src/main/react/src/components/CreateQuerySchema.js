@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { withRouter } from "react-router-dom";
 import { Checkbox, CheckboxGroup } from "react-checkbox-group";
 
-import HomePage from "../routes/HomePage";
+import LogoSection from "./logo-section.js";
 import CreateQuery from "./CreateQuery";
 import "../css/CreateQuerySchema.css";
-
+import VerticalNavBar from "./NavigationBar.js";
 import axios from "axios";
 require("axios-debug")(axios);
 
@@ -181,7 +181,7 @@ class CreateQuerySchema extends React.Component {
         console.log(response);
       })
       .catch(error => console.log(error.response));
-    this.props.history.push("/querier/createquery");
+    this.props.history.push("/createquery");
   };
 
   render() {
@@ -193,13 +193,15 @@ class CreateQuerySchema extends React.Component {
       size,
       lengthType,
       maxArrayElements,
-      fieldNames
+      fieldNames,
+      selectedId
     } = this.state;
     const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
 
     return (
       <div>
-        <HomePage />
+        <LogoSection />
+        <VerticalNavBar />
         <form onSubmit={this.handleSubmit}>
           <fieldset>
             <legend>
@@ -211,15 +213,12 @@ class CreateQuerySchema extends React.Component {
                 <input
                   value={this.state.qsName}
                   onChange={this.handleChangeQsName}
-                  placeholder="example -- QuerySchema1"
+                  placeholder="Example -- QuerySchema1"
                   required
                 />
               </div>
               <div>
-                <label>
-                  {" "}
-                  Pick the dataschema to describe your data file:
-                </label>{" "}
+                <label> Pick the dataschema to describe your data file:</label>{" "}
                 <select
                   name="schemaName"
                   value={this.state.value}
@@ -234,31 +233,28 @@ class CreateQuerySchema extends React.Component {
                 </select>
               </div>
             </div>
-          </fieldset>
-          <div>
-            <fieldset>
-              <legend>
-                <h2> DataSchema Fields </h2>
-              </legend>
-              <div className="selectorField-div">
-                <div>
-                  <label>Selector Field:</label>{" "}
-                  <select
-                    value={this.state.selectorField}
-                    onChange={this.updateSelectorField}
-                    required
-                  >
-                    <option value="">Pick Selector Field...</option>
-                    {fields &&
-                      fields.map(field => {
-                        return <option value={field.name}>{field.name}</option>;
-                      })}
-                  </select>
-                </div>{" "}
-                {selectorField && (
+            {selectedId && (
+              <div>
+                <div className="selectorField-div">
+                  <div>
+                    <label>Selector Field:</label>{" "}
+                    <select
+                      value={this.state.selectorField}
+                      onChange={this.updateSelectorField}
+                      required
+                    >
+                      <option value="">Pick Selector Field...</option>
+                      {fields &&
+                        fields.map(field => {
+                          return (
+                            <option value={field.name}>{field.name}</option>
+                          );
+                        })}
+                    </select>
+                  </div>
                   <fieldset>
+                    <legend>Choose field names</legend>
                     <div>
-                      <legend>Choose field names</legend>
                       <CheckboxGroup
                         checkboxDepth={5}
                         name="fieldNames"
@@ -278,57 +274,59 @@ class CreateQuerySchema extends React.Component {
                       </CheckboxGroup>
                     </div>
                   </fieldset>
-                )}
+                </div>
+                <div className="CQS-input-boxes">
+                  {lastCheckedFieldName && (
+                    <div>
+                      <label>Length Type:</label>
+                      <select
+                        value={
+                          this.state.lengthType[lastCheckedFieldName] || ""
+                        }
+                        onChange={this.updateLengthType}
+                        required
+                      >
+                        <option value="">Select Length Type...</option>
+                        <option value="fixed">Fixed</option>
+                        <option value="variable">Variable</option>
+                      </select>
+                    </div>
+                  )}
+                  {lastCheckedFieldName && (
+                    <div>
+                      <label>Size:</label>
+                      <input
+                        value={this.state.size[lastCheckedFieldName] || 1}
+                        onChange={this.onSizeChange}
+                        type="number"
+                        name="size"
+                        min="1"
+                        placeholder="1"
+                        required
+                      />
+                    </div>
+                  )}
+                  {lastCheckedFieldName && (
+                    <div>
+                      <label>MaxArray Elements:</label>
+                      <input
+                        value={
+                          this.state.maxArrayElements[lastCheckedFieldName] || 1
+                        }
+                        onChange={this.onChangeMaxArrayElements}
+                        type="number"
+                        name="maxArrayElements"
+                        placeholder="1"
+                        min="1"
+                        max="100"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="CQS-input-boxes">
-                {lastCheckedFieldName && (
-                  <div>
-                    <label>Length Type:</label>
-                    <select
-                      value={this.state.lengthType[lastCheckedFieldName] || ""}
-                      onChange={this.updateLengthType}
-                      required
-                    >
-                      <option value="">Select Length Type...</option>
-                      <option value="fixed">Fixed</option>
-                      <option value="variable">Variable</option>
-                    </select>
-                  </div>
-                )}
-                {lastCheckedFieldName && (
-                  <div>
-                    <label>Size:</label>
-                    <input
-                      value={this.state.size[lastCheckedFieldName] || 1}
-                      onChange={this.onSizeChange}
-                      type="number"
-                      name="size"
-                      min="1"
-                      placeholder="1"
-                      required
-                    />
-                  </div>
-                )}
-                {lastCheckedFieldName && (
-                  <div>
-                    <label>MaxArray Elements:</label>
-                    <input
-                      value={
-                        this.state.maxArrayElements[lastCheckedFieldName] || 1
-                      }
-                      onChange={this.onChangeMaxArrayElements}
-                      type="number"
-                      name="maxArrayElements"
-                      placeholder="1"
-                      min="1"
-                      max="100"
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-            </fieldset>
-          </div>
+            )}
+          </fieldset>
 
           <div className="btn-group">
             <span className="input-group-btn">

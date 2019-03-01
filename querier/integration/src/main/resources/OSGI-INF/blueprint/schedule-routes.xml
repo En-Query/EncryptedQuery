@@ -119,6 +119,19 @@
 		<route id="send-schedule-to-responder">
  			<from uri="seda:send-schedule-to-responder?size={{send.schedule.queue.size}}&amp;purgeWhenStopping=true&amp;concurrentConsumers={{send.schedule.worker.count}}"/>
 
+			<onException>
+				<exception>java.lang.Exception</exception>
+				<handled><constant>true</constant></handled>
+				
+				<log loggingLevel="ERROR" message="Schedule submission failed with error: ${exception}"/>
+				
+				<bean ref="scheduleUpdater" 
+					method="updateWithError(
+						${exchangeProperty.schedule.id},
+						${exception}
+					)"/>
+			</onException>
+			
 			<!-- use exchange property to save the schedule id, because headers are lost on the http call -->
 			<setProperty propertyName="schedule">
 				<simple>${body}</simple>

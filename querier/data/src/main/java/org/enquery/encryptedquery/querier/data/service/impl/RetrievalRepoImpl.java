@@ -9,8 +9,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collection;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Result;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval;
@@ -18,32 +18,50 @@ import org.enquery.encryptedquery.querier.data.service.BlobRepository;
 import org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.querier.data.service.RetrievalRepository;
 import org.enquery.encryptedquery.querier.data.transformation.URIUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class RetrievalRepoImpl implements RetrievalRepository {
 
 	private static final String RESPONSE_FILE_NAME = "response.xml";
 
-	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
 	@Reference
 	private BlobRepository blobRepo;
 
 	@Reference(target = "(type=blob)")
 	private ResourceUriRegistry blobLocation;
 
+
+	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
+
 	@Override
 	public Retrieval find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(Retrieval.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Retrieval.class, id));
 	}
 
 	@Override
 	public Retrieval findForResult(Result result, int id) {
 		Validate.notNull(result);
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery(
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
 						"   Select r From Retrieval r "
 								+ " Join r.result res "
 								+ " Where  res = :result  "
@@ -62,8 +80,10 @@ public class RetrievalRepoImpl implements RetrievalRepository {
 	public Collection<Retrieval> listForResult(Result result) {
 		Validate.notNull(result);
 
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select r From Retrieval r Join r.result res Where res = :result  ",
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select r From Retrieval r Join r.result res Where res = :result  ",
 						Retrieval.class)
 						.setParameter("result", em.find(Result.class, result.getId()))
 						.getResultList());
@@ -72,26 +92,35 @@ public class RetrievalRepoImpl implements RetrievalRepository {
 	@Override
 	public Retrieval add(Retrieval r) {
 		Validate.notNull(r);
-		jpa.tx(em -> em.persist(r));
-		return r;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(r);
+					return r;
+				});
 	}
 
 	@Override
 	public Retrieval update(Retrieval r) {
 		Validate.notNull(r);
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(r));
+		return txControl
+				.build()
+				.required(() -> em.merge(r));
 	}
 
 	@Override
 	public void delete(Retrieval retrieval) {
 		Validate.notNull(retrieval);
-		jpa.tx(em -> {
-			Retrieval r = find(retrieval.getId());
-			if (r != null) {
-				em.remove(r);
-				deleteRetrievalBlobs(r);
-			}
-		});
+		txControl
+				.build()
+				.required(() -> {
+					Retrieval r = find(retrieval.getId());
+					if (r != null) {
+						em.remove(r);
+						deleteRetrievalBlobs(r);
+					}
+					return 0;
+				});
 	}
 
 	private void deleteRetrievalBlobs(Retrieval r) {
@@ -106,21 +135,26 @@ public class RetrievalRepoImpl implements RetrievalRepository {
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			em.createQuery("Select r From Retrieval r", Retrieval.class)
-					.getResultList()
-					.forEach(r -> {
-						em.remove(r);
-						deleteRetrievalBlobs(r);
-					});
-		});
+		txControl
+				.build()
+				.required(() -> {
+					em.createQuery("Select r From Retrieval r", Retrieval.class)
+							.getResultList()
+							.forEach(r -> {
+								em.remove(r);
+								deleteRetrievalBlobs(r);
+							});
+					return 0;
+				});
 	}
 
 	@Override
 	public InputStream payloadInputStream(Retrieval retrieval) throws IOException {
 		Validate.notNull(retrieval);
-		Retrieval r = jpa.txExpr(TransactionType.Supports,
-				em -> em.find(Retrieval.class, retrieval.getId()));
+		Retrieval r = txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Retrieval.class, retrieval.getId()));
 
 		Validate.notNull(r, "Retrieval with id %d not found.", retrieval.getId());
 
@@ -131,9 +165,10 @@ public class RetrievalRepoImpl implements RetrievalRepository {
 
 	@Override
 	public Retrieval updatePayload(Retrieval retrieval, InputStream inputStream) throws IOException {
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
 					Retrieval r = em.find(Retrieval.class, retrieval.getId());
 					Validate.notNull(r, "Retrieval with id %d not found", retrieval.getId());
 

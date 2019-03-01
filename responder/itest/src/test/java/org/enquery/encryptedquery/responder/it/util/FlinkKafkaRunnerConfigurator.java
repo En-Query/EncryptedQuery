@@ -42,13 +42,15 @@ public class FlinkKafkaRunnerConfigurator {
 		properties.put("name", name);
 		properties.put("description", name);
 		properties.put("data.schema.name", dataSchemaNema);
-		properties.put(".kafka.brokers", "localhost:");
-		properties.put(".kafka.topic", name);
-		properties.put(".stream.window.length.seconds", "10");
-		properties.put(".stream.runtime.seconds", "60");
+		properties.put(".kafka.brokers", "localhost:9092");
+		properties.put(".kafka.topic", "test");
+		// properties.put(".kafka.groupId", "integration-test");
+		// properties.put(".stream.window.length.seconds", "10");
+		// properties.put(".stream.runtime.seconds", "60");
 		properties.put(".flink.install.dir", System.getProperty("flink.install.dir"));
-		properties.put(".jar.file.path", System.getProperty("flink.jdbc.app"));
+		properties.put(".jar.file.path", System.getProperty("flink.kafka.app"));
 		properties.put(".run.directory", tempDir.getAbsolutePath());
+		properties.put(".kafka.force.from.start", "true");
 
 		conf.update(properties);
 	}

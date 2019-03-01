@@ -24,13 +24,17 @@
   <parent>
     <groupId>org.enquery.encryptedquery</groupId>
     <artifactId>encryptedquery-flink-parent</artifactId>
-    <version>2.1.0</version>
+    <version>2.1.1</version>
   </parent>
   <artifactId>encryptedquery-flink-kafka-runner</artifactId>
   
   <name>EncryptedQuery :: Flink :: Kafka :: Runner</name>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.osgi</groupId>
 			<artifactId>osgi.cmpn</artifactId>
@@ -55,21 +59,34 @@
 			<artifactId>encryptedquery-flink-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		
 		<dependency>
-			<groupId>org.apache.kafka</groupId>
-			<artifactId>kafka-clients</artifactId>
-			<version>${kafka.version}</version>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<scope>test</scope>
 		</dependency>
 		
-				<!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka -->
+		<!-- Camel -->
 		<dependency>
-			<groupId>org.apache.kafka</groupId>
-			<artifactId>kafka_${flink.scala.version}</artifactId>
-			<version>${kafka.version}</version>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
 		</dependency>
-		
-		
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-http4</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jackson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core-osgi</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
 	</dependencies>
-  
 </project>

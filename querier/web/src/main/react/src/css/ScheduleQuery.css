@@ -28,7 +28,7 @@
   flex-direction: column;
 }
 
-.schedule-select-boxes div {
+.schedule-select-boxes > div {
   margin-bottom: 10px;
   display: flex;
 }
@@ -47,35 +47,15 @@
   max-width: 300px;
 }
 
-.schedule-input-boxes {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-}
-
-.schedule-input-boxes div {
-  margin-bottom: 10px;
-  display: flex;
-}
-
-.schedule-input-boxes label {
-  min-width: 400px;
-}
-
-.schedule-input-boxes input {
-  flex-grow: 1;
-  max-width: 300px;
-}
-
-
 .params-boxes {
   display: flex;
   width: 100%;
   flex-direction: column;
 }
 
-.params-boxes div {
+.params-boxes > div {
   margin-bottom: 10px;
+  margin-top: 10px;
   display: flex;
 }
 

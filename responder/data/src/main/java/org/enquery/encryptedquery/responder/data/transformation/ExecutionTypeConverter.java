@@ -79,10 +79,11 @@ public class ExecutionTypeConverter {
 		final org.enquery.encryptedquery.xml.schema.Execution xmlExecution =
 				new org.enquery.encryptedquery.xml.schema.Execution();
 
-		xmlExecution.setScheduledFor(XMLFactories.toXMLTime(jpaExecution.getScheduleTime()));
-		xmlExecution.setSubmittedOn(XMLFactories.toXMLTime(jpaExecution.getReceivedTime()));
-		xmlExecution.setStartedOn(XMLFactories.toXMLTime(jpaExecution.getStartTime()));
-		xmlExecution.setCompletedOn(XMLFactories.toXMLTime(jpaExecution.getEndTime()));
+		xmlExecution.setScheduledFor(XMLFactories.toUTCXMLTime(jpaExecution.getScheduleTime()));
+		xmlExecution.setSubmittedOn(XMLFactories.toUTCXMLTime(jpaExecution.getReceivedTime()));
+		xmlExecution.setStartedOn(XMLFactories.toUTCXMLTime(jpaExecution.getStartTime()));
+		xmlExecution.setCompletedOn(XMLFactories.toUTCXMLTime(jpaExecution.getEndTime()));
+		xmlExecution.setErrorMessage(jpaExecution.getErrorMsg());
 
 		final ExecutionResource resource = new ExecutionResource();
 		resource.setExecution(xmlExecution);
@@ -105,10 +106,11 @@ public class ExecutionTypeConverter {
 	public org.enquery.encryptedquery.responder.data.entity.Execution toJPAExecution(Execution ex) throws Exception {
 
 		org.enquery.encryptedquery.responder.data.entity.Execution result = new org.enquery.encryptedquery.responder.data.entity.Execution();
-		result.setReceivedTime(XMLFactories.toLocalTime(ex.getSubmittedOn()));
-		result.setScheduleTime(XMLFactories.toLocalTime(ex.getScheduledFor()));
-		result.setEndTime(XMLFactories.toLocalTime(ex.getCompletedOn()));
-		result.setStartTime(XMLFactories.toLocalTime(ex.getStartedOn()));
+		result.setReceivedTime(XMLFactories.toUTCDate(ex.getSubmittedOn()));
+		result.setScheduleTime(XMLFactories.toUTCDate(ex.getScheduledFor()));
+		result.setEndTime(XMLFactories.toUTCDate(ex.getCompletedOn()));
+		result.setStartTime(XMLFactories.toUTCDate(ex.getStartedOn()));
+		result.setErrorMsg(ex.getErrorMessage());
 
 		return result;
 	}

@@ -63,7 +63,7 @@ public class ResultXMLExtractorTest {
 
 			extractor.parse(fis);
 
-			Date expectedDate = XMLFactories.toLocalTime(XMLFactories.dtf.newXMLGregorianCalendar("2018-11-12T15:31:05.000-05:00"));
+			Date expectedDate = XMLFactories.toUTCDate(XMLFactories.dtf.newXMLGregorianCalendar("2018-11-12T15:31:05.000-05:00"));
 			assertEquals(4, extractor.getResultId());
 			assertEquals("/responder/api/rest/dataschemas/5/datasources/5/executions/5/results/4", extractor.getResultUri());
 
@@ -98,7 +98,7 @@ public class ResultXMLExtractorTest {
 
 			extractor.parse(fis);
 
-			Date expectedDate = XMLFactories.toLocalTime(XMLFactories.dtf.newXMLGregorianCalendar("2018-11-12T15:31:05.000-05:00"));
+			Date expectedDate = XMLFactories.toUTCDate(XMLFactories.dtf.newXMLGregorianCalendar("2018-11-12T15:31:05.000-05:00"));
 			assertEquals(4, extractor.getResultId());
 			assertEquals("/responder/api/rest/dataschemas/5/datasources/5/executions/5/results/4", extractor.getResultUri());
 

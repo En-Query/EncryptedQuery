@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.editConfigurationFilePut;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -28,7 +27,6 @@ import java.nio.file.Paths;
 
 import javax.inject.Inject;
 
-import org.apache.camel.CamelContext;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
@@ -38,12 +36,10 @@ import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
-import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.PaxExam;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
-import org.ops4j.pax.exam.util.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,18 +52,9 @@ public class DataSchemaFileInboxIT extends AbstractResponderItest {
 	@Inject
 	private DataSchemaService dataSchemaService;
 
-	// force this test to wait until the business 'data-import' Camel context
-	@Inject
-	@Filter(timeout = 60_000, value = "(camel.context.name=data-import)")
-	private CamelContext restContext;
-
-
 	@Configuration
 	public Option[] configuration() {
-		return ArrayUtils.addAll(super.baseOptions(), CoreOptions.options(
-				editConfigurationFilePut("etc/encrypted.query.responder.business.cfg",
-						"inbox.dir",
-						INBOX_DIR)));
+		return ArrayUtils.addAll(super.baseOptions());
 	}
 
 	@Test

@@ -16,6 +16,8 @@
  */
 package org.enquery.encryptedquery.querier.data.entity.jpa;
 
+import java.util.Date;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -28,6 +30,8 @@ import javax.persistence.NamedEntityGraphs;
 import javax.persistence.NamedSubgraph;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 @Entity
 @Table(name = "results")
@@ -58,7 +62,7 @@ public class Result {
 	public static final String ALL_ENTITY_GRAPH = "Result.all";
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@OneToOne()
@@ -71,6 +75,14 @@ public class Result {
 	@Column(name = "responder_uri", nullable = false)
 	private String responderUri;
 
+	@Column(nullable = true, name = "window_start_ts")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date windowStartTime;
+
+	@Column(nullable = true, name = "window_end_ts")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date windowEndTime;
+
 	public Result() {}
 
 	public Integer getId() {
@@ -80,15 +92,6 @@ public class Result {
 	public void setId(Integer id) {
 		this.id = id;
 	}
-
-	/*--
-	public String getStatus() {
-		return status;
-	}
-	
-	public void setStatus(String status) {
-		this.status = status;
-	}*/
 
 	/**
 	 * URI to the Responder Result corresponding to this result
@@ -150,13 +153,6 @@ public class Result {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Result [id=").append(id).append(", schedule=").append(schedule).append(", responderResultUri=").append(responderUri).append("]");
-		return builder.toString();
-	}
-
 	/**
 	 * Id of the Responder Result corresponding to this result
 	 * 
@@ -172,4 +168,28 @@ public class Result {
 	public void setResponderId(Integer responderId) {
 		this.responderId = responderId;
 	}
+
+	public Date getWindowStartTime() {
+		return windowStartTime;
+	}
+
+	public void setWindowStartTime(Date windowStartTime) {
+		this.windowStartTime = windowStartTime;
+	}
+
+	public Date getWindowEndTime() {
+		return windowEndTime;
+	}
+
+	public void setWindowEndTime(Date windowEndTime) {
+		this.windowEndTime = windowEndTime;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Result [id=").append(id).append("]");
+		return builder.toString();
+	}
+
 }

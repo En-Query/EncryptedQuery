@@ -17,27 +17,16 @@
 package org.enquery.encryptedquery.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 
 public class JSONStringConverter {
-
-	private static final Logger logger = LoggerFactory.getLogger(JSONStringConverter.class);
 
 	private static final TypeReference<Map<String, Object>> typeStringObjectMapRef = new TypeReference<Map<String, Object>>() {};
 	private static final TypeReference<Map<String, String>> typeStringStringMapRef = new TypeReference<Map<String, String>>() {};
@@ -58,22 +47,52 @@ public class JSONStringConverter {
 		return returnMap;
 	}
 
-	public static Map<String, Object> toStringObjectMapFromList(Collection<String> fields, String jsonString) {
-		Map<String, Object> returnMap = new HashMap<>();
-		try {
-			JsonNode jsonNode = objectMapper.readValue(jsonString, JsonNode.class);
-			if (jsonNode == null) {
-				return null;
-			}
-			for (String field : fields) {
-				Object fieldValue = getJsonValue(jsonNode, field);
-				returnMap.put(field, fieldValue);
-			}
-			return returnMap;
-		} catch (Exception e) {
-			throw new RuntimeException(String.format("Exception converting %s to map.", jsonString), e);
-		}
+	/**
+	 * Creates a flat Map, where nested object keys added to the parent (flattened) by combining its
+	 * attributes with the pipe "|" character to create a flat Map of all the values. <br/>
+	 * For Example:<br/>
+	 * json = {"id":12, "nested": {"name":"xxx"}} <br/>
+	 * produces a Map with keys "id" with integer value of 12, and "nested|name" of type String with
+	 * value "xxx"
+	 * 
+	 * Data types and nulls are preserved.
+	 * 
+	 * @param json
+	 * @return
+	 */
+	public static Map<String, Object> toStringObjectFlatMap(String json) {
+		Map<String, Object> deepMap = toStringObjectMap(json);
+		return flatten(deepMap, null);
 	}
+
+
+	/**
+	 * @param deepMap
+	 * @param prefix
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> flatten(Map<String, Object> deepMap, String prefix) {
+		Map<String, Object> result = new HashMap<>();
+		deepMap.forEach((key, value) -> {
+			final String newKey = concat(prefix, key);
+			if (value instanceof Map) {
+				result.putAll(flatten((Map<String, Object>) value, newKey));
+			} else {
+				result.put(newKey, value);
+			}
+		});
+		return result;
+	}
+
+	private static String concat(String prefix, String key) {
+		// TODO: escape the | character if present in the key
+		// key.replaceAll("\\", "\\");
+		// key.replaceAll("\\|", "\\|");
+		if (prefix == null || prefix.length() == 0) return key;
+		return String.format("%s|%s", prefix, key);
+	}
+
 
 	public static Map<String, String> toMap(String json) {
 		Map<String, String> returnMap = null;
@@ -129,79 +148,6 @@ public class JSONStringConverter {
 			return objectMapper.writeValueAsString(object);
 		} catch (Exception e) {
 			throw new RuntimeException("Exception converting object to string.", e);
-		}
-	}
-
-	private static Object getArrayNestedValue(String searchField, int field_ndx, ArrayNode arrayNode) {
-		List<Object> returnValue = new ArrayList<>();
-		JsonNode tempNode = null;
-		try {
-			if (arrayNode.size() < 1) {
-				// No Array Elements so return null
-				return null;
-			}
-
-			for (int i = 0; i < arrayNode.size(); i++) {
-				tempNode = arrayNode.get(i);
-				if (tempNode == null) {
-					return returnValue;
-				} else if (tempNode.getClass() == ObjectNode.class) {
-					returnValue.add(getJsonValue(tempNode, searchField, field_ndx));
-				} else {
-					if (tempNode.getClass() == TextNode.class) {
-						returnValue.add(tempNode.asText());
-					} else {
-						returnValue.add(tempNode.toString());
-					}
-				}
-			}
-
-			return returnValue;
-		} catch (Exception e) {
-			logger.warn("getArrayNestedValue - Exception getting Json value from field ({}), exception: {}", searchField, e.getMessage());
-			return null;
-		}
-	}
-
-	private static Object getJsonValue(JsonNode jsonNode, String fieldName) {
-		return getJsonValue(jsonNode, fieldName, 0);
-	}
-
-	private static Object getJsonValue(JsonNode jsonNode, String fieldName, int field_ndx) {
-
-		Object returnValue = null;
-		String[] fields = fieldName.split("\\|");
-		JsonNode tempNode = jsonNode;
-		JsonNode foundNode = null;
-		try {
-			for (int i = field_ndx; i < fields.length; i++) {
-				foundNode = tempNode.get(fields[i]);
-				if (foundNode == null) {
-					logger.debug("No element found for {}", fields.toString());
-				} else if (foundNode.getClass() == ObjectNode.class) {
-					tempNode = foundNode;
-				} else if (foundNode.getClass() == ArrayNode.class) {
-					returnValue = getArrayNestedValue(fieldName, i + 1, (ArrayNode) foundNode);
-					if (returnValue == null) {
-						logger.debug("No element found for {}", fields.toString());
-					}
-					return returnValue;
-				} else {
-					if (foundNode.getClass() == TextNode.class) {
-						return foundNode.asText();
-					} else {
-						return foundNode.toString();
-					}
-				}
-			}
-			if (foundNode != null) {
-				returnValue = foundNode.toString();
-			}
-			return returnValue;
-		} catch (Exception e) {
-			logger.warn("getJsonValue - Exception getting Json value from field ({}), exception: {}", fieldName, e.getMessage());
-			logger.warn(" field_ndx {},  jsonNode {}", field_ndx, jsonNode.asText());
-			return null;
 		}
 	}
 

@@ -1,6 +1,17 @@
-# Encrypted Query v2.1.0 - Release Notes
+# Encrypted Query v2.1.1 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
+
+#### Changes in release 2.1.1
+* Changed configuration file for setting storage location for queries and results.  On Querier the "blob-storage" parameter can now be found in: `/home/enquery/querier/etc/encrypted.query.querier.data.cfg` example file entries:
+```
+query.key.storage.root.url=file:///opt/enquery/query-key/      <-- Storage for Encryption keys
+blob.storage.root.url=file:///opt/enquery/blob-storage/        <-- Storage for Encrypted query and result files
+```
+* Database tables updated to incorporate query start/stop times for result files and execution status.   If you are using MariaDB it is recommended to drop all existing tables and let them be re-installed when the querier and responder start up for the 1st time.   Using DerbyDB the databases are removed when you remove the old installation and will be re-created when 2.1.1 is started up.
+* Flink Streaming job status updates through api calls to Flink.   Need to add .flink.history.server.uri=xxx to any flink streaming data source configuration files.   You can use the Flink Web dashboard IP:port or the history server uri for this.
+* Fixed support for IPv4 and IPv6 field types.   They can now be set as a field type in the data schema.
+* ISO8601 date format needs to be: `yyyy-mm-ddThh:mm:ss.sssZ`
 
 #### New with release 2.1.0
 * Encrypted Query has been redesigned to allow "drop-in" encryption.   The paillier encryption module is enabled by default.  Other encryption modules will follow.  Refer to Drop-In-Encryption-README.md for more information.
@@ -60,11 +71,5 @@ You can get away with testing on a smaller system:
   ```
 query.execution.results.path=/opt/enquery/nfsshare-folder
   ```
-  * When using Derby database you will see a lot of these messages in the karaf.log file on both the querier and responder
-  ```
-2018-11-21T13:48:51,854 | WARN  | qtp877807613-295 | SqlExceptionHelper               | 156 - org.hibernate.core - 5.2.9.Final | 01J01 : [0] derby-data/responder
-2018-11-21T13:48:51,860 | WARN  | qtp877807613-295 | SqlExceptionHelper               | 156 - org.hibernate.core - 5.2.9.Final | SQL Warning Code: 10000, SQLState: 01J01
-```
-* ip4 and ip6 datatypes have been causing some errors.  Set these fields to string datatypes and use a variable length 15 for ip4 and 30 for ip6
 * System has not been tested with versions of Java above 1.8
-* The build process will sometimes fail.  Try building a second time.  If it builds past the paillier Encryption build 'with-precompiled-native-libs'
+* The build process will sometimes fail.  Try repeating the build command.   Timing of integration tests and unit tests can be touchy.

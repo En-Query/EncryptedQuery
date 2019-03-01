@@ -4,10 +4,19 @@
 	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm http://java.sun.com/xml/ns/persistence/orm_2_0.xsd"
 	version="2.0">
 
-	<sequence-generator name="dschema_seq" sequence-name="dschema_seq" initial-value="1" allocation-size="50"/>
+<!-- 	<sequence-generator name="dschema_seq" sequence-name="dschema_seq" initial-value="1" allocation-size="50"/>
 	<sequence-generator name="dschema_field_seq" sequence-name="dschema_field_seq" initial-value="1" allocation-size="100"/>
 	<sequence-generator name="dsource_seq" sequence-name="dsource_seq" initial-value="1" allocation-size="10"/>
 	<sequence-generator name="exe_seq" sequence-name="exe_seq" initial-value="1" allocation-size="100"/>
 	<sequence-generator name="result_seq" sequence-name="result_seq" initial-value="1" allocation-size="100"/>
-	
+ -->
+ 	
+	<table-generator name="sequences" 
+		table="sequences" 
+		initial-value="1" 
+		allocation-size="100" 
+		pk-column-name="name" 
+		pk-column-value="global" 
+		value-column-name="next_hi_value"/>
+		
 </entity-mappings>

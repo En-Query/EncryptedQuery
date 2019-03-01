@@ -18,6 +18,8 @@ package org.enquery.encryptedquery.core;
 
 import static org.junit.Assert.assertEquals;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,6 +46,8 @@ public class PartitionerTest {
 	private DataSchemaElement dse7;
 	private DataSchemaElement dse8;
 	private DataSchemaElement dse9;
+	private DataSchemaElement dse10;
+	private DataSchemaElement dse11;
 
 	private QuerySchema qSchema;
 	private QuerySchemaElement qseOne;
@@ -55,6 +59,8 @@ public class PartitionerTest {
 	private QuerySchemaElement qse7;
 	private QuerySchemaElement qse8;
 	private QuerySchemaElement qse9;
+	private QuerySchemaElement qse10;
+	private QuerySchemaElement qse11;
 
 	@Before
 	public void prepare() {
@@ -112,6 +118,18 @@ public class PartitionerTest {
 		dse9.setIsArray(false);
 		dse9.setPosition(5);
 
+		dse10 = new DataSchemaElement();
+		dse10.setName("ipv4Field");
+		dse10.setDataType(FieldTypes.IP4);
+		dse10.setIsArray(false);
+		dse10.setPosition(10);
+
+		dse11 = new DataSchemaElement();
+		dse11.setName("ipv6Field");
+		dse11.setDataType(FieldTypes.IP6);
+		dse11.setIsArray(false);
+		dse11.setPosition(11);
+
 		qseOne = new QuerySchemaElement();
 		qseOne.setName("intField");
 		qseOne.setLengthType("fixed");
@@ -166,6 +184,17 @@ public class PartitionerTest {
 		qse9.setSize(4);
 		qse9.setMaxArrayElements(1);
 
+		qse10 = new QuerySchemaElement();
+		qse10.setName("ipv4Field");
+		qse10.setLengthType("fixed");
+		qse10.setSize(4);
+		qse10.setMaxArrayElements(1);
+
+		qse11 = new QuerySchemaElement();
+		qse11.setName("ipv6Field");
+		qse11.setLengthType("fixed");
+		qse11.setSize(8);
+		qse11.setMaxArrayElements(1);
 
 		dSchema = new DataSchema();
 		dSchema.setName("TestDataSchema");
@@ -178,6 +207,8 @@ public class PartitionerTest {
 		dSchema.addElement(dse7);
 		dSchema.addElement(dse8);
 		dSchema.addElement(dse9);
+		dSchema.addElement(dse10);
+		dSchema.addElement(dse11);
 
 		qSchema = new QuerySchema();
 		qSchema.setName("TestQuerySchema");
@@ -192,6 +223,8 @@ public class PartitionerTest {
 		qSchema.getElementList().add(qse7);
 		qSchema.getElementList().add(qse8);
 		qSchema.getElementList().add(qse9);
+		qSchema.getElementList().add(qse10);
+		qSchema.getElementList().add(qse11);
 
 		// partitioner = new Partitioner(128, dSchema);
 		partitioner = new Partitioner();
@@ -210,6 +243,49 @@ public class PartitionerTest {
 	}
 
 	@Test
+	public void ipv4ToBytes() throws PIRException {
+		System.out.println("++++++++++++++++++++++++++++");
+		System.out.println("Test ipv4 to Bytes");
+		List<Byte> parts = new ArrayList<>();
+		String testValue = "192.169.23.128";
+		System.out.println("Original IP4 Value " + testValue);
+		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse10.getName()).getDataType(), qse10);
+		// partitioner.toPartitionsByte(parts, testValue, qseOne);
+		System.out.println("Byte size " + parts.size());
+		assertEquals("byte array size should be 4", 4, parts.size());
+		Object returnPart = null;
+		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "ip4", qse10);
+		System.out.println("Return Part " + returnPart.toString());
+		assertEquals(testValue, returnPart);
+	}
+
+	@Test
+	public void ipv6ToBytes() throws PIRException {
+		System.out.println("++++++++++++++++++++++++++++");
+		System.out.println("Test ipv6 to Bytes");
+		List<Byte> parts = new ArrayList<>();
+		String testValue = "2001:0000:3238:DFE1:63:0000:0000:FEFB";
+		InetAddress endValue = null;
+		InetAddress startValue = null;
+		try {
+			startValue = InetAddress.getByName(testValue);
+			System.out.println("Original IP6 Value " + startValue.getHostAddress());
+			parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse11.getName()).getDataType(), qse11);
+			// partitioner.toPartitionsByte(parts, testValue, qseOne);
+			System.out.println("Byte size " + parts.size());
+			assertEquals("byte array size should be 16", 16, parts.size());
+			Object returnPart = null;
+			returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "ip6", qse11);
+			System.out.println("Return Part " + returnPart.toString());
+			endValue = InetAddress.getByName(returnPart.toString());
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+
+		assertEquals(startValue, endValue);
+	}
+
+	@Test
 	public void intToBytes() throws PIRException {
 		System.out.println("++++++++++++++++++++++++++++");
 		System.out.println("Test Integer to Bytes");
@@ -219,7 +295,7 @@ public class PartitionerTest {
 		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qseOne.getName()).getDataType(), qseOne);
 		// partitioner.toPartitionsByte(parts, testValue, qseOne);
 		System.out.println("Byte size " + parts.size());
-		byte[] testParts = partitioner.asByteArray(testValue, "int");
+		// byte[] testParts = partitioner.asByteArray(testValue, "int");
 		assertEquals("byte array size should be 4", 4, parts.size());
 		Object returnPart = null;
 		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "int", qseOne);
@@ -237,7 +313,7 @@ public class PartitionerTest {
 		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse6.getName()).getDataType(), qse6);
 		// partitioner.toPartitionsByte(parts, testValue, qseOne);
 		System.out.println("Byte size " + parts.size());
-		byte[] testParts = partitioner.asByteArray(testValue, "double");
+		// byte[] testParts = partitioner.asByteArray(testValue, "double");
 		assertEquals("byte array size should be 8", 8, parts.size());
 		Object returnPart = null;
 		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "double", qse6);
@@ -255,7 +331,7 @@ public class PartitionerTest {
 		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse9.getName()).getDataType(), qse9);
 		// partitioner.toPartitionsByte(parts, testValue, qseOne);
 		System.out.println("Byte size " + parts.size());
-		byte[] testParts = partitioner.asByteArray(testValue, FieldTypes.FLOAT);
+		// byte[] testParts = partitioner.asByteArray(testValue, FieldTypes.FLOAT);
 		assertEquals("byte array size should be 4", 4, parts.size());
 		Object returnPart = null;
 		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, FieldTypes.FLOAT, qse9);
@@ -272,7 +348,7 @@ public class PartitionerTest {
 		System.out.println("Original Long Value " + testValue);
 		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse2.getName()).getDataType(), qse2);
 		System.out.println("Byte size " + parts.size());
-		byte[] testParts = partitioner.asByteArray(testValue, "long");
+		// byte[] testParts = partitioner.asByteArray(testValue, "long");
 		assertEquals("byte array size should be 8", 8, parts.size());
 		Object returnPart = null;
 		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "long", qse2);
@@ -289,7 +365,7 @@ public class PartitionerTest {
 		System.out.println("Original short Value " + testValue);
 		parts = partitioner.fieldToBytes(testValue, dSchema.elementByName(qse3.getName()).getDataType(), qse3);
 		System.out.println("Byte size " + parts.size());
-		byte[] testParts = partitioner.asByteArray(testValue, "short");
+		// byte[] testParts = partitioner.asByteArray(testValue, "short");
 		assertEquals("byte array size should be 2", 2, parts.size());
 		Object returnPart = null;
 		returnPart = partitioner.fieldDataFromPartitionedBytes(parts, 0, "short", qse3);

@@ -204,7 +204,7 @@ public class ClearTextQueryResponse extends AbstractIndentedToString {
 		}
 
 		public void forEachHits(Consumer<? super Hits> action) {
-			hits.values().stream().forEach(action);
+			hits.values().stream().filter(h -> h.recordCount() > 0).forEach(action);
 		}
 
 		@Override

@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.responder.business.results.impl;
 
 import java.nio.file.Path;
+import java.time.Instant;
 
 /**
  * Captures the information about a single response file.
@@ -27,4 +28,6 @@ public class ResponseFileInfo {
 	int year;
 	int month;
 	int day;
+	Instant startTime;
+	Instant endTime;
 }

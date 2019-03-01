@@ -16,6 +16,7 @@
  */
 package org.enquery.encryptedquery.flink.kafka;
 
+import java.io.IOException;
 import java.nio.file.Files;
 
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -25,6 +26,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.types.Row;
 import org.enquery.encryptedquery.flink.BaseQueryExecutor;
+import org.enquery.encryptedquery.flink.kafka.TimedKafkaConsumer.StartOffset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +36,7 @@ public class Responder extends BaseQueryExecutor {
 
 	private String brokers;
 	private String topic;
-	private String groupId;
-	private Boolean forceFromStart;
-	private String offsetLocation;
+	private StartOffset startOffset;
 
 	public String getBrokers() {
 		return brokers;
@@ -54,46 +54,38 @@ public class Responder extends BaseQueryExecutor {
 		this.topic = topic;
 	}
 
-	public String getGroupId() {
-		return groupId;
+	public StartOffset getStartOffset() {
+		return startOffset;
 	}
 
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
-	}
-
-	public Boolean getForceFromStart() {
-		return forceFromStart;
-	}
-
-	public void setForceFromStart(Boolean forceFromStart) {
-		this.forceFromStart = forceFromStart;
-	}
-
-	public String getOffsetLocation() {
-		return offsetLocation;
-	}
-
-	public void setOffsetLocation(String offsetLocation) {
-		this.offsetLocation = offsetLocation;
-	}
-
-	private SourceFunction<String> createStringConsumerForTopic(String topic, String kafkaAddress, String kafkaGroup) {
-
-		TimedKafkaConsumer result = new TimedKafkaConsumer(topic,
-				kafkaAddress,
-				kafkaGroup,
-				forceFromStart,
-				runtimeSeconds,
-				outputFileName);
-
-		return result;
+	public void setStartOffset(StartOffset startOffset) {
+		this.startOffset = startOffset;
 	}
 
 	public void run() throws Exception {
 		log.info("Starting Responder");
 
-		jobName += "->" + outputFileName;
+		initializeCommon();
+		initializeStreaming();
+
+		// group id is the query id, which is a GUID
+		// this will allow the same query to execute multiple times
+		// each time consuming messages starting from previous execution offset
+		// Because it is a GUID, it also protects from multiple clients picking
+		// the same group id, and accidentally missing records if 'fromLatestCommit' option
+		// is selected
+		TimedKafkaConsumer consumer = new TimedKafkaConsumer(topic,
+				brokers,
+				query.getQueryInfo().getIdentifier(),
+				startOffset,
+				runtimeSeconds,
+				outputFileName);
+
+
+		runWithSource(consumer);
+	}
+
+	public void runWithSource(SourceFunction<String> consumer) throws Exception, IOException {
 		final boolean debugging = log.isDebugEnabled();
 
 		initializeCommon();
@@ -108,14 +100,13 @@ public class Responder extends BaseQueryExecutor {
 		final StreamExecutionEnvironment streamingEnv = StreamExecutionEnvironment.getExecutionEnvironment();
 		streamingEnv.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
 
-		DataStreamSource<String> source = streamingEnv.addSource(
-				createStringConsumerForTopic(topic, brokers, groupId));
 
+		final DataStreamSource<String> source = streamingEnv.addSource(consumer);
 
-		int index = selectorFieldIndex;
+		final int index = selectorFieldIndex;
 
 		DataStream<Row> stream = source
-				.map(new ParseJson(querySchema, rowTypeInfo))
+				.map(new ParseJson(rowTypeInfo))
 				.filter(row -> {
 					if (debugging) log.debug("Filtering row: {}", row);
 					boolean present = row.getField(index) != null;

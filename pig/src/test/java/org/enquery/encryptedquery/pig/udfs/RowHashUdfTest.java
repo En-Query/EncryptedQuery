@@ -18,8 +18,8 @@ import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.encryption.PrimeGenerator;
 import org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl;
@@ -36,6 +36,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 @Ignore("needs to be fixed")
+@SuppressWarnings("unused")
 public class RowHashUdfTest {
 
 	@SuppressWarnings("deprecation")

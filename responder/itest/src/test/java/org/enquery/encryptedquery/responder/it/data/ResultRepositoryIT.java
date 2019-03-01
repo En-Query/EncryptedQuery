@@ -34,6 +34,7 @@ import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
+import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.responder.it.util.SampleData;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,9 +56,12 @@ public class ResultRepositoryIT extends AbstractResponderItest {
 	@Inject
 	private DataSchemaService dataSchemaSvc;
 
+	private FlinkDriver flinkDriver = new FlinkDriver();
+
 	@Configuration
 	public Option[] configuration() {
-		return super.baseOptions();
+		return combineOptions(super.baseOptions(),
+				flinkDriver.configuration());
 	}
 
 	@Test
@@ -88,7 +92,7 @@ public class ResultRepositoryIT extends AbstractResponderItest {
 		Assert.assertEquals(0, resultRepo.listForExecution(execution).size());
 
 		InputStream inputStream = new ByteArrayInputStream("test payload".getBytes());
-		Result result = resultRepo.add(execution, inputStream);
+		Result result = resultRepo.add(execution, inputStream, null, null);
 		assertNotNull(result);
 		assertNotNull(result.getPayloadUrl());
 		Assert.assertEquals(1, resultRepo.listForExecution(execution).size());

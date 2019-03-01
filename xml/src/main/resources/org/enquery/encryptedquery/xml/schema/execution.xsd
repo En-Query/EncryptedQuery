@@ -55,12 +55,6 @@
 				</xs:annotation>
 			</xs:element>
 			
-			<xs:element name="query" type="q:Query" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Query to be executed execute. Only present for submissions, since this can be very large.</xs:documentation>
-				</xs:annotation>
-			</xs:element>
-
 			<xs:element name="submittedOn" type="xs:dateTime" minOccurs="0">
 				<xs:annotation>
 					<xs:documentation>Time stamp when this Execution was originally received. System assigned, not present for submissions.</xs:documentation>
@@ -76,6 +70,26 @@
 			<xs:element name="completedOn" type="xs:dateTime" minOccurs="0">
 				<xs:annotation>
 					<xs:documentation>Time stamp when this Execution finished running. System assigned, not present for submissions.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			
+			<xs:element name="errorMessage" minOccurs="0" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Error message of this execution if failed. Optional. Not present for submissions.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			
+			<xs:element name="cancelled" minOccurs="0" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>True if job was canceled. Optional. Not present for submissions.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			
+			<!-- Keep query at the end, since it can be beig, to allow parsing the small
+				data elements without having to load the query -->
+			<xs:element name="query" type="q:Query" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Query to be executed execute. Only present for submissions, since this can be very large.</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>

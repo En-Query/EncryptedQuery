@@ -19,38 +19,46 @@ package org.enquery.encryptedquery.querier.data.service.impl;
 
 import java.util.Collection;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.service.DataSourceRepository;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 
 @Component
 public class DataSourceServiceImpl implements DataSourceRepository {
 
-	private static final Logger log = LoggerFactory.getLogger(DataSourceServiceImpl.class);
-
 	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
 
-	public DataSourceServiceImpl() {}
-
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
 
 	@Override
 	public DataSource find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(DataSource.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(DataSource.class, id));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<DataSource> list() {
-		log.info("Listing all Data Sources");
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds From DataSource ds").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds From DataSource ds").getResultList());
 	}
 
 	@Override
@@ -58,7 +66,9 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 		Validate.notNull(ds);
 		Validate.notNull(ds.getDataSchema());
 		Validate.notNull(ds.getId());
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(ds));
+		return txControl
+				.build()
+				.required(() -> em.merge(ds));
 	}
 
 	@Override
@@ -67,35 +77,44 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 		Validate.notNull(ds.getDataSchema());
 		Validate.isTrue(ds.getId() == null);
 
-		jpa.tx(em -> {
-			em.persist(ds);
-		});
-		return ds;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(ds);
+					return ds;
+				});
 	}
 
 	@Override
 	public void delete(int id) {
-		jpa.tx(em -> {
-			DataSource src = find(id);
-			if (src != null) em.remove(src);
-		});
+		txControl
+				.build()
+				.required(() -> {
+					DataSource src = find(id);
+					if (src != null) em.remove(src);
+					return 0;
+				});
 	}
 
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			list().forEach(ds -> em.remove(ds));
-		});
+		txControl
+				.build()
+				.required(() -> {
+					list().forEach(ds -> em.remove(ds));
+					return 0;
+				});
 	}
 
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<String> listNames() {
-		log.info("Listing names of all Data Sources");
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds.name From DataSource ds")
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds.name From DataSource ds")
 						.getResultList());
 	}
 
@@ -103,9 +122,10 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<DataSource> withDataSchema(int dataSchemaId) {
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> em.createQuery("Select dsrc From DataSource dsrc "
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select dsrc From DataSource dsrc "
 						+ "Join Fetch dsrc.dataSchema dsch  "
 						+ "Where dsch.id = :dSchema  ")
 						.setParameter("dSchema", dataSchemaId)
@@ -118,9 +138,9 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 		Validate.notNull(ds);
 		Validate.notNull(ds.getDataSchema());
 
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
+		return txControl
+				.build()
+				.required(() -> {
 					if (ds.getId() != null) return update(ds);
 					DataSource prev = findByName(ds.getName());
 					if (prev != null) {
@@ -142,8 +162,10 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 	@SuppressWarnings("unchecked")
 	@Override
 	public DataSource findByName(String name) {
-		return (DataSource) jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select ds From DataSource ds Where ds.name = :name")
+		return (DataSource) txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select ds From DataSource ds Where ds.name = :name")
 						.setParameter("name", name)
 						.getResultList()
 						.stream()

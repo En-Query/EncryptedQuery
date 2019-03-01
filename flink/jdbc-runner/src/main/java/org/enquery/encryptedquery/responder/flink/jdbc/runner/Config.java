@@ -37,7 +37,7 @@ public @interface Config {
 	String description();
 
 	@AttributeDefinition(name = "type",
-			required = true,
+			required = false,
 			description = "Type: Batch or Streaming.")
 	String type();
 

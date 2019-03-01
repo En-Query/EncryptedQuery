@@ -30,7 +30,6 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
@@ -101,7 +100,7 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 	@Override
 	public TestProbeBuilder probeConfiguration(TestProbeBuilder probe) {
 		super.probeConfiguration(probe);
-		flinkDriver.probeConfiguration(probe);
+		derbyDatabase.probeConfiguration(probe);
 		return probe;
 	}
 
@@ -123,13 +122,10 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 						"derby.language.logStatementText",
 						"true"));
 
-		// CoreOptions.mavenBundle()
-		// .groupId("org.apache.derby")
-		// .artifactId("derbyclient")
-		// .versionAsInProject());
-
-		return ArrayUtils.addAll(
-				ArrayUtils.addAll(super.baseOptions(), flinkDriver.configuration()), options);
+		return combineOptions(super.baseOptions(),
+				derbyDatabase.configuration(),
+				flinkDriver.configuration(),
+				options);
 	}
 
 	@Test
@@ -166,14 +162,6 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
-
-		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-		// .newBuilder()
-		// .dataChunkSize(DATA_CHUNK_SIZE)
-		// .hashBitSize(HASH_BIT_SIZE)
-		// .certainty(CERTAINTY)
-		// .embedSelector(true)
-		// .build();
 		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

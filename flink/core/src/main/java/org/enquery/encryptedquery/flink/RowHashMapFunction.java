@@ -79,12 +79,17 @@ public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, 
 		final String selectorValue = asString(row.getField(selectorFieldIndex), selectorFieldType);
 
 		final Integer rowIndex = KeyedHash.hash(key, hashBitSize, selectorValue);
-		final Map<String, Object> recordData = new HashMap<>();
 
+		// Load Row into a Map to pass to the partitioner
+		final Map<String, Object> recordData = new HashMap<>();
 		queryInfo.getQuerySchema().getElementList()
 				.stream()
-				.forEach(field -> recordData.put(field.getName(),
-						getFieldValue(row, field.getName())));
+				.forEach(field -> {
+					Object value = getFieldValue(row, field.getName());
+					if (value != null) {
+						recordData.put(field.getName(), value);
+					}
+				});
 
 		List<Byte> recordParts = RecordPartitioner.partitionRecord(partitioner,
 				queryInfo,

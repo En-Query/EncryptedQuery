@@ -34,7 +34,7 @@ import javax.persistence.TemporalType;
 public class Result {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "result_seq")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@OneToOne()
@@ -47,6 +47,14 @@ public class Result {
 	@Column(nullable = false, name = "creation_time")
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date creationTime;
+
+	@Column(nullable = true, name = "window_start_ts")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date windowStartTime;
+
+	@Column(nullable = true, name = "window_end_ts")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date windowEndTime;
 
 	public Result() {}
 
@@ -82,6 +90,22 @@ public class Result {
 		this.creationTime = creationTime;
 	}
 
+	public Date getWindowStartTime() {
+		return windowStartTime;
+	}
+
+	public void setWindowStartTime(Date startTime) {
+		this.windowStartTime = startTime;
+	}
+
+	public Date getWindowEndTime() {
+		return windowEndTime;
+	}
+
+	public void setWindowEndTime(Date endTime) {
+		this.windowEndTime = endTime;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -115,7 +139,9 @@ public class Result {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Result [id=").append(id).append(", execution=").append(execution).append(", payloadUrl=").append(payloadUrl).append(", creationTime=").append(creationTime).append("]");
+		builder.append("Result [id=").append(id).append(", payloadUrl=").append(payloadUrl).append(", creationTime=").append(creationTime).append(", startTime=").append(windowStartTime).append(", endTime=")
+				.append(windowEndTime).append("]");
 		return builder.toString();
 	}
+
 }

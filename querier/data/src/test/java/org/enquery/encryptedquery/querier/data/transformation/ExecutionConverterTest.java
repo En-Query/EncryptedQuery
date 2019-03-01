@@ -128,7 +128,7 @@ public class ExecutionConverterTest {
 
 		Execution ex = unmarshal(new ByteArrayInputStream(bytes));
 		assertNotNull(ex.getScheduledFor());
-		assertEquals(XMLFactories.toXMLTime(schedule.getStartTime()), ex.getScheduledFor());
+		assertEquals(XMLFactories.toUTCXMLTime(schedule.getStartTime()), ex.getScheduledFor());
 		assertNotNull(ex.getQuery());
 		assertNotNull(ex.getConfiguration());
 		assertEquals(2, ex.getConfiguration().getEntry().size());

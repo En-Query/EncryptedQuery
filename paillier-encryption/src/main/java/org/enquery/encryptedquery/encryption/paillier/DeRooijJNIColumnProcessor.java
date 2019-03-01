@@ -17,7 +17,6 @@
 package org.enquery.encryptedquery.encryption.paillier;
 
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
@@ -38,7 +37,7 @@ public class DeRooijJNIColumnProcessor implements ColumnProcessor {
 	private native void derooijSetQueryElement(long hContext, int rowIndex, byte[] queryElementBytes);
 
 	private native void derooijInsertDataPartBytes(long hContext, int rowIndex, byte[] partBytes, int inputOffset, int inputLen);
-	
+
 	private native byte[] derooijComputeColumnAndClearData(long hContext);
 
 	private native void derooijClearData(long hContext);
@@ -104,7 +103,7 @@ public class DeRooijJNIColumnProcessor implements ColumnProcessor {
 	 */
 	@Override
 	public void insert(int rowIndex, byte[] input, int inputOffset, int inputLen) {
-		derooijInsertDataPartBytes(hContext, rowIndex, input, inputOffset, inputLen);		
+		derooijInsertDataPartBytes(hContext, rowIndex, input, inputOffset, inputLen);
 	}
 
 	/*

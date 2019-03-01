@@ -48,7 +48,9 @@ The example data source for this example is in the file `/home/EncryptedQuery/ex
 
 	cp /home/EncryptedQuery/examples/responder-files/data-source-configurations/org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner-Pcap.cfg   /opt/enquery/responder/etc
 Edit the data source configuration file to set the location of the Flink installation.
-(Note: This example also provides a standalone data file and data source to run in standalone mode).   The data used for this example is the same between the standalone and streaming methods.)
+
+`Note:` This example also provides a standalone data file and data source to run in standalone mode).   The data used for this example is the same between the standalone and streaming methods. Untar the pcap-data.tar.gz file into the /opt/enquery/sampledata/ folder before loading the data source configuration file into the responder.
+
 
 ### Import the REST interface calls into Postman to run the example.
 * [Postman App](https://www.getpostman.com/apps)

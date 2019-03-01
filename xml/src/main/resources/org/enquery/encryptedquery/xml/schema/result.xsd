@@ -33,6 +33,16 @@
 							<xs:documentation>Time stamp when this result was created.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
+					<xs:element name="windowStart" type="xs:dateTime">
+						<xs:annotation>
+							<xs:documentation>Start time stamp of this result time window.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="windowEnd" type="xs:dateTime">
+						<xs:annotation>
+							<xs:documentation>End time stamp of this result time window.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
 					<xs:element name="execution" type="res:resource">
 						<xs:annotation>
 							<xs:documentation>Reference to the parent Execution.</xs:documentation>

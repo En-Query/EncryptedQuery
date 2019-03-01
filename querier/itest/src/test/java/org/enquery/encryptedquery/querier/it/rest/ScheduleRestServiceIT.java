@@ -20,14 +20,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
+import org.enquery.encryptedquery.querier.data.entity.json.DataSchemaResponse;
+import org.enquery.encryptedquery.querier.data.entity.json.DataSourceResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleCollectionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.querier.data.entity.json.ScheduleStatus;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.junit.PaxExam;
@@ -41,12 +44,11 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 	@Test
 	public void listEmpty() throws Exception {
 		// Add a data schema, query schema, and query, no schedules
-		queryRepo.add(
-				sampleData.createQuery(
-						querySchemaRepo.add(
-								sampleData.createJPAQuerySchema(
-										dataSchemaRepo.add(
-												sampleData.createDataSchema())))));
+		queryRepo.add(sampleData.createQuery(
+				querySchemaRepo.add(
+						sampleData.createJPAQuerySchema(
+								dataSchemaRepo.add(
+										sampleData.createDataSchema())))));
 
 		retrieveDataSchemas()
 				.getData()
@@ -142,7 +144,49 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 		tryUntilTrue(60, 3_000, "Timeout waiting for Schedule to Complete.", op -> {
 			return ScheduleStatus.Complete.equals(retrieveSchedule(returned.getData().getSelfUri()).getData().getStatus());
 		}, null);
+	}
 
+	@Test
+	public void createWhileResponderNotOnline() throws Exception {
+
+		// populate from responder first, so there is a data source and data schems in the Querier
+		// local DB
+		DataSchemaResponse jsonDataSchema = retrieveDataSchemaByName("Books");
+		Validate.notNull(jsonDataSchema);
+		DataSourceResponse jsonDataSource = retrieveDataSourceByName(jsonDataSchema, "Flink-JDBC-Derby-Books");
+		Validate.notNull(jsonDataSource);
+
+		// emulate Responder not reachable when submitting a Schedule
+		int oldPort = responderPort();
+		configuteResponderPort(oldPort + 10);
+		try {
+			ScheduleResponse returned = postSchedule();
+
+			tryUntilTrue(60, 3_000, "Timeout waiting for Schedule to be Failed.", op -> {
+				return ScheduleStatus.Failed.equals(retrieveSchedule(returned.getData().getSelfUri()).getData().getStatus());
+			}, null);
+
+			assertNotNull(retrieveSchedule(returned.getData().getSelfUri()).getData().getErrorMsg());
+
+		} finally {
+			configuteResponderPort(oldPort);
+		}
+
+		// emulate Responder http error (404 in this case)
+		configuteResponderPort(8182);
+		try {
+
+			ScheduleResponse returned = postSchedule();
+
+			tryUntilTrue(60, 3_000, "Timeout waiting for Schedule to be Failed.", op -> {
+				return ScheduleStatus.Failed.equals(retrieveSchedule(returned.getData().getSelfUri()).getData().getStatus());
+			}, null);
+
+			assertNotNull(retrieveSchedule(returned.getData().getSelfUri()).getData().getErrorMsg());
+
+		} finally {
+			configuteResponderPort(oldPort);
+		}
 	}
 
 	private String includedQueryStatus(ScheduleResponse returned) {

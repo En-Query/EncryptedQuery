@@ -28,11 +28,6 @@
 			
 			<to uri="direct:resolve-result-parents"/>
 			
-			<filter>
-				<simple>${header.dataSource.type} == 'Streaming'</simple>
-				<to uri="direct:collect-streaming-results"/>
-			</filter>
-			
 			<bean ref="resultsRepo" method="listForExecution(${header.execution})"/>
 
 			<bean ref="resultConverter" 
@@ -89,13 +84,6 @@
 				</setHeader>
 				<stop/>
 			</filter>	
-		</route>
-		
-		<route id="collect-streaming-results">
-			<from uri="direct:collect-streaming-results"/>
-			
-			<bean ref="streamingResultsCollector"
-				method="collect(${header.execution})"/>
 		</route>
 
 	</routeContext>

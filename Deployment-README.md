@@ -2,7 +2,7 @@
 ## Deployment
 Encrypted Query has been developed and tested on Centos 7 OS.  The application is written in Java & C and uses Apache Karaf as a launch platform.  Using REST interfaces users interact with the Querier to Configure, Generate, Schedule, & Decrypt a query.   Once Scheduled the Querier will submit the job to the Responder through REST calls to execute the query at the specified time.
 
-Encrypted Query has been separated into two Sides (Querier and Responder)  The Querier side configures and Encrypts the query.   It is also used to Decrypt the result.   The Responder side will run the query to generate a result file.
+Encrypted Query is separated into two pieces (Querier and Responder)  The Querier configures and Encrypts the query.   It is also used to Decrypt the result.   The Responder will run the query to generate a result file.
 The system is designed for the Querier and Responder to run on separate servers.  For testing they can be configured to run on the same server.   Using Apache Flink users can also query against a JDBC database or a Kafka stream.   
 
 #### Supported Datasets
@@ -33,13 +33,13 @@ Create the base folders and install the querier file:
 $ # Create the necessary folders
 $ mkdir /opt/enquery/
 $ # Copy the querier tar file, untar it and create a soft link
-$ cp /home/encryptedquery/querier/dist/target/encryptedquery-querier-dist-derbydb-2.1.0.tar.gz /opt/enquery/.
+$ cp /home/encryptedquery/querier/dist/target/encryptedquery-querier-dist-derbydb-2.x.x.tar.gz /opt/enquery/.
 $ cd /opt/enquery/
-$ tar -xvf encryptedquery-querier-dist-derbydb-2.1.0.tar.gz
-$ ln -s  encryptedquery-querier-dist-2.1.0 querier
+$ tar -xvf encryptedquery-querier-dist-derbydb-2.x.x.tar.gz
+$ ln -s  encryptedquery-querier-dist-2.x.x querier
 ```
 **Note: If you are installing both the querier and responder on the same server add another folder for separation (/opt/enquery/querier-app/) and modify the soft link accordingly.
-**Note: If you would like to use MariaDB to store execution information substitute the mariadb querier file (`encryptedquery-querier-dist-mariadb-2.1.0.tar.gz`) for the derby file
+**Note: If you would like to use MariaDB to store execution information substitute the mariadb querier file (`encryptedquery-querier-dist-mariadb-2.x.x.tar.gz`) for the derby file
 
 ###### Querier Configuration:
 Update the `/opt/enquery/querier/etc/encrypted.query.querier.rest.cfg` file and add/update the responder info with your specifics:
@@ -64,8 +64,16 @@ paillier.encrypt.query.method = FastWithJNI
 paillier.column.processor=DeRooijJNI
 paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
 ```
+
+Update the `/opt/enquery/querier/etc/encrypted.query.querier.data.cfg` file and add/update the following to change the storage location of data generated:
+```
+query.key.storage.root.url=file:///opt/enquery/query-key/      
+blob.storage.root.url=file:///opt/enquery/blob-storage/
+```
+Note: If you set the above locations, be sure to create the folders before running.  Default location for these files are: `/opt/enquery/querier/data/`
+
 *Increasing Task Count will increase performance.   Recommended to set to 1/2 of the number of cores available on the server.
-*query encryption methods are: (Default, Fast, and FastWithJNI) fastwithjni uses c native libraries which speeds up encryption and is the recommended setting.
+*query encryption methods are: (Default, Fast, and FastWithJNI) FastWithJNI uses c native libraries which speeds up encryption and is the recommended setting.
 
 If you are using MariaDB as your datastore also update the /opt/enquery/querier/etc/org.ops4j.datasource-querier.cfg file and add/update the following with the specifics of your installation(database server ip, database user/password, database name):
 ```
@@ -91,22 +99,25 @@ $ mkdir -p /opt/enquery/app-libs/             <- Application Libraries (Standalo
 $ mkdir -p /opt/enquery/results/              <- Results folder
 $ mkdir -p /opt/enquery/dataschemas/inbox     <- Inbox for Data Schemas
 $ # Copy from the build location the responder tar file, untar it, then create a soft link. (Assuming you built the application off the home folder)
-$ cp /home/encryptedquery/responder/dist/target/encryptedquery-responder-dist-derbydb-2.1.0.tar.gz /opt/enquery/.
+$ cp /home/encryptedquery/responder/dist/target/encryptedquery-responder-dist-derbydb-2.x.x.tar.gz /opt/enquery/.
 $ cd /opt/enquery/
-$ tar -xvf encryptedquery-responder-dist-derbydb-2.1.0.tar.gz
-$ ln -s /opt/enquery/encryptedquery-responder-dist-2.1.0 responder
+$ tar -xvf encryptedquery-responder-dist-derbydb-2.x.x.tar.gz
+$ ln -s /opt/enquery/encryptedquery-responder-dist-2.x.x responder
 $ # Copy over the Application library files
-$ cp /home/encryptedquery/standalone/app/target/encryptedquery-standalone-app-2.1.0.jar /opt/enquery/app-libs/.
-$ cp /home/encryptedquery/flink/jdbc/target/encryptedquery-flink-jdbc-2.1.0.jar /opt/enquery/app-libs/.
-$ cp /home/encryptedquery/flink/kafka/target/encryptedquery-flink-kafka-2.1.0.jar /opt/enquery/app-libs/.
+$ cp /home/encryptedquery/standalone/app/target/encryptedquery-standalone-app-2.x.x.jar /opt/enquery/app-libs/.
+$ cp /home/encryptedquery/flink/jdbc/target/encryptedquery-flink-jdbc-2.x.x.jar /opt/enquery/app-libs/.
+$ cp /home/encryptedquery/flink/kafka/target/encryptedquery-flink-kafka-2.x.x.jar /opt/enquery/app-libs/.
 ```
 **Note: If you are installing both the querier and responder on the same server add another folder for separation (/opt/enquery/responder-app/) and modify the softlink accordingly.
-**Note: If you would like to use MariaDB to store execution information substitute the mariadb responder file (`encryptedquery-responder-dist-mariadb-2.1.0.tar.gz`) for the derby file
+**Note: If you would like to use MariaDB to store execution information substitute the mariadb responder file (`encryptedquery-responder-dist-mariadb-2.x.x.tar.gz`) for the derby file
 
 ###### Responder Configuration:
 Update the `/opt/enquery/responder/etc/encrypted.query.responder.business.cfg` and add/update the following to define the folder for the response files:
 ```
 query.execution.results.path=/opt/enquery/results
+```
+Update the `/opt/enquery/responder/etc/encrypted.query.responder.integration.cfg` file and add/update the following to define the folder for the data schemas:
+```
 inbox.dir=/opt/enquery/dataschemas/inbox
 ```
 

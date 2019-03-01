@@ -9,10 +9,13 @@ import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.service.BlobRepository;
 import org.osgi.service.component.annotations.Component;
 
@@ -61,8 +64,13 @@ public class BlobRepositoryImpl implements BlobRepository {
 	@Override
 	public InputStream inputStream(URL url) {
 		try {
+			// check before returning empty stream
+			if ("file".equals(url.toURI().getScheme())) {
+				Path file = Paths.get(url.toURI());
+				Validate.isTrue(Files.exists(file), "File not found: %s", file);
+			}
 			return url.openStream();
-		} catch (IOException e) {
+		} catch (IOException | URISyntaxException e) {
 			throw new RuntimeException("Error reading data from URL: " + url, e);
 		}
 	}

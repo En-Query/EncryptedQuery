@@ -14,8 +14,42 @@
  * You should have received a copy of the GNU Affero General Public License along with this program.
  * If not, see <https://www.gnu.org/licenses/>.
  */
-package org.enquery.encryptedquery.querier.data.entity.json;
+package org.enquery.encryptedquery.responder.data.entity;
 
-public enum ScheduleStatus {
-	Pending, InProgress, Complete, Failed
+import java.util.Date;
+
+/**
+ * The status of an execution as reported by a QueryRunner.
+ */
+public class ExecutionStatus {
+
+	private final Date endTime;
+	private final String error;
+	private final boolean canceled;
+
+	public ExecutionStatus(Date endTime, String error, boolean canceled) {
+		this.endTime = endTime;
+		this.error = error;
+		this.canceled = canceled;
+	}
+
+	public Date getEndTime() {
+		return endTime;
+	}
+
+	public String getError() {
+		return error;
+	}
+
+	public boolean isCanceled() {
+		return canceled;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("ExecutionStatus [endTime=").append(endTime).append(", error=").append(error).append(", canceled=").append(canceled).append("]");
+		return builder.toString();
+	}
+
 }

@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.responder.data.service;
 
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.Collection;
 
 import org.enquery.encryptedquery.responder.data.entity.Execution;
@@ -32,13 +33,20 @@ public interface ResultRepository {
 	Collection<Result> listForExecution(Execution execution);
 
 	/**
-	 * Add an execution result.
+	 * Add a new result including its payload to an Execution.
 	 * 
 	 * @param execution Execution this result belongs to.
 	 * @param inputStream The Response XML of this execution.
+	 * @param startTime Start time for this result. May be null.
+	 * @param endTime End time of this result. May be null.
+	 * @return Created Result. Not null
+	 */
+	/**
+	 * @param execution
+	 * @param inputStream
 	 * @return
 	 */
-	Result add(Execution execution, InputStream inputStream);
+	Result add(Execution execution, InputStream inputStream, Instant startTime, Instant endTime);
 
 	Result add(Result r);
 

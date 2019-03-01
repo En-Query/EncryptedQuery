@@ -25,14 +25,15 @@ import java.util.stream.Collectors;
 import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
 import org.enquery.encryptedquery.querier.data.service.QuerySchemaRepository;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,9 +47,15 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	private static final Logger log = LoggerFactory.getLogger(QuerySchemaRepoImpl.class);
 
 	@Reference(target = "(osgi.unit.name=querierPersistenUnit)")
-	private JpaTemplate jpa;
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
 
-	public QuerySchemaRepoImpl() {}
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -57,11 +64,14 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	 */
 	@Override
 	public QuerySchema find(int id) {
-		QuerySchema result = jpa.txExpr(TransactionType.Supports, em -> {
-			return em.find(QuerySchema.class, id, fetchAllAssociationsHint(em));
-		});
-		result.getDataSchema();
-		return result;
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
+					return em.find(QuerySchema.class, id, fetchAllAssociationsHint(em));
+				});
+		// result.getDataSchema();
+		// return result;
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -80,9 +90,10 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<QuerySchema> list() {
-		log.info("getting all Query Schemas");
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select qs From QuerySchema qs")
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select qs From QuerySchema qs")
 						.setHint("javax.persistence.fetchgraph", em.getEntityGraph(QuerySchema.ALL_ENTITY_GRAPH))
 						.getResultList());
 	}
@@ -94,7 +105,9 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	 */
 	@Override
 	public QuerySchema update(QuerySchema ds) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(ds));
+		return txControl
+				.build()
+				.required(() -> em.merge(ds));
 	}
 
 	@Override
@@ -117,33 +130,42 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 				qs.getFields().stream().filter(e -> e.getId() != null).collect(Collectors.toList()).isEmpty(),
 				"At least one field id is not null.");
 
-		jpa.tx(em -> {
-			em.persist(qs);
-		});
-		return qs;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(qs);
+					return qs;
+				});
 	}
 
 	@Override
 	public void delete(int id) {
-		jpa.tx(em -> {
-			QuerySchema qs = find(id);
-			if (qs != null) em.remove(qs);
-		});
+		txControl
+				.build()
+				.required(() -> {
+					QuerySchema qs = find(id);
+					if (qs != null) em.remove(qs);
+					return 0;
+				});
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<String> listNames() {
 		log.info("Getting the names of all Query Schemas");
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select qs.name From QuerySchema qs").getResultList());
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select qs.name From QuerySchema qs").getResultList());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public QuerySchema findByNamefind(String name) {
-		return (QuerySchema) jpa.txExpr(TransactionType.Supports,
-				em -> em.createQuery("Select qs From QuerySchema qs Where qs.name = :name")
+		return (QuerySchema) txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select qs From QuerySchema qs Where qs.name = :name")
 						.setParameter("name", name)
 						.setHint("javax.persistence.fetchgraph", em.getEntityGraph(QuerySchema.ALL_ENTITY_GRAPH))
 						.getResultList()
@@ -156,8 +178,10 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	@Override
 	public Collection<QuerySchema> withDataSchema(DataSchema dataSchema) {
 		Validate.notNull(dataSchema);
-		return jpa.txExpr(TransactionType.Supports,
-				em -> em
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em
 						.createQuery("Select Distinct qs  "
 								+ "From QuerySchema qs  "
 								+ "Inner Join qs.dataSchema ds  "
@@ -170,9 +194,10 @@ public class QuerySchemaRepoImpl implements QuerySchemaRepository {
 	@Override
 	public QuerySchema findForDataSchema(DataSchema dataSchema, int id) {
 		Validate.notNull(dataSchema);
-		return jpa.txExpr(
-				TransactionType.Supports,
-				em -> em.createQuery("Select qs "
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select qs "
 						+ "From QuerySchema qs  "
 						+ "Where qs.id = :id "
 						+ "And   qs.dataSchema = :dataSchema ",

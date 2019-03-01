@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-flink-parent</artifactId>
-		<version>2.1.0</version>
+		<version>2.1.1</version>
 	</parent>
 
 	<artifactId>encryptedquery-flink-core</artifactId>
@@ -36,6 +36,14 @@
 	<name>EncryptedQuery :: Flink :: Core</name>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+    		<groupId>org.osgi</groupId>
+    		<artifactId>osgi.cmpn</artifactId>
+    	</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-java</artifactId>
@@ -64,6 +72,11 @@
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>encryptedquery-xml</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-json</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>

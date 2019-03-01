@@ -18,7 +18,6 @@ package org.enquery.encryptedquery.responder.it;
 
 import static org.junit.Assert.assertTrue;
 import static org.ops4j.pax.exam.CoreOptions.maven;
-import static org.ops4j.pax.exam.CoreOptions.propagateSystemProperty;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.configureSecurity;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.editConfigurationFilePut;
@@ -44,9 +43,9 @@ import java.util.Arrays;
 import javax.inject.Inject;
 import javax.sql.DataSource;
 
-import org.apache.camel.CamelContext;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.enquery.encryptedquery.healthcheck.SystemHealthCheck;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
@@ -80,9 +79,6 @@ public abstract class AbstractResponderItest {
 
 	@Inject
 	protected DataSource sqlDatasource;
-	@Inject
-	@Filter(timeout = 60_000, value = "(camel.context.name=data-import)")
-	private CamelContext restContext;
 	@Inject
 	protected SystemHealthCheck healthCheck;
 	@Inject
@@ -133,12 +129,7 @@ public abstract class AbstractResponderItest {
 				keepRuntimeFolder(),
 				logLevel(LogLevel.INFO),
 
-				// propagate system properties
-				propagateSystemProperty("flink.install.dir"),
-				propagateSystemProperty("flink.jdbc.app"),
-
-				editConfigurationFilePut("etc/system.properties",
-						"derby.language.logStatementText", "true"),
+				systemProperty("derby.language.logStatementText").value("true"),
 
 				editConfigurationFilePut("etc/org.enquery.encryptedquery.healthcheck.impl.ComponentStateHealthCheck.cfg",
 						".ignore.component",
@@ -149,9 +140,11 @@ public abstract class AbstractResponderItest {
 								+ "\"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner\""
 								+ "]"),
 
-				editConfigurationFilePut("etc/encrypted.query.responder.business.cfg",
-						"inbox.dir",
-						INBOX_DIR),
+				editConfigurationFilePut("etc/encrypted.query.responder.integration.cfg", "inbox.dir", INBOX_DIR),
+
+				// configure the Cron job that updates execution status to run every 10 seconds
+				editConfigurationFilePut("etc/encrypted.query.responder.integration.cfg", "execution.status.updater.scheduling.startDelaySeconds", "10"),
+				editConfigurationFilePut("etc/encrypted.query.responder.integration.cfg", "execution.status.updater.scheduling.cron", "0/10 * * ? * * *"),
 
 				features(responderFeatureUrl, "encryptedquery-responder-" + dbEngine),
 
@@ -338,5 +331,17 @@ public abstract class AbstractResponderItest {
 		waitUntilQueryRunnerRegistered(dataSourceName);
 
 		return dataSourceRegistry.find(dataSourceName);
+	}
+
+	protected Option[] combineOptions(Option[]... options) {
+		Option[] result = null;
+		for (Option[] o : options) {
+			if (result == null) {
+				result = o;
+			} else {
+				result = ArrayUtils.addAll(result, o);
+			}
+		}
+		return result;
 	}
 }

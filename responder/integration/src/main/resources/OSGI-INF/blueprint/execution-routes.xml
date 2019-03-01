@@ -113,5 +113,10 @@
 			</filter>			
 		</route>
 
+		<route id="execution-status-updater">
+			<from uri="execution-status-updater-quartz://execution-status-updater-timer?cron={{execution.status.updater.scheduling.cron}}" />
+			<bean ref="executionStatusUpdater" method="update"/>
+		</route>
+	
 	</routeContext>
 </blueprint>

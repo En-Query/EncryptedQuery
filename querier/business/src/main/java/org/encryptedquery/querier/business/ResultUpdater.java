@@ -22,6 +22,7 @@ import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
 import org.enquery.encryptedquery.querier.data.service.ResultRepository;
 import org.enquery.encryptedquery.querier.data.service.ScheduleRepository;
 import org.enquery.encryptedquery.xml.schema.ResultResource;
+import org.enquery.encryptedquery.xml.transformation.XMLFactories;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -52,7 +53,12 @@ public class ResultUpdater {
 		result.setResponderId(resultResource.getId());
 		result.setResponderUri(resultResource.getSelfUri());
 		result.setSchedule(schedule);
-		// result.setStatus(ResultStatus.Ready.toString());
+		if (resultResource.getWindowStart() != null) {
+			result.setWindowStartTime(XMLFactories.toUTCDate(resultResource.getWindowStart()));
+		}
+		if (resultResource.getWindowEnd() != null) {
+			result.setWindowEndTime(XMLFactories.toUTCDate(resultResource.getWindowEnd()));
+		}
 
 		return resultRepo.add(result);
 	}

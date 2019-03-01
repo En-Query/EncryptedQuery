@@ -25,5 +25,4 @@ public interface FlinkConfigurationProperties {
 	String STREAM_RUNTIME_SECONDS = "stream.runtime.seconds";
 	String COMPUTE_THRESHOLD = "flink.compute.threshold";
 	String MAX_HITS_PER_SELECTOR = "flink.max.hits.per.selector";
-	String KAFKA_GROUP_ID = "kafka.groupId";
 }

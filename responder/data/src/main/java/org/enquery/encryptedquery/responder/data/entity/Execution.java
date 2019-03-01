@@ -36,7 +36,7 @@ import javax.persistence.TemporalType;
 public class Execution {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "exe_seq")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@Column(nullable = false, name = "received_ts")
@@ -71,6 +71,13 @@ public class Execution {
 
 	@Column(name = "output_file_path")
 	private String outputFilePath;
+
+	@Column(name = "handle")
+	@Lob
+	private byte[] handle;
+
+	@Column(name = "error_msg")
+	private String errorMsg;
 
 	public Integer getId() {
 		return id;
@@ -159,14 +166,6 @@ public class Execution {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Execution [id=").append(id).append(", receivedTime=").append(receivedTime).append(", scheduleTime=").append(scheduleTime).append(", startTime=").append(startTime).append(", endTime=").append(endTime).append(", dataSourceName=")
-				.append(dataSourceName).append(", queryLocation=").append(queryLocation).append(", parameters=").append(parameters).append(", dataSchema=").append(dataSchema).append("]");
-		return builder.toString();
-	}
-
 	public DataSchema getDataSchema() {
 		return dataSchema;
 	}
@@ -195,6 +194,29 @@ public class Execution {
 
 	public void setOutputFilePath(String outputFilePath) {
 		this.outputFilePath = outputFilePath;
+	}
+
+	public byte[] getHandle() {
+		return handle;
+	}
+
+	public void setHandle(byte[] handle) {
+		this.handle = handle;
+	}
+
+	public String getErrorMsg() {
+		return errorMsg;
+	}
+
+	public void setErrorMsg(String errorMsg) {
+		this.errorMsg = errorMsg;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Execution [id=").append(id).append(", scheduleTime=").append(scheduleTime).append("]");
+		return builder.toString();
 	}
 
 }

@@ -5,93 +5,168 @@ import axios from "axios";
 import moment from "moment";
 import "../css/QueryResults.css";
 
-import HomePage from "../routes/HomePage";
+import VerticalNavBar from "./NavigationBar.js";
+import LogoSection from "./logo-section.js";
+
+const indexTuple = source =>
+  source.reduce((prev, [k, v]) => ((prev[k] = v), prev), {});
 
 class QueryResults extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      queryScheduleStatus: [],
-      queryScheduleType: [],
-      queryScheduleDate: [],
-      querySchedules: [],
-      results: {},
-      includedData: []
+      results: [],
+      retrievalUris: {},
+      decryptionUris: {}
     };
   }
 
-  componentDidMount() {
-    this.interval = setInterval(() => this.getData(), 7000);
-    this.getData();
+  async componentDidMount() {
+    await this.getResultsList();
+    await this.getResultsData();
+    this.interval = setInterval(() => this.getResultsList(), 8000);
   }
 
   componentWillUnmount() {
     clearInterval(this.interval);
   }
 
-  getData = () => {
-    const scheduleSelfUri = localStorage.getItem("scheduleSelfUri");
-    console.log(scheduleSelfUri);
+  getResultsList = async () => {
+    //fetch basic result(s) list
+    try {
+      const resultsUri = localStorage.getItem("resultsUri");
+      console.log(
+        "Initial vlaue for resultsUri in getResultsList: ",
+        resultsUri
+      );
+      const { data } = await axios({
+        method: "get",
+        url: `${resultsUri}`,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+
+      console.log("data.data", data.data);
+      const results = data.data;
+      this.setState({ results: results });
+
+      console.log("This is the list of results from getResultsList: ", results);
+    } catch (error) {
+      console.error(Error(`Error fetching results list: ${error.message}`));
+    }
+  };
+
+  getResultsData = async () => {
+    // fetch selfUri's of all available results
+    const { results } = this.state;
+
+    console.log("-----------------------------------------------------------");
+    console.log("These are the results list inside getResultsData: ", results);
+    console.log("-----------------------------------------------------------");
+
+    const fetchSelfUri = ({ id, selfUri }) =>
+      axios({
+        method: "get",
+        url: selfUri,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      }).then(({ data }) => [[id], data.data.retrievalsUri]);
+
+    try {
+      const retrievalUriList = await Promise.all(results.map(fetchSelfUri));
+      const retrievalUris = indexTuple(retrievalUriList);
+
+      console.log(
+        "These are the retrievalUri's from each result",
+        retrievalUris
+      );
+
+      this.setState({ retrievalUris });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  sendRetrieval = async id => {
+    // handle download button that will send the post retrieval
+    const retrievalsUri = this.state.retrievalUris[id];
+
+    console.log(`Posting to ${retrievalsUri}`);
+
+    try {
+      const { data } = await axios({
+        method: "post",
+        url: retrievalsUri,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+
+      const decryptionsUri = data.data.decryptionsUri;
+
+      console.log("decryptionsUri is: ", decryptionsUri);
+      console.log(this.state);
+
+      this.setState(prevState => {
+        prevState.decryptionUris[id] = decryptionsUri;
+        return {
+          decryptionUris: prevState.decryptionUris
+        };
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  sendDecryption = id => {
+    //Handle Decrypt Action
+
+    const decryptionsUri = this.state.decryptionUris[id];
+
+    console.log(decryptionsUri);
+
     axios({
-      method: "get",
-      url: `${scheduleSelfUri}`,
+      method: "post",
+      url: decryptionsUri,
       headers: {
         Accept: "application/vnd.encryptedquery.enclave+json; version=1"
       }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({
-          resultsUri: response.data.data.resultsUri
-        });
-        localStorage.setItem(`resultsUri`, this.state.resultsUri);
-        const resultsUri = localStorage.getItem("resultsUri");
-        return axios({
-          method: "get",
-          url: `${resultsUri}`,
-          headers: {
-            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-          }
-        });
-      })
-      .then(response => {
-        console.log(response);
-        this.setState(
-          {
-            results: response.data.data,
-            resultsSelfUri: response.data.data[0].selfUri
-          },
-          () => {
-            console.log(this.state.results);
-            console.log(this.state.resultsSelfUri);
-          }
-        );
-      })
-      .catch(error => console.log(error));
+    });
   };
 
-  handleButtonView = (status, resultsSelfUri) => {
+  renderButtonView = (idx, status) => {
+    const { id } = this.state.results[idx];
+    const retrievalsUri = this.state.retrievalUris[id];
+    const decryptionsUri = this.state.decryptionUris[id];
+
     switch (status) {
       case `Ready`:
-        return (
-          <button
-            onClick={e => this.getDownload(e, resultsSelfUri)}
-            type="button"
-          >
-            DOWNLOAD
-          </button>
-        );
+        if (retrievalsUri) {
+          return (
+            <button onClick={() => this.sendRetrieval(id)} type="button">
+              DOWNLOAD
+            </button>
+          );
+        }
+        break;
       case `Downloading`:
         return <button> DOWNLOADING ... </button>;
       case `Downloaded`:
-        return (
-          <button onClick={this.getDecrypted} type="button">
-            DECRYPT{" "}
-          </button>
-        );
+        if (decryptionsUri) {
+          return (
+            <button onClick={() => this.sendDecryption(id)} type="button">
+              DECRYPT
+            </button>
+          );
+        }
+        break;
       case `Decrypting`:
         return <button> DECRYPTING ...</button>;
+      case `InProgress`:
+        return <button> INPROGRESS</button>;
       case `Decrypted`:
         return <button> DECRYPTED </button>;
       default:
@@ -99,183 +174,50 @@ class QueryResults extends React.Component {
     }
   };
 
-  getDownload = async (e, resultsSelfUri) => {
-    //handle download action
-    console.log(this.state.resultsSelfUri);
-    e.preventDefault();
-    await this.setState({ resultsSelfUri });
-    localStorage.setItem("resultSelfUri", this.state.resultsSelfUri);
-    const resultSelfUri = localStorage.getItem("resultSelfUri");
-    axios({
-      method: "get",
-      url: `${resultsSelfUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        const scheduleInfo = response.data.included.filter(
-          element => element.type === "Schedule"
-        );
-        const scheduleStartTime = scheduleInfo.map(function(included) {
-          return included["startTime"];
-        });
-        console.log("This is the date", scheduleStartTime);
-        const resultQueryInfo = response.data.included.filter(
-          element => element.type === "Query"
-        );
-        const queryName = resultQueryInfo.map(function(included) {
-          return included["name"];
-        });
-        const resultDataSourceInfo = response.data.included.filter(
-          element => element.type === "DataSource"
-        );
-        const dataSourceName = resultDataSourceInfo.map(function(included) {
-          return included["name"];
-        });
-        const dataSourceMode = resultDataSourceInfo.map(function(included) {
-          return included["processingMode"];
-        });
-
-        this.setState(
-          {
-            resultStatus: response.data.data.status,
-            resultId: response.data.data.id,
-            startTime: response.data.data.startTime,
-            resultType: response.data.data.type,
-            retrievalsUri: response.data.data.retrievalsUri,
-            includedData: response.data.included,
-            queryName: queryName,
-            dataSourceName: dataSourceName,
-            dataSourceMode: dataSourceMode,
-            scheduleStartTime: scheduleStartTime
-          },
-          () => {
-            console.log(this.state.queryName);
-            console.log(this.state.retrievalsUri);
-            console.log(this.state.includedData);
-            console.log(this.state.dataSourceName);
-            console.log(this.state.dataSourceMode);
-            console.log(this.state.scheduleStartTime);
-          }
-        );
-        localStorage.setItem("retrievalsUri", this.state.retrievalsUri);
-        const retrievalSelfUri = localStorage.getItem("retrievalsUri");
-        console.log(retrievalSelfUri);
-        return axios({
-          method: "post",
-          url: `${retrievalSelfUri}`,
-          headers: {
-            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-          }
-        });
-      })
-      .then(response => {
-        console.log(response);
-        this.setState({
-          decryptionsUri: response.data.data.decryptionsUri
-        });
-        localStorage.setItem("decryptionsUri", this.state.decryptionsUri);
-        this.props.history.push(`/querier/queryresults`);
-      })
-      .catch(error => console.log(error));
-  };
-
-  getDecrypted = e => {
-    //Handle Decrypt action
-    const decryptionsUri = localStorage.getItem("decryptionsUri");
-    axios({
-      method: "post",
-      url: `${decryptionsUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.props.history.push(`/querier/queryresults`);
-      })
-      .catch(error => console.log(error));
-  };
-
   render() {
-    const {
-      results,
-      queries,
-      queryScheduleStatus,
-      queryScheduleType,
-      queryScheduleDate,
-      queryName,
-      user,
-      includedData,
-      querySchedules,
-      scheduleStartTime,
-      dataSourceMode,
-      dataSourceName
-    } = this.state;
+    const { results } = this.state;
     const { match, location, history } = this.props;
 
     return (
       <div>
-        <HomePage />
-        {queryName && (
-          <div>
-            <fieldset>
-              <legend> Query Information </legend>
-              <br />
-              <div className="queryInformation">
-                <div>
-                  <label>Query Name:</label>
-                  <input value={queryName} />
-                </div>
-                <br />
-
-                <div>
-                  <label>Data Source:</label>
-                  <input value={dataSourceName} />
-                </div>
-                <br />
-                <div>
-                  <label>Batch or Streaming:</label>
-                  <input value={dataSourceMode} />
-                </div>
-                <br />
-                <div>
-                  <label>Schedule Info:</label>
-                  <input
-                    value={moment(scheduleStartTime[0]).format("llll")}
-                  />{" "}
-                  />
-                </div>
-                <br />
-              </div>
-            </fieldset>
-          </div>
-        )}
-        <br />
-        <br />
-
+        <LogoSection />
+        <VerticalNavBar />
         <table id="results">
           <caption> Retrievals + Results </caption>
-          <tr>
-            <th>result_ID</th>
-            <th>Processing Mode</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-          {Object.values(results).map(result => {
-            return (
-              <tr>
-                <td key={result.id}>{result.id}</td>
-                <td> {this.state.dataSourceMode} </td>
-                <td key={result.type}>{result.type}</td>
-                <td key={result.status}>{result.status}</td>
-                <td> {this.handleButtonView(result.status, result.selfUri)}</td>
-              </tr>
-            );
-          })}
+          <tbody>
+            <tr>
+              <th>result_ID</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+            {Object.values(
+              results
+            ).map(
+              ({ id, type, windowStartTime, windowEndTime, status }, idx) => {
+                return (
+                  <tr>
+                    <td>{id}</td>
+                    <td>
+                      {moment(windowStartTime).format(
+                        "MMMM Do YYYY, h:mm:ss a"
+                      )}{" "}
+                    </td>
+                    <td>
+                      {moment(windowEndTime).format(
+                        "MMMM Do YYYY, h:mm:ss a"
+                      )}{" "}
+                    </td>
+                    <td>{type}</td>
+                    <td>{status}</td>
+                    <td>{this.renderButtonView(idx, status)}</td>
+                  </tr>
+                );
+              }
+            )}
+          </tbody>
         </table>
       </div>
     );

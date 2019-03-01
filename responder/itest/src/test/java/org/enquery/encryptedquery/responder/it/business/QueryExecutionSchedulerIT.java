@@ -19,7 +19,7 @@ package org.enquery.encryptedquery.responder.it.business;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.editConfigurationFilePut;
+import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -31,7 +31,6 @@ import java.util.List;
 
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.sshd.common.util.io.IoUtils;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
@@ -107,14 +106,10 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 
 	@Configuration
 	public Option[] configuration() {
-		return ArrayUtils.addAll(super.baseOptions(), CoreOptions.options(
-				editConfigurationFilePut("etc/system.properties",
-						"query.schema.path",
-						Paths.get(QUERY_SCHEMA).toAbsolutePath().toString()),
-
-				editConfigurationFilePut("etc/encrypted.query.responder.business.cfg",
-						"inbox.dir",
-						INBOX_DIR)));
+		return combineOptions(super.baseOptions(),
+				CoreOptions.options(
+						systemProperty("query.schema.path")
+								.value(Paths.get(QUERY_SCHEMA).toAbsolutePath().toString())));
 	}
 
 	@Before
@@ -193,14 +188,6 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
-
-		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-		// .newBuilder()
-		// .dataChunkSize(DATA_CHUNK_SIZE)
-		// .hashBitSize(HASH_BIT_SIZE)
-		// .certainty(CERTAINTY)
-		// .embedSelector(true)
-		// .build();
 		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

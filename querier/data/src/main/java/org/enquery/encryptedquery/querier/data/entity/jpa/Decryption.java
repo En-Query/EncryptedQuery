@@ -64,7 +64,7 @@ public class Decryption {
 	public static final String ALL_ENTITY_GRAPH = "Decryption.all";
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_generator")
+	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
 	@OneToOne()

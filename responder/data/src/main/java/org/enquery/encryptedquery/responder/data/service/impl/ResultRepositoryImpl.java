@@ -27,11 +27,12 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 
-import org.apache.aries.jpa.template.JpaTemplate;
-import org.apache.aries.jpa.template.TransactionType;
+import javax.persistence.EntityManager;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.Validate;
@@ -41,8 +42,11 @@ import org.enquery.encryptedquery.responder.data.service.BlobLocationRegistry;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
 import org.enquery.encryptedquery.responder.data.transformation.URIUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.transaction.control.TransactionControl;
+import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,70 +56,63 @@ public class ResultRepositoryImpl implements ResultRepository {
 
 	private static final Logger log = LoggerFactory.getLogger(ResultRepositoryImpl.class);
 
-	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
-	private JpaTemplate jpa;
-
 	@Reference
 	DataSourceRegistry dsRegistry;
 
 	@Reference
 	private BlobLocationRegistry blobLocationRegistry;
 
+	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
+	private JPAEntityManagerProvider provider;
+	@Reference
+	private TransactionControl txControl;
+	private EntityManager em;
+
+	@Activate
+	void init() {
+		em = provider.getResource(txControl);
+	}
+
 	@Override
 	public Result find(int id) {
-		return jpa.txExpr(TransactionType.Supports, em -> em.find(Result.class, id));
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.find(Result.class, id));
 	}
 
 	@Override
 	public Result findForExecution(Execution execution, int id) {
 		Validate.notNull(execution);
-		return jpa.txExpr(TransactionType.Supports, em -> {
-			return em.createQuery("Select r From Result r "
-					+ "Where r.id = :id "
-					+ "And   r.execution = :execution ",
-					Result.class)
-					.setParameter("id", id)
-					.setParameter("execution", em.find(Execution.class, execution.getId()))
-					.getResultList()
-					.stream()
-					.findFirst()
-					.orElse(null);
-		});
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
+					return em.createQuery("Select r From Result r "
+							+ "Where r.id = :id "
+							+ "And   r.execution = :execution ",
+							Result.class)
+							.setParameter("id", id)
+							.setParameter("execution", em.find(Execution.class, execution.getId()))
+							.getResultList()
+							.stream()
+							.findFirst()
+							.orElse(null);
+				});
 	}
 
 	@Override
 	public Collection<Result> listForExecution(Execution execution) {
 		Validate.notNull(execution);
-		return jpa.txExpr(TransactionType.Supports, em -> {
-			return em.createQuery("Select r From Result r "
-					+ "Where r.execution = :execution ",
-					Result.class)
-					.setParameter("execution", em.find(Execution.class, execution.getId()))
-					.getResultList();
-		});
-	}
-
-	@Override
-	public Result add(Execution execution, InputStream inputStream) {
-		Validate.notNull(execution);
-		Validate.notNull(inputStream);
-		return jpa.txExpr(
-				TransactionType.Required,
-				em -> {
-					Execution ex = em.find(Execution.class, execution.getId());
-					Validate.notNull(ex);
-
-					Result result = new Result();
-					result.setCreationTime(new Date());
-					result.setExecution(execution);
-					em.persist(result);
-
-					final URL url = makePayloadFileUrl(execution, result);
-					save(url, inputStream);
-					result.setPayloadUrl(url.toString());
-
-					em.merge(result);
-					return result;
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
+					return em.createQuery("Select r From Result r "
+							+ "Where r.execution = :execution ",
+							Result.class)
+							.setParameter("execution", em.find(Execution.class, execution.getId()))
+							.getResultList();
 				});
 	}
 
@@ -142,33 +139,45 @@ public class ResultRepositoryImpl implements ResultRepository {
 
 	@Override
 	public Result add(Result r) {
-		jpa.tx(em -> em.persist(r));
-		return r;
+		return txControl
+				.build()
+				.required(() -> {
+					em.persist(r);
+					return r;
+				});
 	}
 
 	@Override
 	public Result update(Result r) {
-		return jpa.txExpr(TransactionType.Required, em -> em.merge(r));
+		return txControl
+				.build()
+				.required(() -> em.merge(r));
 	}
 
 	@Override
 	public void delete(Result r) {
-		jpa.tx(em -> {
-			Result schedule = find(r.getId());
-			if (schedule != null) {
-				deletePayload(r);
-				em.remove(schedule);
-			}
-		});
+		txControl
+				.build()
+				.required(() -> {
+					Result schedule = find(r.getId());
+					if (schedule != null) {
+						deletePayload(r);
+						em.remove(schedule);
+					}
+					return 0;
+				});
 	}
 
 	@Override
 	public void deleteAll() {
-		jpa.tx(em -> {
-			em.createQuery("Select r From Result r", Result.class)
-					.getResultList()
-					.forEach(r -> em.remove(r));
-		});
+		txControl
+				.build()
+				.required(() -> {
+					em.createQuery("Select r From Result r", Result.class)
+							.getResultList()
+							.forEach(r -> em.remove(r));
+					return 0;
+				});
 	}
 
 	private void save(URL url, InputStream source) {
@@ -212,16 +221,51 @@ public class ResultRepositoryImpl implements ResultRepository {
 
 	@Override
 	public InputStream payloadInputStream(int resultId) {
-		return jpa.txExpr(TransactionType.Supports, em -> {
-			Result result = find(resultId);
-			Validate.notNull(result, "Result with id %d was not found.", resultId);
-			URI uri = URI.create(result.getPayloadUrl());
-			try {
-				return uri.toURL().openStream();
-			} catch (IOException e) {
-				throw new RuntimeException("Error accessing the result payload.", e);
-			}
-		});
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
+					Result result = find(resultId);
+					Validate.notNull(result, "Result with id %d was not found.", resultId);
+					URI uri = URI.create(result.getPayloadUrl());
+					try {
+						return uri.toURL().openStream();
+					} catch (IOException e) {
+						throw new RuntimeException("Error accessing the result payload.", e);
+					}
+				});
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.responder.data.service.ResultRepository#add(org.enquery.
+	 * encryptedquery.responder.data.entity.Execution, java.io.InputStream, java.time.Instant,
+	 * java.time.Instant)
+	 */
+	@Override
+	public Result add(Execution execution, InputStream inputStream, Instant startTime, Instant endTime) {
+		Validate.notNull(execution);
+		Validate.notNull(inputStream);
+		return txControl
+				.build()
+				.required(() -> {
+					Execution ex = em.find(Execution.class, execution.getId());
+					Validate.notNull(ex);
+
+					Result result = new Result();
+					result.setCreationTime(new Date());
+					if (startTime != null) result.setWindowStartTime(Date.from(startTime));
+					if (endTime != null) result.setWindowEndTime(Date.from(endTime));
+					result.setExecution(ex);
+					em.persist(result);
+
+					final URL url = makePayloadFileUrl(ex, result);
+					save(url, inputStream);
+					result.setPayloadUrl(url.toString());
+
+					return em.merge(result);
+				});
 	}
 
 }

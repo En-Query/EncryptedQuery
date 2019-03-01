@@ -145,7 +145,7 @@ public class ExecutionConverter {
 	private void emitScheduleDate(XMLEventWriter writer, Date startTime) throws XMLStreamException {
 		writer.add(eventFactory.createIgnorableSpace("\n"));
 		writer.add(eventFactory.createStartElement(SCHEDULED_FOR, null, null));
-		writer.add(eventFactory.createCharacters(XMLFactories.toXMLTime(startTime).toXMLFormat()));
+		writer.add(eventFactory.createCharacters(XMLFactories.toUTCXMLTime(startTime).toXMLFormat()));
 		writer.add(eventFactory.createEndElement(SCHEDULED_FOR, null));
 	}
 

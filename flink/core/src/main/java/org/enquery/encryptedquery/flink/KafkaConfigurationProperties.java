@@ -23,7 +23,5 @@ package org.enquery.encryptedquery.flink;
 public interface KafkaConfigurationProperties {
 	String BROKERS = "kafka.brokers";
 	String TOPIC = "kafka.topic";
-	String GROUP_ID = "kafka.groupId";
-	String FORCE_FROM_START = "kafka.forceFromStart";
-	String OFFSET = "kafka.offsetLocation";
+	String OFFSET = "kafka.start.offset";
 }

@@ -1,6 +1,7 @@
+
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.0
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.1
 
 ## Overview
 
@@ -9,6 +10,12 @@ Encrypted Query is designed to allow a user to query a remote database without r
 Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
+2.1.1
+ - Added start/end times for result files in the UI.  Better handling of multiple result files from streaming queries.
+ - Reduced logging on Querier side.
+ - Better status reporting back to the querier when a query job fails on the responder.
+ - Updated UI for scheduling Streaming jobs.
+ 
 2.1
  - Drop in Encryption.  Encryption/Decryption has been modularized to allow other drop in encryption schemes
  - Streaming query execution.  Queries can now be executed against a Kafka stream.  Streams can be processed in a Tumbling windows fashion.   
@@ -32,9 +39,11 @@ Full service Integration and Support are available from EnQuery (https://enquery
 
 | Plugin | README |
 | ------ | ------ |
-| Deployment | [Deployment-README.md][PlDb] |
-| Building | [Building-README.md][PlGh] |
+| Release Notes | [Release-Nodes.md][PlRn] |
+| Building | [Building-README.md][PlDb] |
+| Deployment | [Deployment-README.md][PlGh] |
 | Examples | [Examples-README.md][PlGd] |
+
 
 
 
@@ -67,7 +76,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
-   [PlDb]: <https://github.com/En-Query/EncryptedQuery/Building-README.md>
-   [PlGh]: <https://github.com/En-Query/EncryptedQuery/Deployment-README.md>
-   [PlGd]: <https://github.com/En-Query/EncryptedQuery/Examples-README.md>
-   [PlLs]: <https://github.com/En-Query/EncryptedQuery/LICENSE>
+   [PlDb]: <https://github.com/En-Query/EncryptedQuery/blob/master/Building-README.md>
+   [PlGh]: <https://github.com/En-Query/EncryptedQuery/blob/master/Deployment-README.md>
+   [PlGd]: https://github.com/En-Query/EncryptedQuery/blob/master/examples/Examples-README.md
+   [PlLs]: <https://github.com/En-Query/EncryptedQuery/blob/master/LICENSE>
+   [PlRn]: https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md

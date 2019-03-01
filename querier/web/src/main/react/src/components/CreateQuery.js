@@ -2,8 +2,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router";
 
-import HomePage from "../routes/HomePage";
+import LogoSection from "./logo-section.js";
 import CreateQuerySchema from "./CreateQuerySchema";
+import VerticalNavBar from "./NavigationBar.js";
+
 import "../css/CreateQuery.css";
 
 import axios from "axios";
@@ -174,7 +176,7 @@ class CreateQuery extends React.Component {
         console.log(response);
       })
       .catch(error => console.log(error.response));
-    this.props.history.push("/querier/querystatus");
+    this.props.history.push("/querystatus");
   }
 
   render() {
@@ -197,7 +199,8 @@ class CreateQuery extends React.Component {
 
     return (
       <div>
-        <HomePage />
+        <LogoSection />
+        <VerticalNavBar />
         <form onSubmit={this.handleSubmit}>
           <fieldset>
             <legend>Query Information</legend>

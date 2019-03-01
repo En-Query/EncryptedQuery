@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -32,15 +33,19 @@ import java.util.concurrent.ExecutorService;
 
 import javax.xml.bind.JAXBException;
 
+import org.apache.commons.codec.Charsets;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.CoreConfigurationProperties;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
+import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.business.ChildProcessLogger;
 import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
+import org.enquery.encryptedquery.responder.data.entity.ExecutionStatus;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
@@ -117,6 +122,12 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 		programPath = Paths.get(config._flink_install_dir(), "bin", "flink");
 		Validate.isTrue(Files.exists(programPath), "Does not exists: " + programPath);
 
+		if (config.type() != null) {
+		type = DataSourceType.valueOf(config.type());
+		} else {
+			type = DataSourceType.Batch;
+		}
+		
 		runDir = Paths.get(config._run_directory());
 		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
 
@@ -128,8 +139,8 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 			computeThreshold = Integer.valueOf(config._compute_threshold());
 		}
 
-		Validate.notBlank(config.type(), "Type is required.");
-		this.type = DataSourceType.valueOf(config.type());
+//		Validate.notBlank(config.type(), "Type is required.");
+//		this.type = DataSourceType.valueOf(config.type());
 
 		if (config._column_encryption_partition_count() != null) {
 			columnEncryptionPartitionCount = Integer.parseInt(config._column_encryption_partition_count());
@@ -153,11 +164,11 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	}
 
 	@Override
-	public void run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
+	public byte[] run(Query query, Map<String, String> parameters, String outputFileName, OutputStream stdOutput) {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
-		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
+		Validate.isTrue(!Files.exists(Paths.get(outputFileName)), "File '%s' already exists.", outputFileName);
 
 		Path workingTempDir = null;
 		try {
@@ -204,17 +215,21 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 
 			int exitCode = proc.waitFor();
 
+			Date endDate = new Date();
 			log.info("Flink exited with code: {}.", exitCode);
 
+			ExecutionStatus result = null;
 			if (exitCode != 0) {
-				throw new IOException("Error running Flink-JDBC application.");
+				result = new ExecutionStatus(endDate, "Error running Flink-JDBC application. Exit code: " + exitCode, false);
+			} else {
+				result = new ExecutionStatus(endDate, null, false);
 			}
 
+			return JSONStringConverter.toString(result).getBytes();
 		} catch (IOException | InterruptedException | JAXBException e) {
-			// FileUtils.deleteQuietly(workingTempDir.toFile());
 			throw new RuntimeException("Error running Flink-JDBC query.", e);
 		} finally {
-			// FileUtils.deleteQuietly(workingTempDir.toFile());
+			FileUtils.deleteQuietly(workingTempDir.toFile());
 		}
 	}
 
@@ -291,4 +306,22 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	public DataSourceType getType() {
 		return type;
 	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.responder.data.service.QueryRunner#status(byte[])
+	 */
+	@Override
+	public ExecutionStatus status(byte[] handle) {
+
+		Map<String, Object> map = JSONStringConverter.toStringObjectMap(new String(handle, Charsets.UTF_8));
+
+		Date endTime = new Date((Long) map.get("endTime"));
+		String error = (String) map.get("error");
+
+		return new ExecutionStatus(endTime, error, false);
+	}
+
 }

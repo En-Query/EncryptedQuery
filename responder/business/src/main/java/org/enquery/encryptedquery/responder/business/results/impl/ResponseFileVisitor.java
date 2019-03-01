@@ -26,6 +26,12 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.function.Predicate;
 
 import org.slf4j.Logger;
@@ -38,9 +44,13 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 
 	private static final Logger log = LoggerFactory.getLogger(ResponseFileVisitor.class);
 
+	private static final long MINIMUM_FILE_AGE_IN_SECONDS = 5;
+
+	private final ZoneId zoneId = ZoneId.of("UTC");
 	private int level = -1;
 	private boolean hasUnexpectedContent;
 	private boolean hasErrors;
+	private boolean hasTooYoungFiles;
 	private final Predicate<ResponseFileInfo> callback;
 
 	private int year, month, day;
@@ -48,7 +58,6 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 	/**
 	 * Callback predicate returns false, if the file could not be processed. If a file cannot be
 	 * processed correctly, then it will not be deleted, nor its parent directory.
-	 * 
 	 */
 	public ResponseFileVisitor(Predicate<ResponseFileInfo> callback) {
 		this.callback = callback;
@@ -81,16 +90,33 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 		}
 		++level;
 
-		log.info("Entering level {} path '{}'.", level, dir);
+		if (log.isDebugEnabled()) log.debug("Entering level {} path '{}'.", level, dir);
 		return FileVisitResult.CONTINUE;
 	}
 
 	@Override
 	public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-		log.info("Found file '{}'.", file);
+		final boolean debugging = log.isDebugEnabled();
+		if (debugging) log.debug("Found file '{}'.", file);
 
-		if (!file.getFileName().toString().endsWith("xml")) {
+		final String fileName = file.getFileName().toString();
+		if (!fileName.endsWith(".xml")) {
+			if (debugging) log.debug("File '{}' is not XML.", file.getFileName());
 			hasUnexpectedContent = true;
+			return FileVisitResult.CONTINUE;
+		}
+
+		if (fileName.length() != "HHmmss-HHmmss.xml".length()) {
+			if (debugging) log.debug("File '{}' is not valid name.", file.getFileName());
+			hasUnexpectedContent = true;
+			return FileVisitResult.CONTINUE;
+		}
+
+		final FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+		long age = Math.abs(ChronoUnit.SECONDS.between(lastModifiedTime.toInstant(), Instant.now()));
+		if (age < MINIMUM_FILE_AGE_IN_SECONDS) {
+			if (debugging) log.debug("File '{}' is too new.", file.getFileName());
+			hasTooYoungFiles = true;
 			return FileVisitResult.CONTINUE;
 		}
 
@@ -100,6 +126,9 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 		info.year = year;
 		info.path = file;
 
+		parseFileStartAndEndTimeStamps(info, file);
+
+
 		boolean success = callback.test(info);
 		if (success) {
 			safeDelete(file);
@@ -107,6 +136,56 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 			hasErrors = true;
 		}
 		return FileVisitResult.CONTINUE;
+	}
+
+	/**
+	 * @param info
+	 * @param file
+	 */
+	private void parseFileStartAndEndTimeStamps(ResponseFileInfo info, Path file) {
+		final String name = file.getFileName().toString();
+
+		int[] index = {0};
+
+		Instant start = parseTimeStamp(info.year, info.month, info.day, name, index);
+
+		// skip the hyphen
+		++index[0];
+
+		Instant end = parseTimeStamp(info.year, info.month, info.day, name, index);
+
+		// if the end timestamp is earlier, that means it ended the next day
+		if (end.isBefore(start)) {
+			end = end.plus(Duration.ofDays(1));
+		}
+
+		info.startTime = start;
+		info.endTime = end;
+
+		if (log.isDebugEnabled()) {
+			log.debug("File '{}' start='{}', end='{}'.",
+					name,
+					start,
+					end);
+		}
+	}
+
+	private Instant parseTimeStamp(int year, int month, int day, String name, int[] index) {
+		int hour = Integer.parseUnsignedInt(name.substring(index[0], index[0] + 2));
+		index[0] += 2;
+		int minute = Integer.parseUnsignedInt(name.substring(index[0], index[0] + 2));
+		index[0] += 2;
+		int sec = Integer.parseUnsignedInt(name.substring(index[0], index[0] + 2));
+		index[0] += 2;
+
+		return ZonedDateTime.of(year,
+				month,
+				day,
+				hour,
+				minute,
+				sec,
+				0,
+				zoneId).toInstant();
 	}
 
 	private void safeDelete(Path file) throws IOException {
@@ -126,7 +205,7 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 
 	@Override
 	public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-		log.info("Leaving level {} path '{}'.", level, dir);
+		if (log.isDebugEnabled()) log.debug("Leaving level {} path '{}'.", level, dir);
 
 		if (canDeleteDir()) {
 			log.info("Will delete path '{}'.", dir);
@@ -138,11 +217,12 @@ public class ResponseFileVisitor extends SimpleFileVisitor<Path> {
 	}
 
 	private boolean canDeleteDir() {
-		return !hasUnexpectedContent && !hasErrors;
+		return !hasUnexpectedContent && !hasErrors && !hasTooYoungFiles;
 	}
 
 	private void resetFlags() {
 		hasUnexpectedContent = false;
 		hasErrors = false;
+		hasTooYoungFiles = false;
 	}
 }

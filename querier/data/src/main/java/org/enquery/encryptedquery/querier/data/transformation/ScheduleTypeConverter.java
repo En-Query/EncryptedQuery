@@ -53,6 +53,7 @@ public class ScheduleTypeConverter {
 
 		result.setStartTime(jpa.getStartTime());
 		result.setStatus(jpa.getStatus());
+		result.setErrorMsg(jpa.getErrorMessage());
 		result.setParameters(JSONConverter.toMapStringString(jpa.getParameters()));
 		result.setQuery(queryConverter.toResourceIdentifier(jpa.getQuery()));
 		result.setDataSource(dataSourceConverter.toResourceIdentifier(jpa.getDataSource()));

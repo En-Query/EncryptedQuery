@@ -35,6 +35,7 @@ import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
+import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -69,9 +70,12 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 	private DataSchemaResource booksDataSchema;
 	private DataSourceResource dataSourceResource;
 
+	private FlinkDriver flinkDriver = new FlinkDriver();
+
 	@Configuration
 	public Option[] configuration() {
-		return super.baseOptions();
+		return combineOptions(super.baseOptions(),
+				flinkDriver.configuration());
 	}
 
 	@Before

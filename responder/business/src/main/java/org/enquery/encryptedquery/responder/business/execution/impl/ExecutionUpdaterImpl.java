@@ -33,9 +33,13 @@ import org.enquery.encryptedquery.xml.transformation.ExecutionXMLExtractor;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.quartz.JobExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class ExecutionUpdaterImpl implements ExecutionUpdater {
+
+	private static final Logger log = LoggerFactory.getLogger(ExecutionUpdaterImpl.class);
 
 	@Reference
 	private ExecutionRepository executionRepo;
@@ -64,6 +68,7 @@ public class ExecutionUpdaterImpl implements ExecutionUpdater {
 			extractor.parse(inputStream);
 			ex.setScheduleTime(extractor.getScheduleDate());
 			ex.setParameters(JSONStringConverter.toString(extractor.getConfig()));
+			log.info("Scheduling execution: {}", ex);
 			ex = executionRepo.add(ex, extractor.getQueryInputStream());
 		}
 

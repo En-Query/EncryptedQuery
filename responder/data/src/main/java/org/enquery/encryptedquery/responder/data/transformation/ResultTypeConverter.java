@@ -69,12 +69,15 @@ public class ResultTypeConverter {
 	private static final QName ID = new QName(RESOURCE_NS, "id");
 	private static final QName SELF_URI = new QName(RESOURCE_NS, "selfUri");
 	private static final QName CREATED_ON = new QName(RESULT_NS, "createdOn");
+	private static final QName WINDOW_START = new QName(RESULT_NS, "windowStart");
+	private static final QName WINDOW_END = new QName(RESULT_NS, "windowEnd");
 	private static final QName PAYLOAD = new QName(RESULT_NS, "payload");
 	private static final QName EXECUTION = new QName(RESULT_NS, "execution");
 	private static final QName RESPONSE = new QName(RESPONSE_NS, "response");
 	private static final String SCHEMA_VERSION_ATTRIB = "schemaVersion";
 	// needs to match version attribute in the XSD resource (most current version)
 	private static final String RESPONSE_CURRENT_XSD_VERSION = "2.0";
+
 
 	@Reference
 	private ResultRepository resultRepo;
@@ -120,11 +123,12 @@ public class ResultTypeConverter {
 		}
 
 		ResultResources resultResource = new ResultResources();
-		resultResource.getResultResource().addAll(jpaResults.stream().map(
-				jpaResult -> {
-					return makeResultResource(jpaResult, dataSchema, dataSource, execution, registry);
-				})
-				.collect(Collectors.toList()));
+		resultResource
+				.getResultResource()
+				.addAll(jpaResults
+						.stream()
+						.map(jpaResult -> makeResultResource(jpaResult, dataSchema, dataSource, execution, registry))
+						.collect(Collectors.toList()));
 
 		return objectFactory.createResultResources(resultResource);
 	}
@@ -135,7 +139,6 @@ public class ResultTypeConverter {
 			Execution execution,
 			RestServiceRegistry registry) {
 
-
 		final Integer executionId = execution.getId();
 		final Integer dataSchemaId = dataSchema.getId();
 		final Integer dataSourceId = dataSource.getId();
@@ -143,11 +146,20 @@ public class ResultTypeConverter {
 		final ResultResource resource = new ResultResource();
 
 		resource.setId(jpaResult.getId());
-		resource.setCreatedOn(XMLFactories.toXMLTime(jpaResult.getCreationTime()));
+		resource.setCreatedOn(XMLFactories.toUTCXMLTime(jpaResult.getCreationTime()));
 		resource.setSelfUri(registry.resultUri(dataSchemaId,
 				dataSourceId,
 				executionId,
 				jpaResult.getId()));
+
+
+		if (jpaResult.getWindowStartTime() != null) {
+			resource.setWindowStart(XMLFactories.toUTCXMLTime(jpaResult.getWindowStartTime()));
+		}
+
+		if (jpaResult.getWindowEndTime() != null) {
+			resource.setWindowEnd(XMLFactories.toUTCXMLTime(jpaResult.getWindowEndTime()));
+		}
 
 		// TODO: possibly move this to Execution Converter
 		Resource executionResource = new Resource();
@@ -200,6 +212,15 @@ public class ResultTypeConverter {
 				emitElement(writer, ID, Integer.toString(result.getId()));
 				emitElement(writer, SELF_URI, result.getSelfUri());
 				emitElement(writer, CREATED_ON, result.getCreatedOn().toXMLFormat());
+
+				if (result.getWindowStart() != null) {
+					emitElement(writer, WINDOW_START, result.getWindowStart().toXMLFormat());
+				}
+
+				if (result.getWindowEnd() != null) {
+					emitElement(writer, WINDOW_END, result.getWindowEnd().toXMLFormat());
+				}
+
 				emitExecution(writer, result.getExecution());
 				emitPayload(writer, payloadInputStream);
 				emitEndDocument(writer);

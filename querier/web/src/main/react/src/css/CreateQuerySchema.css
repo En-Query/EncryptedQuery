@@ -49,6 +49,7 @@
 .CQS-input-boxes select {
   flex-grow: 1;
   max-width: 208px;
+  text-align: center;
 }
 
 .CQS-legend-style legend {
@@ -59,6 +60,15 @@
 .selectorField-div div {
   margin-bottom: 10px;
   margin-top: 10px;
+}
+
+.selectorField-div select {
+  max-width: 300px;
+  text-align: center;
+}
+
+.selectorField-div label {
+  min-width: 150px;
 }
 
 .btnSubmit {
@@ -83,4 +93,8 @@
   padding: 10px 24px;
   background-color: #ff0000;
   color: white;
+}
+
+.divSpacing div {
+  margin-bottom: 10px;
 }

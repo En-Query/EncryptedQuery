@@ -16,8 +16,7 @@
  */
 package org.enquery.encryptedquery.responder.it.util;
 
-import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
-import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.editConfigurationFilePut;
+import static org.ops4j.pax.exam.CoreOptions.propagateSystemProperty;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,21 +24,16 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
-import org.ops4j.pax.exam.TestProbeBuilder;
-import org.osgi.framework.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.DumperOptions;
@@ -49,72 +43,26 @@ public class FlinkDriver {
 
 	public static final Logger log = LoggerFactory.getLogger(FlinkDriver.class);
 
-	static class TestEntry {
-		protected final Integer id;
-		protected final String title;
-		protected final String author;
-		protected final Double price;
-		protected final Integer qty;
-
-		private TestEntry(Integer id, String title, String author, Double price, Integer qty) {
-			this.id = id;
-			this.title = title;
-			this.author = author;
-			this.price = price;
-			this.qty = qty;
-		}
-	}
-
-	public static final TestEntry[] TEST_DATA = {
-			new TestEntry(1001, ("Java public for dummies"), ("Tan Ah Teck"), 11.11, 11),
-			new TestEntry(1002, ("More Java for dummies"), ("Tan Ah Teck"), 22.22, 22),
-			new TestEntry(1003, ("More Java for more dummies"), ("Mohammad Ali"), 33.33, 33),
-			new TestEntry(1004, ("A Cup of Java"), ("Kumar"), 44.44, 44),
-			new TestEntry(1005, ("A Teaspoon of Java"), ("Kevin Jones"), 55.55, 55),
-			new TestEntry(1006, ("A Teaspoon of Java 1.4"), ("Kevin Jones"), 66.66, 66),
-			new TestEntry(1007, ("A Teaspoon of Java 1.5"), ("Kevin Jones"), 77.77, 77),
-			new TestEntry(1008, ("A Teaspoon of Java 1.6"), ("Kevin Jones"), 88.88, 88),
-			new TestEntry(1009, ("A Teaspoon of Java 1.7"), ("Kevin Jones"), 99.99, 99),
-			new TestEntry(1010, ("A Teaspoon of Java 1.8"), ("Kevin Jones"), null, 1010)
-	};
-
-	private Process flinkProcess;
-
-	// @Configuration
-	public Option[] configuration() {
-		return CoreOptions.options(
-				editConfigurationFilePut("etc/system.properties",
-						"derby.language.logStatementText",
-						"true"),
-				mavenBundle()
-						.groupId("org.apache.derby")
-						.artifactId("derbyclient")
-						.versionAsInProject());
-	}
-
-	public TestProbeBuilder probeConfiguration(TestProbeBuilder probe) {
-		// this is needed to avoid importing Derby packages from derby.jar,
-		// we need classes from derbyclient.jar to connect to the Derby database
-		// started from the POM which is not the same as the main Database
-		probe.setHeader(Constants.DYNAMICIMPORT_PACKAGE,
-				"org.apache.derby.jdbc;bundle-symbolic-name=derbyclient,"
-						+ "org.apache.derby.loc;bundle-symbolic-name=derbyclient,"
-						+ "org.apache.felix.service.*;status=provisional,*");
-		return probe;
-	}
-
 	public void init() throws Exception {
-
-		initializeQueryDatabase();
-
-		initializeQueryDatabase();
 		configureFlink();
+		runHistoryServer();
 		runFlink();
 	}
 
-	public void cleanup() throws IOException, InterruptedException {
-		if (flinkProcess == null) return;
 
+	public Option[] configuration() {
+		return CoreOptions.options(
+				// propagate system properties
+				propagateSystemProperty("flink.install.dir"),
+				propagateSystemProperty("flink.jdbc.app"));
+	}
+
+	public void cleanup() throws IOException, InterruptedException {
+		stopFlink();
+		stopHistoryServer();
+	}
+
+	private void stopFlink() throws IOException, InterruptedException {
 		List<String> arguments = new ArrayList<>();
 		Path programPath = Paths.get(System.getProperty("flink.install.dir"), "bin", "stop-cluster.sh");
 		arguments.add(programPath.toString());
@@ -123,53 +71,8 @@ public class FlinkDriver {
 		processBuilder.directory(new File(System.getProperty("flink.install.dir")));
 		processBuilder.redirectErrorStream(true);
 
-		flinkProcess = processBuilder.start();
-		flinkProcess.waitFor();
-	}
-
-	private void initializeQueryDatabase() throws Exception {
-		Class.forName("org.apache.derby.jdbc.ClientDriver");
-		try (Connection conn =
-				DriverManager.getConnection("jdbc:derby://localhost/data/derby-data/books;create=true");
-				Statement s = conn.createStatement();) {
-
-			DatabaseMetaData databaseMetadata = conn.getMetaData();
-			ResultSet resultSet = databaseMetadata.getTables(null, null, "BOOKS", null);
-			if (resultSet.next()) {
-				s.executeUpdate("DROP TABLE BOOKS");
-			}
-			s.executeUpdate(createTableSQL());
-			s.executeUpdate(getInsertQuery());
-		}
-	}
-
-	private String createTableSQL() {
-		StringBuilder sqlQueryBuilder = new StringBuilder("CREATE TABLE BOOKS ");
-		sqlQueryBuilder.append(" (");
-		sqlQueryBuilder.append("id INT NOT NULL DEFAULT 0,");
-		sqlQueryBuilder.append("title VARCHAR(50) DEFAULT NULL,");
-		sqlQueryBuilder.append("author VARCHAR(50) DEFAULT NULL,");
-		sqlQueryBuilder.append("price FLOAT DEFAULT NULL,");
-		sqlQueryBuilder.append("qty INT DEFAULT NULL,");
-		sqlQueryBuilder.append("PRIMARY KEY (id))");
-		return sqlQueryBuilder.toString();
-	}
-
-	private static String getInsertQuery() {
-		StringBuilder sqlQueryBuilder = new StringBuilder("INSERT INTO books (id, title, author, price, qty) VALUES ");
-		for (int i = 0; i < TEST_DATA.length; i++) {
-			sqlQueryBuilder.append("(")
-					.append(TEST_DATA[i].id).append(",'")
-					.append(TEST_DATA[i].title).append("','")
-					.append(TEST_DATA[i].author).append("',")
-					.append(TEST_DATA[i].price).append(",")
-					.append(TEST_DATA[i].qty).append(")");
-			if (i < TEST_DATA.length - 1) {
-				sqlQueryBuilder.append(",");
-			}
-		}
-		String insertQuery = sqlQueryBuilder.toString();
-		return insertQuery;
+		Process p = processBuilder.start();
+		p.waitFor();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -184,14 +87,34 @@ public class FlinkDriver {
 
 
 		Map<String, Object> entries = null;
-		Path file = Paths.get(System.getProperty("flink.install.dir"), "conf", "flink-conf.yaml");
-		try (InputStream is = new FileInputStream(file.toFile())) {
+		String installDir = System.getProperty("flink.install.dir");
+
+		Path configFile = Paths.get(installDir, "conf", "flink-conf.yaml");
+		try (InputStream is = new FileInputStream(configFile.toFile())) {
 			entries = (Map<String, Object>) yaml.load(is);
 		}
 
+		// web dashboard, disable
 		entries.put("rest.port", 8095);
-		try (FileWriter fw = new FileWriter(file.toFile())) {
+
+		// Job History
+		Path dataDir = Paths.get(installDir, "data");
+		Files.createDirectories(dataDir);
+
+		entries.put("jobmanager.archive.fs.dir", dataDir.toUri().toString());
+		entries.put("historyserver.web.address", "localhost");
+		entries.put("historyserver.web.port", 8096);
+		entries.put("historyserver.archive.fs.dir", dataDir.toUri().toString());
+		entries.put("historyserver.archive.fs.refresh-interval", "3000");
+
+		try (FileWriter fw = new FileWriter(configFile.toFile())) {
 			fw.write(yaml.dump(entries));
+		}
+
+		// copy flink log4j
+		Path dest = Paths.get(installDir, "conf", "log4j.properties");
+		try (InputStream in = this.getClass().getResourceAsStream("/flink/log4j.properties")) {
+			Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
@@ -205,7 +128,45 @@ public class FlinkDriver {
 		processBuilder.redirectErrorStream(true);
 
 		log.info("Launch flink with arguments: " + arguments);
-		flinkProcess = processBuilder.start();
-		flinkProcess.waitFor();
+		Process p = processBuilder.start();
+		p.waitFor();
 	}
+
+
+	/**
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * 
+	 */
+	private void runHistoryServer() throws IOException, InterruptedException {
+		List<String> arguments = new ArrayList<>();
+		Path programPath = Paths.get(System.getProperty("flink.install.dir"), "bin", "historyserver.sh");
+		arguments.add(programPath.toString());
+		arguments.add("start");
+
+		ProcessBuilder processBuilder = new ProcessBuilder(arguments);
+		processBuilder.directory(new File(System.getProperty("flink.install.dir")));
+
+		Process p = processBuilder.start();
+		p.waitFor();
+	}
+
+	/**
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * 
+	 */
+	private void stopHistoryServer() throws IOException, InterruptedException {
+		List<String> arguments = new ArrayList<>();
+		Path programPath = Paths.get(System.getProperty("flink.install.dir"), "bin", "historyserver.sh");
+		arguments.add(programPath.toString());
+		arguments.add("stop");
+
+		ProcessBuilder processBuilder = new ProcessBuilder(arguments);
+		processBuilder.directory(new File(System.getProperty("flink.install.dir")));
+
+		Process p = processBuilder.start();
+		p.waitFor();
+	}
+
 }

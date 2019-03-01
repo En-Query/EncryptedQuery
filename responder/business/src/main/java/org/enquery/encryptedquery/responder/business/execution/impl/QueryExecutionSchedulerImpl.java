@@ -19,10 +19,11 @@ package org.enquery.encryptedquery.responder.business.execution.impl;
 import static org.quartz.DateBuilder.evenMinuteDate;
 import static org.quartz.TriggerBuilder.newTrigger;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +31,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBException;
@@ -37,12 +40,13 @@ import javax.xml.bind.JAXBException;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.json.JSONStringConverter;
+import org.enquery.encryptedquery.responder.business.execution.ExecutionStatusUpdater;
 import org.enquery.encryptedquery.responder.business.execution.QueryExecutionScheduler;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
-import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
+import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.osgi.service.component.annotations.Activate;
@@ -87,6 +91,10 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 	private ResultRepository resultRepository;
 	@Reference
 	private QueryTypeConverter queryConverter;
+	@Reference
+	private ExecutionStatusUpdater statusUpdater;
+	@Reference
+	private ExecutorService threadPool;
 
 	// force this component to wait until the data source is ready
 	@Reference(target = "(dataSourceName=responder)")
@@ -172,12 +180,21 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		Validate.notNull(execution.getId());
 		Validate.notNull(execution.getQueryLocation());
 		Validate.notNull(execution.getScheduleTime());
+
+		// avoid overwriting previous run, just in case
+		Validate.isTrue(execution.getEndTime() == null);
+		Validate.isTrue(execution.getErrorMsg() == null);
+		Validate.isTrue(execution.getHandle() == null);
+		Validate.isTrue(execution.getOutputFilePath() == null);
 	}
 
 	private SimpleTrigger makeTrigger(Execution execution) throws SchedulerException {
 
 		final Date startTime = evenMinuteDate(execution.getScheduleTime());
-		final String dateStr = new SimpleDateFormat(OUTPUT_TIMESTAMP_FORMAT).format(startTime);
+		SimpleDateFormat dateFormat = new SimpleDateFormat(OUTPUT_TIMESTAMP_FORMAT);
+		// dates from database are in UTC zone, convert to local
+		dateFormat.setTimeZone(TimeZone.getDefault());
+		final String dateStr = dateFormat.format(startTime);
 		final TriggerKey triggerKey = new TriggerKey(execution.getId().toString() + " @ " + dateStr, group);
 
 		if (scheduler.checkExists(triggerKey)) {
@@ -210,66 +227,110 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
+
+		// gather execution id from job context and Execution from DB
+		int executionId;
+		Execution execution = null;
 		try {
 			final JobDataMap jobData = context.getMergedJobDataMap();
-
-			final int executionId = Integer.parseInt(jobData.getString(EXECUTION_ID));
-			final Execution execution = executionRepository.find(executionId);
+			Validate.notNull(jobData);
+			executionId = Integer.parseInt(jobData.getString(EXECUTION_ID));
+			execution = executionRepository.find(executionId);
 			validateExecution(execution);
+			execution.setStartTime(new Date());
+		} catch (Exception e) {
+			log.error("Quartz job context is invalid. Can't run this job.", e);
+			JobExecutionException e2 = new JobExecutionException(e);
+			e2.unscheduleAllTriggers();
+			throw e2;
+		}
 
+		Query query = null;
+		QueryRunner runner = null;
+		try {
 			log.info("Running execution id {}.", execution.getId());
 
-			final DataSource dataSource = extractDataSource(execution);
+			DataSource dataSource = null;
+			dataSource = extractDataSource(execution);
+			runner = dataSource.getRunner();
+			Validate.notNull(runner, "DataSource '%s' runner is null.", dataSource.getName());
 
 			// TODO: do not load the entire query, use SAX to get the elements needed
-			final Query query = extractQuery(execution);
+			query = extractQuery(execution);
 			validateQueryAgainstDataSource(dataSource, query);
 
-			execution.setStartTime(new Date());
-			executionRepository.update(execution);
+		} catch (Exception e) {
+			log.error("Either the Query or the DataSource are invalid. Can't run this job.", e);
+			updateExecutionWithError(execution, e);
+			JobExecutionException e2 = new JobExecutionException(e);
+			e2.unscheduleAllTriggers();
+			throw e2;
+		}
+
+		try {
+			// save the start timestamp
+			execution = executionRepository.update(execution);
 
 			// TODO refactor the JPA Execution entity to have field for maxHitsPerSelector, move
 			// away from generic maps
-			// String maxHits = null;
 			Map<String, String> parameters = JSONStringConverter.toMap(execution.getParameters());
-			// if (parameters != null) {
-			// maxHits = parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR);
-			// }
-			// if (maxHits == null) maxHits = "100";
-			// int maxHitsPerSelector = Integer.parseInt(maxHits);
-
 			final Path outputFileName = outputPath.resolve("response-" + execution.getId().toString() + ".xml");
 
+			byte[] handle = null;
+
 			try (OutputStream stdOut = executionRepository.executionOutputOutputStream(executionId)) {
-				dataSource.getRunner().run(query,
+				handle = runner.run(query,
 						parameters,
 						outputFileName.toString(),
 						stdOut);
+				Validate.notNull(handle, "QueryRunner 'run' method returned null. No null expected.");
 			}
-			Date endTime = new Date();
 
-			log.info("Finished running execution id {}.", execution.getId());
-
-			execution.setEndTime(endTime);
+			// store the handle and output path and try to collect the response file
+			// the response file may not be ready yet
+			execution.setHandle(handle);
 			execution.setOutputFilePath(outputFileName.toString());
+			execution.setErrorMsg(null);
 			executionRepository.update(execution);
 
-			// only batch mode has a response inmediately
-			if (dataSource.getType() == DataSourceType.Batch) {
-				try (InputStream in = new FileInputStream(outputFileName.toFile())) {
-					resultRepository.add(execution, in);
-				}
-				// Delete the response file after storing it in the repository
-				try {
-					Files.delete(outputFileName);
-				} catch (Exception e) {
-					log.warn("Unable to delete response file: " + outputFileName, e);
-				}
+			// optionally asynchronously update the status of the execution
+			// this updates the completion time and the response payload (if finshed)
+			try {
+				threadPool.submit(() -> statusUpdater.update());
+			} catch (Exception e) {
+				log.warn("Noncritical error. Unable to schedule execution status update. It will update at a later time.", e);
 			}
 
-		} catch (IOException e) {
-			throw new RuntimeException("Error executing query.", e);
+		} catch (Exception e) {
+			log.error("Error executing query. Will flag this execution as failed.", e);
+			updateExecutionWithError(execution, e);
+
+			JobExecutionException e2 = new JobExecutionException(e);
+			e2.unscheduleAllTriggers();
+			throw e2;
 		}
+	}
+
+	/**
+	 * @param execution
+	 * @param e
+	 */
+	private void updateExecutionWithError(Execution execution, Exception e) {
+		try {
+			execution.setHandle(null);
+			execution.setOutputFilePath(null);
+			execution.setErrorMsg(exceptionToString(e));
+			executionRepository.update(execution);
+		} catch (Exception e1) {
+			log.error("Error updating execution error status.", e);
+		}
+	}
+
+	private String exceptionToString(Exception exception) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		exception.printStackTrace(pw);
+		return sw.toString();
 	}
 
 	private void validateQueryAgainstDataSource(final DataSource dataSource, final Query query) {

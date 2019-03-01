@@ -61,31 +61,6 @@ public @interface Config {
 			description = "Kafka topic to injest data from.")
 	String _kafka_topic();
 
-	@AttributeDefinition(name = ".kafka.groupId",
-			required = false,
-			description = "Kafka Group Id.")
-	String _kafka_groupId();
-
-	@AttributeDefinition(name = ".kafka.force.from.start",
-			required = false,
-			description = "Ingest data from beginning of kafka topic (true or false)")
-	String _kafka_force_from_start();
-
-	@AttributeDefinition(name = ".kafka.offset.location",
-			required = false,
-			description = "Offset Location to start reading data from")
-	String _kafka_offset_location();
-
-	@AttributeDefinition(name = ".stream.window.length.seconds",
-			required = true,
-			description = "Amount of time to stream data before processing and return a result. In seconds.")
-	String _stream_window_length_seconds();
-
-	@AttributeDefinition(name = ".stream.runtime.seconds",
-			required = false,
-			description = "Number of seconds to run.  If not specified, or <= 0, run indefinetely.")
-	String _stream_runtime_seconds();
-
 	@AttributeDefinition(name = ".flink.install.dir",
 			required = true,
 			description = "Directory where Flink runtime is installed.")
@@ -106,4 +81,9 @@ public @interface Config {
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
+
+	@AttributeDefinition(name = ".flink.history.server.uri",
+			required = true,
+			description = "URI to Flink's history server, including scheme, host and port.  Example: http://flink.local:8095")
+	String _flink_history_server_uri() default "localhost:8095";
 }
