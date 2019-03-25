@@ -62,7 +62,10 @@ paillier.modulusBitSize=3072
 paillier.encrypt.query.method = FastWithJNI
 # paillier.column.processor is one of ( Basic, DeRooij, DeRooijJNI, Yao, YaoJNI ) Recommended DeRooijJNI
 paillier.column.processor=DeRooijJNI
-paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+# Use only one of the below mod pow classes.  GMP has shown to be the faster.
+#paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl
+
 ```
 
 Update the `/opt/enquery/querier/etc/encrypted.query.querier.data.cfg` file and add/update the following to change the storage location of data generated:

@@ -327,12 +327,8 @@ public class Partitioner implements FieldTypes {
 				break;
 			case ISO8601DATE:
 				long dateLongFormat;
-				try {
-					dateLongFormat = ISO8601DateParser.getLongDate((String) obj);
-					bytes = ConversionUtils.longToBytes(dateLongFormat);
-				} catch (ParseException e) {
-					throw new PIRException("Unable to parse ISO8601 date " + obj, e);
-				}
+				dateLongFormat = ISO8601DateParser.getLongDate((String) obj);
+				bytes = ConversionUtils.longToBytes(dateLongFormat);
 				break;
 			default:
 				throw new PIRException("data type = " + dataType + " not recognized!");

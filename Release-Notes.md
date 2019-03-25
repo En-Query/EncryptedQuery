@@ -1,7 +1,11 @@
-# Encrypted Query v2.1.1 - Release Notes
+# Encrypted Query v2.1.2 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
 
+#### Changes in release 2.1.2
+* Fixed bug with ISO8601Date format.
+* Modified Paillier Encryption to enhance decryption performance.
+* change the default Paillier mod pow class to org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl to increase performance.
 #### Changes in release 2.1.1
 * Changed configuration file for setting storage location for queries and results.  On Querier the "blob-storage" parameter can now be found in: `/home/enquery/querier/etc/encrypted.query.querier.data.cfg` example file entries:
 ```

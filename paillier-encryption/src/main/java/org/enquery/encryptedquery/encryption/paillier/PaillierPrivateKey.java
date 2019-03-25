@@ -47,8 +47,6 @@ public class PaillierPrivateKey implements PrivateKey {
 	private BigInteger pSquared; // pSquared = p^2
 	private BigInteger qSquared; // qSquared = q^2
 	private ChineseRemainder crtNSquared; // CRT for moduli p^2 and q^2
-	private BigInteger pMinusOne;
-	private BigInteger qMinusOne;
 	private BigInteger wp;
 	private BigInteger wq;
 	private ChineseRemainder crtN;
@@ -188,16 +186,6 @@ public class PaillierPrivateKey implements PrivateKey {
 	}
 
 	@JsonIgnore
-	public BigInteger getPMinusOne() {
-		return pMinusOne;
-	}
-
-	@JsonIgnore
-	public BigInteger getQMinusOne() {
-		return qMinusOne;
-	}
-
-	@JsonIgnore
 	public BigInteger getWp() {
 		return wp;
 	}
@@ -217,9 +205,8 @@ public class PaillierPrivateKey implements PrivateKey {
 		qSquared = q.multiply(q);
 		crtNSquared = new ChineseRemainder(getPSquared(), getQSquared());
 		crtN = new ChineseRemainder(p, q);
-		pMinusOne = p.subtract(BigInteger.ONE);
-		qMinusOne = q.subtract(BigInteger.ONE);
-		wp = p.subtract(q).modInverse(p);
-		wq = q.subtract(p).modInverse(q);
+		wp = pMaxExponent.multiply(q).modInverse(p);
+		wq = qMaxExponent.multiply(p).modInverse(q);
 	}
 }
+

@@ -16,48 +16,50 @@
  */
 package org.enquery.encryptedquery.utils;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.Date;
 import java.util.TimeZone;
+/**
+ * Class to parse a date in ISO86091 format
+ * 
+ */
 
 /**
  * Class to parse a date in ISO86091 format
  * 
  */
 public class ISO8601DateParser {
+	private static TimeZone utc = TimeZone.getTimeZone("UTC");
 
-	static {
-		init();
+	private static final DateTimeFormatter inputFormat = new DateTimeFormatterBuilder()
+			// date/time
+			.append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+			// offset (hh:mm - "+00:00" when it's zero)
+			.optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
+			// offset (hhmm - "+0000" when it's zero)
+			.optionalStart().appendOffset("+HHMM", "+0000").optionalEnd()
+			// offset (hh - "+00" when it's zero)
+			.optionalStart().appendOffset("+HH", "+00").optionalEnd()
+			// offset (pattern "X" uses "Z" for zero offset)
+			.optionalStart().appendPattern("X").optionalEnd()
+			// create formatter
+			.toFormatter();
+
+	public static Date getDate(String isoDate) {
+		return Date.from(ZonedDateTime.parse(isoDate, inputFormat).toInstant());
 	}
 
-	private static SimpleDateFormat format;
-
-	private static synchronized void init() {
-		format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-		format.setTimeZone(TimeZone.getTimeZone("UTC"));
+	public static long getLongDate(String isoDate) {
+		return getDate(isoDate).getTime();
 	}
 
-	public static synchronized String parseDate(String date) {
-		try {
-			return format.parse(date).getTime() + "";
-		} catch (Exception ignore) {
-			// Empty
-		}
-
-		return null;
-	}
-
-	public static synchronized Date getDate(String isoDate) throws ParseException {
-		return format.parse(isoDate);
-	}
-
-	public static synchronized long getLongDate(String isoDate) throws ParseException {
-		return format.parse(isoDate).getTime();
-	}
-
-	public static synchronized String fromLongDate(long dateLongFormat) {
-		Date date = new Date(dateLongFormat);
-		return format.format(date);
+	public static String fromLongDate(long dateLongFormat) {
+		Instant instant = Instant.ofEpochMilli(dateLongFormat);
+		ZonedDateTime zonedDateTime = instant.atZone(utc.toZoneId());
+		return zonedDateTime.format(DateTimeFormatter.ISO_INSTANT);
 	}
 }
+

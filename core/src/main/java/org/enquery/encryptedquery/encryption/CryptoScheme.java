@@ -19,6 +19,7 @@ package org.enquery.encryptedquery.encryption;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -84,6 +85,8 @@ public interface CryptoScheme {
 	CipherText encryptionOfZero(PublicKey publicKey);
 
 	PlainText decrypt(KeyPair keyPair, CipherText cipherText);
+
+	List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c);
 
 	Stream<PlainText> decrypt(KeyPair keyPair, Stream<CipherText> c);
 

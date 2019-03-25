@@ -20,14 +20,19 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
@@ -82,10 +87,13 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	private ColumnProcessorId columnProcessorId;
 	private boolean useMontgomery;
 	private Map<String, String> config;
+	private Integer threadPoolCoreSize;
+	private Integer threadPoolTaskQueueSize;
 
 	@Override
 	@Activate
 	public void initialize(Map<String, String> cfg) throws Exception {
+		log.info("Initialized called.");
 		Validate.notNull(cfg);
 
 		config = extractConfig(cfg);
@@ -105,6 +113,41 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		intializeReferences(config);
 
 		log.info("Initialized with: " + config);
+	}
+
+	public ExecutorService getThreadPool() {
+		return threadPool;
+	}
+
+	@Reference
+	public void setThreadPool(ExecutorService threadPool, Map<String, ?> attribs) {
+		log.info("Assigning thread pool {} with properties {}.", threadPool, attribs);
+
+		this.threadPool = threadPool;
+		if (attribs != null) {
+			threadPoolCoreSize = intConfig(attribs, "core.pool.size", null);
+			threadPoolTaskQueueSize = intConfig(attribs, "max.task.queue.size", null);
+		}
+
+		log.info("Thread pool core size: {}, task queue size: {}", threadPoolCoreSize, threadPoolTaskQueueSize);
+	}
+
+	/**
+	 * @param config
+	 * @param corePoolSize
+	 * @param defaultValue
+	 * @return
+	 */
+	private int intConfig(Map<String, ?> config, String key, Integer defaultValue) {
+		Object val = config.get(key);
+		if (val != null) {
+			if (val instanceof Integer) {
+				return (Integer) val;
+			}
+			return Integer.valueOf((String) val);
+		} else {
+			return defaultValue;
+		}
 	}
 
 	/**
@@ -134,20 +177,49 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	}
 
 	private ExecutorService makeThreadPool(Map<String, String> config) {
-		ThreadPool result = new ThreadPool();
-		Map<String, String> poolConfig = new HashMap<>();
+		log.info("Making our own thread pool.");
 
-		poolConfig.compute(ThreadPool.CORE_POOL_SIZE, (k, v) -> config.get(PaillierProperties.CORE_POOL_SIZE));
-		poolConfig.compute(ThreadPool.CORE_POOL_SIZE, (k, v) -> config.get(PaillierProperties.CORE_POOL_SIZE));
-		poolConfig.compute(ThreadPool.MAX_TASK_QUEUE_SIZE, (k, v) -> config.get(PaillierProperties.MAX_TASK_QUEUE_SIZE));
-		poolConfig.compute(ThreadPool.SHUTDOWN_WAIT_TIME_SECONDS, (k, v) -> config.get(PaillierProperties.SHUTDOWN_WAIT_TIME_SECONDS));
-		poolConfig.compute(ThreadPool.KEEP_ALIVE_TIME_SECONDS, (k, v) -> config.get(PaillierProperties.KEEP_ALIVE_TIME_SECONDS));
-		poolConfig.compute(ThreadPool.MAX_POOL_SIZE, (k, v) -> config.get(PaillierProperties.MAX_POOL_SIZE));
+		ThreadPool result = new ThreadPool();
+		Map<String, Object> poolConfig = new HashMap<>();
+
+		poolConfig.compute(ThreadPool.CORE_POOL_SIZE, (k, v) -> asInt(config, PaillierProperties.CORE_POOL_SIZE));
+		poolConfig.compute(ThreadPool.MAX_POOL_SIZE, (k, v) -> asInt(config, PaillierProperties.MAX_POOL_SIZE));
+		poolConfig.compute(ThreadPool.MAX_TASK_QUEUE_SIZE, (k, v) -> asInt(config, PaillierProperties.MAX_TASK_QUEUE_SIZE));
+		poolConfig.compute(ThreadPool.SHUTDOWN_WAIT_TIME_SECONDS, (k, v) -> asLong(config, PaillierProperties.SHUTDOWN_WAIT_TIME_SECONDS));
+		poolConfig.compute(ThreadPool.KEEP_ALIVE_TIME_SECONDS, (k, v) -> asLong(config, PaillierProperties.KEEP_ALIVE_TIME_SECONDS));
 		result.initialize(poolConfig);
+
+		int cores = Runtime.getRuntime().availableProcessors();
+
+		if (poolConfig.containsKey(ThreadPool.CORE_POOL_SIZE)) {
+			threadPoolCoreSize = (Integer) poolConfig.get(ThreadPool.CORE_POOL_SIZE);
+		} else {
+			threadPoolCoreSize = cores * 2;
+		}
+
+		if (poolConfig.containsKey(ThreadPool.MAX_TASK_QUEUE_SIZE)) {
+			threadPoolTaskQueueSize = (Integer) poolConfig.get(ThreadPool.MAX_TASK_QUEUE_SIZE);
+		} else {
+			threadPoolTaskQueueSize = Integer.valueOf(ThreadPool.DEFAULT_MAX_TASK_QUEUE_SIZE);
+		}
+
 		return result;
 	}
 
 
+	private Integer asInt(Map<String, String> config, String key) {
+		if (config.containsKey(key)) {
+			return Integer.valueOf(config.get(key));
+		}
+		return null;
+	}
+
+	private Long asLong(Map<String, String> config, String key) {
+		if (config.containsKey(key)) {
+			return Long.valueOf(config.get(key));
+		}
+		return null;
+	}
 
 	@SuppressWarnings("unchecked")
 	private ModPowAbstraction makeModPowAbstraction(Map<String, String> config) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
@@ -346,14 +418,19 @@ public class PaillierCryptoScheme implements CryptoScheme {
 
 	/**
 	 * Returns an ordered pair consisting of a choice of basepoint and maximum exponent for either
-	 * the order p1 subgroup of (Z/p^2Z)* or the order q1 subgroup of (Z/p^2Z)*. This function is
-	 * called during Paillier object construction in the case when auxiliary primes are also
-	 * generated.
+	 * an order p1 subgroup of (Z/p^2Z)*, where p1 is a divisor of p.  This function is
+	 * called for each Paillier prime modulus during private key generation, when the auxiliary prime
+	 * p1 is also generated.
 	 *
-	 * The base point is generated by raising a random value to the p-th or q-th power; it is then
-	 * checked that the base point has order divisible by p1 or p2. The base points do not
-	 * necessarily generate the entire respective subgroup. The maximum exponent is set to the value
-	 * of the auxiliary prime p1.
+	 * The base point is generated by raising a random value to the p*(p-1)/p1-th power modulo p^2.
+	 * The resulting power is then checked to make sure it satisfies
+	 *
+	 *     basePoint != 1   and   basePoint^p1 == 1  (mod p^2).
+	 *
+	 * When p1 is prime (i.e. when it is an auxiliary prime of p), the basePoint would then generate
+	 * a full multiplicative subgroup mod p^2 of order p1.
+	 *
+	 * The returned maximum exponent is set to the auxiliary value p1 itself.
 	 *
 	 * @return array whose first element is the base point and the second element is the maximum
 	 *         exponent
@@ -374,9 +451,12 @@ public class PaillierCryptoScheme implements CryptoScheme {
 			BigInteger basePoint = new BigInteger(p.bitLength(), randomProvider.getSecureRandom());
 			if (basePoint.compareTo(BigInteger.ONE) <= 0 || basePoint.compareTo(p) >= 0) continue;
 
-			basePoint = modPowAbstraction.modPow(basePoint, p, pSquared);
-			BigInteger tmp = modPowAbstraction.modPow(basePoint, div, pSquared);
-			if (tmp.compareTo(BigInteger.ONE) == 0) continue;
+			basePoint = modPowAbstraction.modPow(basePoint, p.multiply(div), pSquared);
+
+			// check that basePoint generates a nontrivial subgroup of exponent dividing p1
+			if (basePoint.compareTo(BigInteger.ONE) == 0) continue;
+			BigInteger tmp = modPowAbstraction.modPow(basePoint, p1, pSquared);
+			if (tmp.compareTo(BigInteger.ONE) != 0) continue;
 
 			result = new BigInteger[] {basePoint, maxExponent};
 		}
@@ -401,21 +481,92 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		PaillierPublicKey pub = paillierKeyPair.getPub();
 		PaillierPrivateKey priv = paillierKeyPair.getPriv();
 
-		// x = c^(p-1) mod p^2, y = (x - 1)/p, z = y * ((p-1)*q)^-1 mod p
-		// x' = c^(q-1) mod q^2, y' = (x'- 1)/q, z' = y' * ((q-1)*p)^-1 mod q
+		// x = c^pMaxExponent mod p^2, y = (x - 1)/p, z = y * (pMaxExponent*q)^-1 mod p
+		// x' = c^qMaxExponent mod q^2, y' = (x'- 1)/q, z' = y' * (qMaxExponent*p)^-1 mod q
 		// d = crt.combine(z, z')
 		BigInteger p = priv.getP();
 		BigInteger q = priv.getQ();
 		BigInteger cModPSquared = c.mod(priv.getPSquared());
 		BigInteger cModQSquared = c.mod(priv.getQSquared());
-		BigInteger xp = modPowAbstraction.modPow(cModPSquared, priv.getPMinusOne(), priv.getPSquared());
-		BigInteger xq = modPowAbstraction.modPow(cModQSquared, priv.getQMinusOne(), priv.getQSquared());
+		BigInteger xp = modPowAbstraction.modPow(cModPSquared, priv.getPMaxExponent(), priv.getPSquared());
+		BigInteger xq = modPowAbstraction.modPow(cModQSquared, priv.getQMaxExponent(), priv.getQSquared());
 		BigInteger yp = xp.subtract(BigInteger.ONE).divide(p);
 		BigInteger yq = xq.subtract(BigInteger.ONE).divide(q);
 		BigInteger zp = yp.multiply(priv.getWp()).mod(p);
 		BigInteger zq = yq.multiply(priv.getWq()).mod(q);
 		BigInteger d = priv.getCrtN().combine(zp, zq, pub.getN());
 		return new PaillierPlainText(d);
+	}
+
+	private List<PlainText> decryptInSingleThread(KeyPair keyPair, List<CipherText> c) {
+		List<PlainText> result = c.stream().map(ct -> decrypt(keyPair, ct)).collect(Collectors.toList());
+		return result;
+	}
+
+	private List<PlainText> decryptInMultipleTasks(KeyPair keyPair, List<CipherText> c, int batchSize) {
+		List<PlainText> result = new ArrayList<>();
+		List<CipherText> batch = null;
+		List<Future<List<PlainText>>> futures = new ArrayList<>();
+		try {
+			for (CipherText ct : c) {
+				if (batch == null) {
+					batch = new ArrayList<>();
+				}
+				batch.add(ct);
+				if (batch.size() >= batchSize) {
+					List<CipherText> batch2 = batch;
+					futures.add(threadPool.submit(() -> decryptInSingleThread(keyPair, batch2)));
+					batch = null;
+				}
+			}
+			if (batch != null) {
+				List<CipherText> batch2 = batch;
+				futures.add(threadPool.submit(() -> decryptInSingleThread(keyPair, batch2)));
+			}
+		} catch (RejectedExecutionException e) {
+			log.info("Task queue is probably full.");
+			log.info("Stack trace:");
+			e.printStackTrace();
+			log.info("Canceling pending tasks.");
+			for (Future<List<PlainText>> f : futures) {
+				f.cancel(true); // best effort -- ignoring return value
+			}
+			log.info("Finished canceling pending tasks.");
+			throw new RuntimeException(e);
+		}
+		for (Future<List<PlainText>> f : futures) {
+			try {
+				result.addAll(f.get());
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
+		}
+		return result;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#decrypt(java.security.PrivateKey,
+	 * java.util.List)
+	 */
+	@Override
+	public List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c) {
+		final int MIN_BATCH_SIZE = 256;
+		int numTasks = 4 * threadPoolCoreSize;
+		if (numTasks > threadPoolTaskQueueSize / 2) {
+			numTasks = threadPoolTaskQueueSize / 2;
+		} ;
+		if (numTasks < 1) {
+			numTasks = 1;
+		}
+		int batchSize = c.size() / numTasks;
+		if (batchSize < MIN_BATCH_SIZE) {
+			batchSize = MIN_BATCH_SIZE;
+		}
+		log.info("Splitting " + c.size() + " ciphertexts into " + numTasks + " batches of size " + batchSize);
+		return decryptInMultipleTasks(keyPair, c, batchSize);
 	}
 
 	/*
@@ -426,8 +577,11 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	 */
 	@Override
 	public Stream<PlainText> decrypt(KeyPair keyPair, Stream<CipherText> c) {
-		return c.parallel()
-				.map(ct -> decrypt(keyPair, ct));
+
+		// return c.parallel()
+		// .map(ct -> decrypt(keyPair, ct));
+
+		return decrypt(keyPair, c.collect(Collectors.toList())).stream();
 	}
 
 	/*

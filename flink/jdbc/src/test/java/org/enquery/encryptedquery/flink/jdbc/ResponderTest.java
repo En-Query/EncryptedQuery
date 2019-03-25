@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.flink.jdbc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -158,7 +159,8 @@ public class ResponderTest extends JDBCTestBase {
 						if (f.getName().equalsIgnoreCase("price")) {
 							assertEquals(Double.valueOf("44.44"), f.getValue());
 						} else if (f.getName().equalsIgnoreCase("release_dt")) {
-							assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
+							assertTrue("2001-01-03T11:18:00.000Z".equals(f.getValue().toString()) || "2001-01-03T11:18:00Z".equals(f.getValue().toString()) );
+//							assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
 						}
 					});
 				});

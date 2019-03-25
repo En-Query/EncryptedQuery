@@ -69,9 +69,12 @@
      		paillier.prime.certainty=128
 			paillier.encrypt.query.task.count=2
 			paillier.modulus.bit.size=3072
-			paillier.encrypt.query.method=Fast
-			paillier.column.processor=Basic
-			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+			# paillier.encrypt.query.method is one of ( Fast, FastWithJNI )
+            paillier.encrypt.query.method = FastWithJNI
+            # paillier.column.processor is one of ( Basic, DeRooij, DeRooijJNI, Yao, YaoJNI )
+            paillier.column.processor=DeRooijJNI
+			#paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
+			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl
      	</config>
 
 		<!--
@@ -122,7 +125,8 @@
 		-->
 
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
-        <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}</bundle>
+        <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}$Bundle-SymbolicName=JnaGmp&amp;Bundle-Version=${jnagmp.version}&amp;Import-Package=com.sun.jna,com.sun.jna.ptr,com.sun.jna.win32</bundle>
+        
 
         <bundle>mvn:${project.groupId}/encryptedquery-querier-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-data/${project.version}</bundle>

@@ -22,8 +22,10 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
@@ -181,12 +183,25 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 
 	/*
 	 * (non-Javadoc)
+	 *
+	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#decrypt(java.security.PrivateKey,
+	 * java.util.List)
+	 */
+	@Override
+	public List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c) {
+		return c.stream().map(ct -> decrypt(keyPair, ct)).collect(Collectors.toList());
+		
+	}
+
+	/*
+	 * (non-Javadoc)
 	 * 
 	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#decrypt(java.security.PrivateKey,
 	 * java.util.stream.Stream)
 	 */
 	@Override
 	public Stream<PlainText> decrypt(KeyPair keyPair, Stream<CipherText> c) {
+		// TODO: modify this to use explicit thread pool
 		return c.parallel()
 				.map(ct -> decrypt(keyPair, ct));
 	}

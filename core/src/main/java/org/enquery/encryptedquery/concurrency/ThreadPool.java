@@ -32,15 +32,34 @@ import org.apache.commons.lang3.Validate;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Component
+@Component(property = {
+		ThreadPool.CORE_POOL_SIZE + ":Integer=" + ThreadPool.DEFAULT_CORE_POOL_SIZE,
+		ThreadPool.MAX_POOL_SIZE + ":Integer=" + ThreadPool.DEFAULT_MAX_POOL_SIZE,
+		ThreadPool.MAX_TASK_QUEUE_SIZE + ":Integer=" + ThreadPool.DEFAULT_MAX_TASK_QUEUE_SIZE,
+		ThreadPool.KEEP_ALIVE_TIME_SECONDS + ":Long=" + ThreadPool.DEFAULT_KEEP_ALIVE_TIME_SECONDS,
+		ThreadPool.SHUTDOWN_WAIT_TIME_SECONDS + ":Long=" + ThreadPool.DEFAULT_SHUTDOWN_WAIT_TIME_SECONDS
+})
 public class ThreadPool implements ExecutorService {
 
+	private final Logger log = LoggerFactory.getLogger(ThreadPool.class);
+
 	public static final String CORE_POOL_SIZE = "core.pool.size";
-	public static final String MAX_TASK_QUEUE_SIZE = "max.task.queue.size";
-	public static final String SHUTDOWN_WAIT_TIME_SECONDS = "shutdown.wait.time.seconds";
-	public static final String KEEP_ALIVE_TIME_SECONDS = "keep.alive.time.seconds";
+	public static final String DEFAULT_CORE_POOL_SIZE = "4";
+
 	public static final String MAX_POOL_SIZE = "max.pool.size";
+	public static final String DEFAULT_MAX_POOL_SIZE = "4";
+
+	public static final String MAX_TASK_QUEUE_SIZE = "max.task.queue.size";
+	public static final String DEFAULT_MAX_TASK_QUEUE_SIZE = "10240";
+
+	public static final String KEEP_ALIVE_TIME_SECONDS = "keep.alive.time.seconds";
+	public static final String DEFAULT_KEEP_ALIVE_TIME_SECONDS = "30";
+
+	public static final String SHUTDOWN_WAIT_TIME_SECONDS = "shutdown.wait.time.seconds";
+	public static final String DEFAULT_SHUTDOWN_WAIT_TIME_SECONDS = "300";
 
 	public static final String[] CONFIURATION_KEYS = {CORE_POOL_SIZE,
 			MAX_TASK_QUEUE_SIZE,
@@ -49,25 +68,73 @@ public class ThreadPool implements ExecutorService {
 			MAX_POOL_SIZE
 	};
 
-	private static final Long DEFAULT_SHUTSHOWN_WAIT_TIME = TimeUnit.MINUTES.toSeconds(5);
-	private static final Integer DEFAULT_TASK_QUEUE_SIZE = 10 * 1024;
+	// public static final Long DEFAULT_SHUTSHOWN_WAIT_TIME = TimeUnit.MINUTES.toSeconds(5);
+	// public static final Integer DEFAULT_TASK_QUEUE_SIZE = 10 * 1024;
 	private ExecutorService es;
-	private long shutdownWaitTimeInSeconds = DEFAULT_SHUTSHOWN_WAIT_TIME;
+	private long shutdownWaitTimeInSeconds = Long.valueOf(DEFAULT_SHUTDOWN_WAIT_TIME_SECONDS);
 
 	@Activate
-	public void initialize(Map<String, String> config) {
+	public void initialize(Map<String, Object> config) {
 		Validate.notNull(config);
-		int corePoolSize = Integer.parseInt(config.getOrDefault(CORE_POOL_SIZE, "16"));
-		int maximumPoolSize = Integer.parseInt(config.getOrDefault(MAX_POOL_SIZE, "64"));
-		long keepAliveTimeInSeconds = Long.parseLong(config.getOrDefault(KEEP_ALIVE_TIME_SECONDS, "30"));
-		shutdownWaitTimeInSeconds = Long.parseLong(config.getOrDefault(SHUTDOWN_WAIT_TIME_SECONDS, DEFAULT_SHUTSHOWN_WAIT_TIME.toString()));
-		int maxTaskQueueSize = Integer.parseInt(config.getOrDefault(MAX_TASK_QUEUE_SIZE, DEFAULT_TASK_QUEUE_SIZE.toString()));
+
+		int cores = Runtime.getRuntime().availableProcessors();
+
+		int corePoolSize = intConfig(config, CORE_POOL_SIZE, cores * 2);
+		int maximumPoolSize = intConfig(config, MAX_POOL_SIZE, cores * 2);
+		long keepAliveTimeInSeconds = longConfig(config, KEEP_ALIVE_TIME_SECONDS, 30L);
+		shutdownWaitTimeInSeconds = longConfig(config, SHUTDOWN_WAIT_TIME_SECONDS, Long.valueOf(DEFAULT_SHUTDOWN_WAIT_TIME_SECONDS));
+		int maxTaskQueueSize = intConfig(config, MAX_TASK_QUEUE_SIZE, Integer.valueOf(DEFAULT_MAX_TASK_QUEUE_SIZE));
+
 		es = new ThreadPoolExecutor(
 				corePoolSize,
 				maximumPoolSize,
 				keepAliveTimeInSeconds,
 				TimeUnit.SECONDS,
 				new ArrayBlockingQueue<Runnable>(maxTaskQueueSize));
+
+		log.info("Initialized thread pool with: corePoolSize: {}, maximumPoolSize: {}, maxTaskQueueSize: {}",
+				corePoolSize,
+				maximumPoolSize,
+				maxTaskQueueSize);
+	}
+
+	/**
+	 * @param config
+	 * @param corePoolSize
+	 * @param defaultValue
+	 * @return
+	 */
+	private int intConfig(Map<String, Object> config, String key, int defaultValue) {
+		Object val = config.get(key);
+		if (val != null) {
+			if (val instanceof Integer) {
+				return (Integer) val;
+			}
+			return Integer.valueOf((String) val);
+		} else {
+			return defaultValue;
+		}
+	}
+
+
+	/**
+	 * @param config
+	 * @param corePoolSize
+	 * @param default
+	 * @return
+	 */
+	private long longConfig(Map<String, Object> config, String key, long defaultValue) {
+		Object val = config.get(key);
+		if (val != null) {
+			if (val instanceof Integer) {
+				return (Integer) val;
+			} else if (val instanceof Long) {
+				return (Long) val;
+			}
+			return Integer.valueOf((String) val);
+		} else {
+			return defaultValue;
+		}
 	}
 
 	@Deactivate
