@@ -79,8 +79,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
-   [PlDb]: <https://github.com/En-Query/EncryptedQuery/blob/master/Building-README.md>
-   [PlGh]: <https://github.com/En-Query/EncryptedQuery/blob/master/Deployment-README.md>
+   [PlDb]: <https://github.com/En-Query/EncryptedQuery/blob/master/doc/Building-README.md>
+   [PlGh]: <https://github.com/En-Query/EncryptedQuery/blob/master/doc/Deployment-README.md>
    [PlGd]: https://github.com/En-Query/EncryptedQuery/blob/master/examples/Examples-README.md
    [PlLs]: <https://github.com/En-Query/EncryptedQuery/blob/master/LICENSE>
    [PlRn]: https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md
