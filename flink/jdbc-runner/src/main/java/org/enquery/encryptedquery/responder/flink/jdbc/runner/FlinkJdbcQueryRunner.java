@@ -181,9 +181,11 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 			arguments.add(programPath.toString());
 			arguments.add("run");
 			if (additionalFlinkArguments != null) {
-				arguments.add(additionalFlinkArguments);
+				String[] options = additionalFlinkArguments.split(" ");
+				for (String o : options) {
+					arguments.add(o);
+				}
 			}
-
 			if (flinkParallelism != null) {
 				arguments.add("-p");
 				arguments.add(Integer.toString(flinkParallelism));

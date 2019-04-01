@@ -157,7 +157,10 @@ public class StandaloneQueryRunner implements QueryRunner {
 			List<String> arguments = new ArrayList<>();
 			arguments.add(javaPath.toString());
 			if (javaOptions != null) {
-				arguments.add(javaOptions);
+				String[] options = javaOptions.split(" ");
+				for (String o : options) {
+					arguments.add(o);
+				}
 			}
 			arguments.add("-jar");
 			arguments.add(jarPath.toAbsolutePath().toString());

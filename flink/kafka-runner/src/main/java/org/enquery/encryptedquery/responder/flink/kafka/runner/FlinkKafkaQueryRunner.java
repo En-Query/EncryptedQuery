@@ -183,7 +183,10 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			arguments.add(programPath.toString());
 			arguments.add("run");
 			if (additionalFlinkArguments != null) {
-				arguments.add(additionalFlinkArguments);
+				String[] options = additionalFlinkArguments.split(" ");
+				for (String o : options) {
+					arguments.add(o);
+				}
 			}
 
 			// detached mode: do not wait for completion
