@@ -52,6 +52,12 @@ The overall project structure is as:
 * [Java 1.8.x SDK] (https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 * gcc compiler
 
+For GPU Integration
+* Nvidia GPU Installed in system
+* Nvidia Drivers installed.
+* Nvidia Cuda Development tools.
+Reference to [Nvidia CUDA Installation] (https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)
+
 [Download] the application from GitHub
 
 Encrypted Query includes native C libraries that can be used for improved performance. To build with native libraries you should build on the the same platform you are planning to deploy and run Encrypted Query:
@@ -61,12 +67,16 @@ The application must be built using the Native libraries or using previously com
 To build with native libraries:
 
     mvn clean install -P native-libs
+    
+To build with native libraries without GPU support
+
+    mvn clean install -P native-libs -D skip.gpu.native.libs=true
 
 To build when the native libraries have already been built
        
     mvn clean install -P with-precompiled-native-libs
 
-The native libraries only need to be built once.  The produced artifacts are installed in the local Maven Repository for later use.  With Maven, you also have the option to deploy the built artifacts into a remote Maven Repository.  Refer to Maven documentation for more information.  Keep in mind that building native libraries requires _gcc_ and _make_ to be installed in the build system.
+The native libraries only need to be built once.  The produced artifacts are installed in the local Maven Repository for later use.  With Maven, you also have the option to deploy the built artifacts into a remote Maven Repository.  Refer to Maven documentation for more information.  Keep in mind that building native libraries requires _gcc_ and _make_ to be installed in the build system.  If building the GPU libraries nvcc has to be installed.
 
 The build process runs unit tests in the various modules, but it does not run the integration tests, it only compiles them.  Running of integration tests is covered in a separate document.
 

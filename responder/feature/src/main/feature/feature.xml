@@ -81,7 +81,7 @@
 			paillier.modulus.bit.size=3072
 			# paillier.encrypt.query.method is one of ( Fast, FastWithJNI )
             paillier.encrypt.query.method = FastWithJNI
-            # paillier.column.processor is one of ( Basic, DeRooij, DeRooijJNI, Yao, YaoJNI )
+            # paillier.column.processor is one of ( Basic, DeRooij, DeRooijJNI, Yao, YaoJNI, GPU )
             paillier.column.processor=DeRooijJNI
 			#paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
 			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl
@@ -166,7 +166,7 @@
             ds.target=(osgi.jndi.service.name=responder)
     		javax.persistence.provider=org.hibernate.jpa.HibernatePersistenceProvider
     		hibernate.dialect=org.hibernate.dialect.MariaDBDialect
-    		hibernate.show_sql=true
+    		hibernate.show_sql=false
     		hibernate.format_sql=true
     		hibernate.hbm2ddl.auto=none
     		hibernate.id.new_generator_mappings=true

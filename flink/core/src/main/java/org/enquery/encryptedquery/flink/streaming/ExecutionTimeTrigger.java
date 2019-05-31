@@ -94,8 +94,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 
 		// Discard any window that is started after maxTimestamp
 		if (maxTimestamp != null && start > maxTimestamp) {
-			if (debugging) log.debug("Window {} starts after maxTimestamp. Discarding.",
-					windowInfo);
+			if (debugging) log.debug("Window {} starts after maxTimestamp. Purging.", windowInfo);
 			return TriggerResult.PURGE;
 		}
 
@@ -103,28 +102,26 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 			if (debugging) log.debug("Window {} reached maxHitsPerSelector {}. Firing and purging.",
 					windowInfo,
 					maxHitsPerSelector);
-			fireWindow(start, end);
+
 			return TriggerResult.FIRE_AND_PURGE;
 		} else if (hitCount > maxHitsPerSelector) {
 			return TriggerResult.PURGE;
-		}
-
-		if (time >= end) {
-			if (debugging) log.debug("Window {} reached its time limit. Firing.",
+		} else if (hitCount <= 1) {
+			createWindowProgressFile(start, end);
+			// adjust the window trigger time to run on maxTimestamp if spans beyond maxTimestamp
+			long triggerTime = window.maxTimestamp();
+			if (maxTimestamp != null && triggerTime > maxTimestamp) {
+				if (debugging) log.debug("Window maxTimestamp {} > {}. Trimming.",
+						TimestampFormatter.format(triggerTime),
+						TimestampFormatter.format(maxTimestamp));
+				triggerTime = maxTimestamp;
+			}
+			ctx.registerProcessingTimeTimer(triggerTime);
+			if (debugging) log.debug("Scheduled window {} to be processed at {}.",
 					windowInfo,
-					maxHitsPerSelector);
-			fireWindow(start, end);
-			return TriggerResult.FIRE_AND_PURGE;
+					TimestampFormatter.format(triggerTime));
 		}
 
-		// adjust the window trigger time to run on maxTimestamp if spans beyond maxTimestamp
-		long triggerTime = window.maxTimestamp();
-		if (maxTimestamp != null && triggerTime > maxTimestamp) {
-			if (debugging) log.debug("Window overlaps maxTimestamp. Trimming.");
-			triggerTime = maxTimestamp;
-		}
-
-		ctx.registerEventTimeTimer(triggerTime);
 		return TriggerResult.CONTINUE;
 	}
 
@@ -135,9 +132,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 					(v1, v2) -> v1 + v2,
 					Integer.class);
 		}
-
-		ReducingState<Integer> partitionedState = ctx.getPartitionedState(hitCounter);
-		return partitionedState;
+		return ctx.getPartitionedState(hitCounter);
 	}
 
 	/*
@@ -149,33 +144,18 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	 */
 	@Override
 	public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) throws Exception {
-
-		final boolean debugging = log.isDebugEnabled();
-
-		long start = window.getStart();
-		long end = window.maxTimestamp();
-
-		if (maxTimestamp != null && start > maxTimestamp) {
-			if (debugging) log.debug("Window from {} to {} starts after maxTimestamp. Discarding.",
-					TimestampFormatter.format(start),
-					TimestampFormatter.format(end));
-
-			return TriggerResult.PURGE;
-		}
-
-		if (time < end) return TriggerResult.CONTINUE;
-
-		fireWindow(start, end);
-		return TriggerResult.FIRE_AND_PURGE;
+		// if (log.isDebugEnabled()) log.debug("Received event time for {}.",
+		// TimestampFormatter.format(time));
+		return TriggerResult.PURGE;
 	}
 
-	private void fireWindow(long start, long end) throws IOException {
-		if (log.isDebugEnabled()) {
-			log.debug("Creating in-progress file for window from {} to {}.",
+	private void createWindowProgressFile(long start, long end) throws IOException {
+		boolean created = ResponseFileNameBuilder.createEmptyInProgressFile(responseFilePath, start, end);
+		if (log.isDebugEnabled() && created) {
+			log.debug("Created in-progress file for window from {} to {}.",
 					TimestampFormatter.format(start),
 					TimestampFormatter.format(end));
 		}
-		ResponseFileNameBuilder.createEmptyInProgressFile(responseFilePath, start, end);
 	}
 
 	/*
@@ -187,7 +167,16 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	 */
 	@Override
 	public TriggerResult onProcessingTime(long time, TimeWindow window, TriggerContext ctx) throws Exception {
-		return TriggerResult.CONTINUE;
+		final boolean debugging = log.isDebugEnabled();
+
+		long start = window.getStart();
+		long end = window.maxTimestamp();
+
+		if (debugging) log.debug("Firing window from {} to {} due to time expiration.",
+				TimestampFormatter.format(start),
+				TimestampFormatter.format(end));
+
+		return TriggerResult.FIRE_AND_PURGE;
 	}
 
 	/*
@@ -200,7 +189,7 @@ public class ExecutionTimeTrigger extends Trigger<QueueRecord, TimeWindow> {
 	 */
 	@Override
 	public void clear(TimeWindow window, TriggerContext ctx) throws Exception {
-		ctx.deleteEventTimeTimer(window.maxTimestamp());
+		ctx.deleteProcessingTimeTimer(window.maxTimestamp());
 		if (hitCounter != null) {
 			ctx.getPartitionedState(hitCounter).clear();
 		}

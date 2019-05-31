@@ -20,22 +20,22 @@ import java.security.PublicKey;
 import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
-import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.RichGroupReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
 
-public class ColumnReduceFunction implements
-		GroupReduceFunction<Tuple2<Integer, CipherText>, Tuple2<Integer, CipherText>> {
+public class ColumnReduceFunction extends
+		RichGroupReduceFunction<Tuple2<Integer, CipherText>, Tuple2<Integer, CipherText>> {
 
 	private static final long serialVersionUID = 1L;
 	private final PublicKey publicKey;
 	private final Map<String, String> config;
 
 	// non serializable
-	private transient boolean initialized = false;
 	private transient CryptoScheme crypto;
 
 	public ColumnReduceFunction(PublicKey publicKey, Map<String, String> config) {
@@ -45,16 +45,20 @@ public class ColumnReduceFunction implements
 		this.config = config;
 	}
 
-	private void initialize() throws Exception {
+	@Override
+	public void open(Configuration parameters) throws Exception {
+		super.open(parameters);
 		crypto = CryptoSchemeFactory.make(config);
-		initialized = true;
+	}
+
+	@Override
+	public void close() throws Exception {
+		crypto.close();
+		super.close();
 	}
 
 	@Override
 	public void reduce(Iterable<Tuple2<Integer, CipherText>> values, Collector<Tuple2<Integer, CipherText>> out) throws Exception {
-		if (!initialized) {
-			initialize();
-		}
 		CipherText accumulator = crypto.encryptionOfZero(publicKey);
 		Integer column = null;
 		for (Tuple2<Integer, CipherText> entry : values) {

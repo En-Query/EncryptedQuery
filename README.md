@@ -1,7 +1,7 @@
 
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.2
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.3
 
 ## Overview
 
@@ -10,9 +10,14 @@ Encrypted Query is designed to allow a user to query a remote database without r
 Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
+ 
+2.1.3
+ - Added GPU processing support for Paillier Crypto scheme.   Use of a GPU for processing on the Responder and also Decryption on the Querier has been added if a GPU is available on the server.
+ 
 2.1.2
  - Fixed bug with ISO8601Date formatting.
  - Change to Paillier Encryption/Decryption to increase performance.   (Note:  This version will no be able to decrypt queries encrypted by prior versions !)
+ 
 2.1.1
  - Added start/end times for result files in the UI.  Better handling of multiple result files from streaming queries.
  - Reduced logging on Querier side.

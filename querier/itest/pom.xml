@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-querier-parent</artifactId>
-		<version>2.1.2</version>
+		<version>2.1.3</version>
 	</parent>
 	<artifactId>encryptedquery-querier-itest</artifactId>
 
@@ -198,7 +198,7 @@
 									<url>http://apache.cs.utah.edu/flink/flink-${flink.version}/flink-${flink.version}-bin-scala_${flink.scala.version}.tgz</url>
 									<unpack>true</unpack>
 									<outputDirectory>${project.build.directory}/flink</outputDirectory>
-									<sha512>89418d8b06786b47aae9e04447b2527b2b39b37e1745e2e453b7d930a27ba42b3b6dbc1cbcc21855e7d237b3c12b376c6f41492029fb1550c1200a3d6e51522b</sha512>
+									<sha512>fe07eef367273c2dead154bd50ea0d41b9ed04b901572f9ac9620aa7c91ef8ff44795e48ab2f0daa0f2bdeba357e50cb141de8071b75544a47c9df23e70b0c28</sha512>
 								</configuration>
 							</execution>
 							<execution>

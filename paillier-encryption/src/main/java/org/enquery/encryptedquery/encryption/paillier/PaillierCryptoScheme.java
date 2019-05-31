@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.encryption.paillier;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -41,9 +42,12 @@ import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeSpi;
 import org.enquery.encryptedquery.encryption.ModPowAbstraction;
 import org.enquery.encryptedquery.encryption.PlainText;
 import org.enquery.encryptedquery.encryption.PrimeGenerator;
+import org.enquery.encryptedquery.encryption.impl.AbstractCryptoScheme;
+import org.enquery.encryptedquery.encryption.impl.QueryData;
 import org.enquery.encryptedquery.responder.ColumnProcessorBasic;
 import org.enquery.encryptedquery.utils.RandomProvider;
 import org.osgi.service.component.annotations.Activate;
@@ -57,7 +61,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class PaillierCryptoScheme implements CryptoScheme {
+public class PaillierCryptoScheme extends AbstractCryptoScheme implements CryptoScheme, CryptoSchemeSpi {
 
 	private final Logger log = LoggerFactory.getLogger(PaillierCryptoScheme.class);
 
@@ -68,7 +72,22 @@ public class PaillierCryptoScheme implements CryptoScheme {
 
 	// Available column processors
 	public enum ColumnProcessorId {
-		Basic, DeRooij, DeRooijJNI, Yao, YaoJNI
+		Basic, DeRooij, DeRooijJNI, Yao, YaoJNI, GPU
+	}
+
+	// Available GPU busy policies
+	public enum GPUResponderBusyPolicyId {
+		Wait, CallerRuns, Abort, GPUNow
+	}
+
+	// Available methods for response decryption.
+	public enum ResponseDecryptionMethodId {
+		CPU, GPU
+	}
+
+	// Available GPU decryptor busy policies
+	public enum GPUDecryptorBusyPolicyId {
+		Wait, CallerRuns, Abort
 	}
 
 	// Method to use for query generation.
@@ -77,7 +96,6 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	private ModPowAbstraction modPowAbstraction;
 	private PrimeGenerator primeGenerator;
 	private RandomProvider randomProvider;
-	@Reference
 	private ExecutorService threadPool;
 	private int primeCertainty = 128;
 
@@ -89,6 +107,19 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	private Map<String, String> config;
 	private Integer threadPoolCoreSize;
 	private Integer threadPoolTaskQueueSize;
+
+	private GPUResponderBusyPolicyId gpuResponderBusyPolicyId;
+
+	native boolean gpuResponderSetBusyPolicy(int policy);
+
+	native boolean gpuDecryptorSetBusyPolicy(int policy);
+
+	native long gpuResponderLoadQuery(String queryId, int modulusBitSize, byte[] N_bytes, int hashBitSize, Map<Integer, CipherText> queryElements);
+
+	native boolean gpuResponderUnloadQuery(long hQuery);
+
+	private ResponseDecryptionMethodId responseDecryptionMethodId;
+	private GPUDecryptorBusyPolicyId gpuDecryptorBusyPolicyId;
 
 	@Override
 	@Activate
@@ -110,13 +141,67 @@ public class PaillierCryptoScheme implements CryptoScheme {
 				config.getOrDefault(PaillierProperties.COLUMN_PROCESSOR,
 						ColumnProcessorId.Basic.toString()));
 
+		gpuResponderBusyPolicyId = GPUResponderBusyPolicyId.valueOf(
+				config.getOrDefault(PaillierProperties.GPU_LIBRESPONDER_BUSY_POLICY,
+						GPUResponderBusyPolicyId.CallerRuns.toString()));
+
+		responseDecryptionMethodId = ResponseDecryptionMethodId.valueOf(
+				config.getOrDefault(PaillierProperties.DECRYPT_RESPONSE_METHOD,
+						ResponseDecryptionMethodId.CPU.toString()));
+
+		gpuDecryptorBusyPolicyId = GPUDecryptorBusyPolicyId.valueOf(
+				config.getOrDefault(PaillierProperties.GPU_LIBDECRYPTOR_BUSY_POLICY,
+						GPUDecryptorBusyPolicyId.CallerRuns.toString()));
+
+		loadNativeLibraries();
+
+		if (columnProcessorId == ColumnProcessorId.GPU) {
+			Validate.isTrue(gpuResponderSetBusyPolicy(gpuResponderBusyPolicyId.ordinal()), "Failed to set GPU responder busy policy");
+		}
+
+		if (responseDecryptionMethodId == ResponseDecryptionMethodId.GPU) {
+			Validate.isTrue(gpuDecryptorSetBusyPolicy(gpuDecryptorBusyPolicyId.ordinal()), "Failed to set GPU decryptor busy policy");
+		}
+
 		intializeReferences(config);
 
 		log.info("Initialized with: " + config);
 	}
 
+	private void loadNativeLibraries() {
+		List<String> neededLibs = new ArrayList<>();
+
+		if (columnProcessorId == ColumnProcessorId.GPU) {
+			neededLibs.add("gmp");
+			neededLibs.add("responder");
+			neededLibs.add("xmp");
+			neededLibs.add("gpucolproc");
+		} else if (columnProcessorId == ColumnProcessorId.DeRooijJNI ||
+				columnProcessorId == ColumnProcessorId.YaoJNI) {
+			neededLibs.add("gmp");
+			neededLibs.add("responder");
+		}
+		if (encryptQueryMethod == QueryEncryptionMethodId.FastWithJNI) {
+			neededLibs.add("gmp");
+			neededLibs.add("querygen");
+		}
+		if (responseDecryptionMethodId == ResponseDecryptionMethodId.GPU) {
+			neededLibs.add("gmp");
+			neededLibs.add("xmp");
+			neededLibs.add("gpudecryptor");
+		}
+
+		JNILoader.load(neededLibs);
+	}
+
+	@Override
 	public ExecutorService getThreadPool() {
 		return threadPool;
+	}
+
+	@Override
+	public void setThreadPool(ExecutorService threadPool) {
+		this.threadPool = threadPool;
 	}
 
 	@Reference
@@ -258,6 +343,33 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		return "Paillier Crypto Scheme.";
 	}
 
+	@Override
+	synchronized public byte[] loadQuery(QueryInfo queryInfo, Map<Integer, CipherText> queryElements) {
+		Validate.notNull(queryInfo);
+		Validate.notNull(queryElements);
+		if (columnProcessorId == ColumnProcessorId.GPU) {
+			Validate.isTrue(queryInfo.getDataChunkSize() <= 4, "GPU column processor currently requires dataChunkSize <= 4");
+			PaillierPublicKey ppk = PaillierPublicKey.from(queryInfo.getPublicKey());
+			long hQuery = gpuResponderLoadQuery(queryInfo.getIdentifier(), ppk.getModulusBitSize(), ppk.getN().toByteArray(), queryInfo.getHashBitSize(), queryElements);
+			byte[] handle = longToByteArray(hQuery);
+			return handle;
+		} else {
+			return super.loadQuery(queryInfo, queryElements);
+		}
+	}
+
+	@Override
+	synchronized public void unloadQuery(byte[] handle) {
+		Validate.notNull(handle);
+		if (columnProcessorId == ColumnProcessorId.GPU) {
+			long hQuery = longFromByteArray(handle);
+			boolean success = gpuResponderUnloadQuery(hQuery);
+			Validate.isTrue(success, "Error while unloading query");
+		} else {
+			super.unloadQuery(handle);
+		}
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -265,12 +377,15 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	 * PublicKey, java.util.Map)
 	 */
 	@Override
-	public ColumnProcessor makeColumnProcessor(QueryInfo queryInfo,
-			Map<Integer, CipherText> queryElements) {
+	public ColumnProcessor makeColumnProcessor(byte[] handle) {
+		if (columnProcessorId == ColumnProcessorId.GPU) {
+			long hQuery = longFromByteArray(handle);
+			return new GPUColumnProcessor(hQuery);
+		}
 
-		Validate.notNull(queryInfo);
-		Validate.notNull(queryElements);
-
+		final QueryData queryData = findQueryFromHandle(handle);
+		final QueryInfo queryInfo = queryData.getQueryInfo();
+		final Map<Integer, CipherText> queryElements = queryData.getQueryElements();
 
 		PaillierPublicKey ppk = PaillierPublicKey.from(queryInfo.getPublicKey());
 		ColumnProcessor result = null;
@@ -290,6 +405,8 @@ public class PaillierCryptoScheme implements CryptoScheme {
 			case YaoJNI:
 				result = new YaoJNIColumnProcessor(ppk, queryElements, useMontgomery, queryInfo, config);
 				break;
+			case GPU:
+				throw new RuntimeException("Unexpected column processor type");
 		}
 
 		Validate.notNull(result, "Invalid column processor id: %s.", columnProcessorId);
@@ -418,14 +535,14 @@ public class PaillierCryptoScheme implements CryptoScheme {
 
 	/**
 	 * Returns an ordered pair consisting of a choice of basepoint and maximum exponent for either
-	 * an order p1 subgroup of (Z/p^2Z)*, where p1 is a divisor of p.  This function is
-	 * called for each Paillier prime modulus during private key generation, when the auxiliary prime
-	 * p1 is also generated.
+	 * an order p1 subgroup of (Z/p^2Z)*, where p1 is a divisor of p. This function is called for
+	 * each Paillier prime modulus during private key generation, when the auxiliary prime p1 is
+	 * also generated.
 	 *
 	 * The base point is generated by raising a random value to the p*(p-1)/p1-th power modulo p^2.
 	 * The resulting power is then checked to make sure it satisfies
 	 *
-	 *     basePoint != 1   and   basePoint^p1 == 1  (mod p^2).
+	 * basePoint != 1 and basePoint^p1 == 1 (mod p^2).
 	 *
 	 * When p1 is prime (i.e. when it is an auxiliary prime of p), the basePoint would then generate
 	 * a full multiplicative subgroup mod p^2 of order p1.
@@ -498,7 +615,10 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		return new PaillierPlainText(d);
 	}
 
-	private List<PlainText> decryptInSingleThread(KeyPair keyPair, List<CipherText> c) {
+	private List<PlainText> decryptInSingleThread(KeyPair keyPair, List<CipherText> c) throws Exception {
+		if (responseDecryptionMethodId == ResponseDecryptionMethodId.GPU) {
+			return decryptWithGPU(keyPair, c);
+		}
 		List<PlainText> result = c.stream().map(ct -> decrypt(keyPair, ct)).collect(Collectors.toList());
 		return result;
 	}
@@ -545,6 +665,14 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		return result;
 	}
 
+	private List<PlainText> decryptWithGPU(KeyPair keyPair, List<CipherText> c) throws Exception {
+		PaillierKeyPair paillierKeyPair = new PaillierKeyPair(keyPair);
+		PaillierPrivateKey priv = paillierKeyPair.getPriv();
+		try (GPUDecryptor gpuDecryptor = new GPUDecryptor(priv, this.config)) {
+			return gpuDecryptor.decrypt(c);
+		}
+	}
+
 	/*
 	 * (non-Javadoc)
 	 *
@@ -553,18 +681,33 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	 */
 	@Override
 	public List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c) {
-		final int MIN_BATCH_SIZE = 256;
-		int numTasks = 4 * threadPoolCoreSize;
-		if (numTasks > threadPoolTaskQueueSize / 2) {
-			numTasks = threadPoolTaskQueueSize / 2;
-		} ;
+		final int MIN_BATCH_SIZE;
+		if (responseDecryptionMethodId == ResponseDecryptionMethodId.GPU) {
+			MIN_BATCH_SIZE = GPUDecryptor.BATCH_SIZE;
+		} else {
+			MIN_BATCH_SIZE = 256;
+		}
+		int numTasks = 1;
+
+		if (threadPoolCoreSize != null) {
+			numTasks = 4 * threadPoolCoreSize;
+
+			if (threadPoolTaskQueueSize != null) {
+				if (numTasks > threadPoolTaskQueueSize / 2) {
+					numTasks = threadPoolTaskQueueSize / 2;
+				}
+			}
+		}
+
 		if (numTasks < 1) {
 			numTasks = 1;
 		}
+
 		int batchSize = c.size() / numTasks;
 		if (batchSize < MIN_BATCH_SIZE) {
 			batchSize = MIN_BATCH_SIZE;
 		}
+
 		log.info("Splitting " + c.size() + " ciphertexts into " + numTasks + " batches of size " + batchSize);
 		return decryptInMultipleTasks(keyPair, c, batchSize);
 	}
@@ -762,7 +905,6 @@ public class PaillierCryptoScheme implements CryptoScheme {
 	}
 
 
-
 	/**
 	 * @param cfg
 	 * @return
@@ -778,4 +920,14 @@ public class PaillierCryptoScheme implements CryptoScheme {
 		return result;
 	}
 
+	private byte[] longToByteArray(Long value) {
+		ByteBuffer result = ByteBuffer.allocate(Long.BYTES);
+		result.putLong(value);
+		return result.array();
+	}
+
+	private long longFromByteArray(byte[] handle) {
+		ByteBuffer result = ByteBuffer.wrap(handle);
+		return result.getLong();
+	}
 }

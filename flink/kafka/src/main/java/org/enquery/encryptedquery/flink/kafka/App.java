@@ -120,14 +120,15 @@ public class App {
 	}
 
 	public void run() throws Exception {
-		Responder q = new Responder();
-		q.setBrokers(brokers);
-		q.setTopic(topic);
-		q.setStartOffset(startOffset);
-		q.setInputFileName(queryFileName);
-		q.setOutputFileName(outputFileName);
-		q.setConfig(config);
-		q.run();
+		try (Responder q = new Responder()) {
+			q.setBrokers(brokers);
+			q.setTopic(topic);
+			q.setStartOffset(startOffset);
+			q.setInputFileName(queryFileName);
+			q.setOutputFileName(outputFileName);
+			q.setConfig(config);
+			q.run();
+		}
 	}
 
 	private String getValue(Option opt) {

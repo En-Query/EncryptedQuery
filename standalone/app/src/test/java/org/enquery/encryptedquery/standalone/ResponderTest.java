@@ -56,6 +56,7 @@ import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.enquery.encryptedquery.utils.RandomProvider;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -74,14 +75,15 @@ public class ResponderTest {
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
 	private QuerySchema querySchema;
-	private PaillierCryptoScheme crypto;
-	private ResponseTypeConverter responseConverter;
+	private CryptoScheme crypto;
+	// private ResponseTypeConverter responseConverter;
 	private QueryKey queryKey;
-	private Query query;
 
 	private Map<String, String> config;
 
-	private QueryTypeConverter queryConverter;
+	private ExecutorService decryptionThreadPool = Executors.newCachedThreadPool();;
+
+	// private Responder responder;
 
 	@Before
 	public void prepare() throws Exception {
@@ -95,6 +97,40 @@ public class ResponderTest {
 		crypto = new PaillierCryptoScheme();
 		crypto.initialize(config);
 
+
+		// responder = new Responder();
+		// responder.setOutputFileName(RESPONSE_FILE_NAME);
+		// responder.setInputDataFile(DATA_FILE_NAME);
+		// responder.setQueryFileName(QUERY_FILE_NAME);
+		// saveQuery(responder.getCrypto());
+		// responder.in
+
+		// crypto = new PaillierCryptoScheme();
+		// crypto.initialize(config);
+		// crypto = responder.getCrypto();
+
+
+
+		log.info("Finished initializing test.");
+	}
+
+	private void saveQuery() throws Exception, JAXBException, IOException, FileNotFoundException {
+		querySchema = createQuerySchema();
+
+		Querier querier = createQuerier(crypto, "Books", SELECTORS);
+		queryKey = querier.getQueryKey();
+
+		saveQuery(querier.getQuery());
+	}
+
+	/**
+	 * @param crypto
+	 * @param query
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 * @throws JAXBException
+	 */
+	private void saveQuery(Query query) throws FileNotFoundException, IOException, JAXBException {
 		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
 			@Override
 			public CryptoScheme cryptoSchemeByName(String schemeId) {
@@ -105,27 +141,23 @@ public class ResponderTest {
 			}
 		};
 
-		queryConverter = new QueryTypeConverter();
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
 		queryConverter.setCryptoRegistry(cryptoRegistry);
 		queryConverter.initialize();
 
-		responseConverter = new ResponseTypeConverter();
-		responseConverter.setQueryConverter(queryConverter);
-		responseConverter.setSchemeRegistry(cryptoRegistry);
-		responseConverter.initialize();
-
-		querySchema = createQuerySchema();
-
-		Querier querier = createQuerier("Books", SELECTORS);
-		queryKey = querier.getQueryKey();
-		query = querier.getQuery();
-
 		// save the query
 		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+			queryConverter.marshal(queryConverter.toXMLQuery(query), os);
 		}
 
-		log.info("Finished initializing test.");
+	}
+
+	@After
+	public void after() throws Exception {
+		if (crypto != null) {
+			crypto.close();
+			crypto = null;
+		}
 	}
 
 	@Test
@@ -134,32 +166,27 @@ public class ResponderTest {
 		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
 
 		querySchema = createXertaQuerySchema();
-
 		List<String> selectors = Arrays.asList(new String[] {"MTX", "LTEC", "S3F", "GBRA", "KCC", "NESR"});
-		Querier querier = createQuerier("Xerta", selectors);
+		Querier querier = createQuerier(crypto, "Xerta", selectors);
 		queryKey = querier.getQueryKey();
-		query = querier.getQuery();
+		saveQuery(querier.getQuery());
 
-		// save the query
-		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		try (Responder responder = new Responder()) {
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.setInputDataFile(CDR_DATA_FILE);
+			responder.setQueryFileName(QUERY_FILE_NAME);
+			responder.run(config);
 		}
-
-		Responder responder = new Responder();
-		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.setInputDataFile(CDR_DATA_FILE);
-		responder.setQuery(query);
-		responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
 
 		Response response = loadFile();
 		response.getQueryInfo().printQueryInfo();
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		ExecutorService es = Executors.newCachedThreadPool();
+		// ExecutorService es = Executors.newCachedThreadPool();
 		DecryptResponse dr = new DecryptResponse();
 		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
+		dr.setExecutionService(decryptionThreadPool);
 		dr.activate();
 
 		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
@@ -184,30 +211,37 @@ public class ResponderTest {
 	@Test
 	public void test() throws Exception {
 
-		Responder responder = new Responder();
-		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.setInputDataFile(DATA_FILE_NAME);
-		responder.setQuery(query);
-		responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
-
+		saveQuery();
+		try (Responder responder = new Responder()) {
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.setInputDataFile(DATA_FILE_NAME);
+			responder.setQueryFileName(QUERY_FILE_NAME);
+			responder.run(config);
+		}
 		Response response = loadFile();
 		response.getQueryInfo().printQueryInfo();
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		ExecutorService es = Executors.newCachedThreadPool();
+
 		DecryptResponse dr = new DecryptResponse();
 		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
+		dr.setExecutionService(decryptionThreadPool);
 		dr.activate();
 
 		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
 		log.info("answer: " + answer);
+		assertNotNull(answer);
+		assertEquals(1, answer.selectorCount());
+		int[] hitCount = {0};
+		int[] recordCount = {0};
 
 		final Map<String, Object> returnedFields = new HashMap<>();
 		Selector sel = answer.selectorByName("age");
 		sel.forEachHits(hits -> {
+			hitCount[0]++;
 			hits.forEachRecord(record -> {
+				recordCount[0]++;
 				record.forEachField(field -> {
 					log.info("Field {}", field);
 					returnedFields.put(field.getName(), field.getValue());
@@ -215,19 +249,40 @@ public class ResponderTest {
 			});
 		});
 
-
+		assertEquals(1, hitCount[0]);
+		assertEquals(1, recordCount[0]);
 		assertEquals("Alice", returnedFields.get("name"));
 		// assertEquals("['Zack', 'Yvette']", returnedFields.get("children"));
 	}
 
+
 	private Response loadFile() throws FileNotFoundException, IOException, JAXBException {
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
+
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(cryptoRegistry);
+		queryConverter.initialize();
+
+		ResponseTypeConverter responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoRegistry);
+		responseConverter.initialize();
+
 		try (FileInputStream fis = new FileInputStream(RESPONSE_FILE_NAME.toFile())) {
 			org.enquery.encryptedquery.xml.schema.Response xml = responseConverter.unmarshal(fis);
 			return responseConverter.toCore(xml);
 		}
 	}
 
-	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
+	private Querier createQuerier(CryptoScheme crypto, String queryType, List<String> selectors) throws Exception {
 		RandomProvider randomProvider = new RandomProvider();
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
@@ -310,14 +365,14 @@ public class ResponderTest {
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("MaxPrice");
-		dse3.setDataType(FieldTypes.FLOAT);
+		dse3.setDataType(FieldTypes.DOUBLE);
 		dse3.setIsArray(false);
 		dse3.setPosition(8);
 		ds.addElement(dse3);
 
 		DataSchemaElement dse4 = new DataSchemaElement();
 		dse4.setName("MinPrice");
-		dse4.setDataType(FieldTypes.FLOAT);
+		dse4.setDataType(FieldTypes.DOUBLE);
 		dse4.setIsArray(false);
 		dse4.setPosition(9);
 		ds.addElement(dse4);

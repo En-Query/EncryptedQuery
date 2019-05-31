@@ -1,0 +1,62 @@
+<project name="CreateBNDFile" basedir=".">
+	<target name="prologue">
+		<property name="bnd.file" value="${project.build.directory}/final-bnd.bnd" />
+		<concat destfile="${bnd.file}">
+			<filelist files="bnd.bnd" />
+		</concat>
+	</target>
+	<target name="detect-libs">
+		<property name="lib.dir" value="${project.build.directory}/classes/native/${native.resource.dir}" />
+		<available property="xmp.built" file="${lib.dir}/libxmp.${native.library.ext}" />
+		<available property="gpucolproc.built" file="${lib.dir}/libgpucolproc.${native.library.ext}" />
+		<available property="gpudecryptor.built" file="${lib.dir}/libgpudecryptor.${native.library.ext}" />
+		<available property="gmp.built" file="${lib.dir}/libgmp.${native.library.ext}" />
+		<available property="querier.built" file="${lib.dir}/libquerygen.${native.library.ext}" />
+		<available property="responder.built" file="${lib.dir}/libresponder.${native.library.ext}" />
+		<condition property="native.libraries.built">
+			<or>
+				<isset property="xmp.built" />
+				<isset property="querier.built" />
+				<isset property="responder.built" />
+				<isset property="gmp.built" />
+				<isset property="gpucolproc.built" />
+				<isset property="gpudecryptor.built"/>
+			</or>
+		</condition>
+	</target>
+	<target name="native-code-directive" if="${native.libraries.built}">
+		<concat destfile="${bnd.file}" append="true">Bundle-NativeCode:\</concat>
+	</target>
+	<target name="gpucolproc" if="${gpucolproc.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libgpucolproc.${native.library.ext};\</concat>
+	</target>
+	<target name="gpudecryptor" if="${gpudecryptor.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libgpudecryptor.${native.library.ext};\</concat>
+	</target>
+	<target name="xmp" if="${xmp.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libxmp.${native.library.ext};\</concat>
+	</target>
+	<target name="gmp" if="${gmp.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libgmp.${native.library.ext};\</concat>
+	</target>
+	<target name="responder" if="${responder.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libresponder.${native.library.ext};\</concat>
+	</target>
+	<target name="querier" if="${querier.built}">
+		<concat destfile="${bnd.file}" append="true">
+			native/${native.resource.dir}/libquerygen.${native.library.ext};\</concat>
+	</target>
+	<target name="epilogue" if="${native.libraries.built}">
+		<concat destfile="${bnd.file}" append="true">
+			osname=${osname};\
+			processor=x86-64,\
+			*
+		</concat>
+	</target>
+	<target name="build" depends="detect-libs,prologue,native-code-directive,gpucolproc,gpudecryptor,xmp,gmp,responder,querier,epilogue"/>
+</project>

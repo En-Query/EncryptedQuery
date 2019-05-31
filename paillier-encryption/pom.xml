@@ -25,11 +25,15 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-parent</artifactId>
-		<version>2.1.2</version>
+		<version>2.1.3</version>
 		<relativePath>../parent</relativePath>
 	</parent>
 	<artifactId>encryptedquery-paillier-encryption</artifactId>
 	
+	<properties>
+	    <skip.gpu.native.libs>false</skip.gpu.native.libs>
+	    <skip.cpu.native.libs>false</skip.cpu.native.libs>
+	</properties>
 	
 	<name>EncryptedQuery :: Paillier Encryption</name>
 
@@ -77,6 +81,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.ant</groupId>
+			<artifactId>ant</artifactId>
+			<version>1.10.6</version>
+		</dependency>
 	</dependencies>
 	
 	<build>
@@ -87,30 +96,6 @@
 	        <version>1.6.1</version>
 	      </extension>
 	    </extensions>
-	    <plugins>
-		    <plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-enforcer-plugin</artifactId>
-				<version>3.0.0-M2</version>
-				<executions>
-					<execution>
-						<id>enforce-all-profiles-are-activated</id>
-						<goals>
-							<goal>enforce</goal>
-						</goals>
-						<configuration>
-							<rules>
-								<requireActiveProfile>
-									<profiles>native-libs,with-precompiled-native-libs</profiles>
-									<all>false</all>
-								</requireActiveProfile>
-							</rules>
-							<fail>true</fail>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-	    </plugins>
 	</build>
 	
 	<profiles>
@@ -124,18 +109,8 @@
 			<properties>
 				<native.library.ext>dylib</native.library.ext>
 				<native.resource.dir>darwin</native.resource.dir>
+				<osname>MacOSX</osname>
 			</properties>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>biz.aQute.bnd</groupId>
-						<artifactId>bnd-maven-plugin</artifactId>
-						<configuration>
-							<bndfile>bnd-osx.bnd</bndfile>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
 		</profile>
 		<profile>
 			<id>linux</id>
@@ -147,25 +122,17 @@
 			<properties>
 				<native.library.ext>so</native.library.ext>
 				<native.resource.dir>linux-x86-64</native.resource.dir>
+				<osname>Linux</osname>
 			</properties>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>biz.aQute.bnd</groupId>
-						<artifactId>bnd-maven-plugin</artifactId>
-						<configuration>
-							<bndfile>bnd-linux.bnd</bndfile>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
 		</profile>
 		<profile>
+			<!-- build the native libraries -->
 			<id>native-libs</id>
 			<properties>
 				<native.build.dir>${project.build.directory}/native-builds</native.build.dir>
 				<jni.headers.dir>${native.build.dir}/generated-headers</jni.headers.dir>
 				<gmp.build.dir>${native.build.dir}/gmp</gmp.build.dir>
+				<project.basedir>${project.basedir}</project.basedir>
 			</properties>
 			<build>
 				<plugins>
@@ -185,99 +152,55 @@
 	          			<artifactId>maven-antrun-plugin</artifactId>
 						<executions>
 							<execution>
-								<id>build-native</id>
+								<id>build-cpu</id>
 								<phase>compile</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
 								<configuration>
-									<target name="build-native" description="compiles native code">
-										<property name="make.cmd" value="make" />
-										<property name="javac.cmd" value="${java.home}/../bin/javac" />
-										<property name="gmp.src.dir" value="src/main/native/gmp" />
-										<property name="querier.src.dir" value="src/main/native/querier" />
-										<property name="responder.src.dir" value="src/main/native/responder" />
-										<property name="gmp.install.dir" value="${project.build.directory}/gmp" />
-										<property name="native.install.dir" value="${project.build.directory}/lib/native/" />
-										<property name="querier.build.dir" value="${native.build.dir}/querier" />
-
-										<mkdir dir="${native.build.dir}" />
-										<mkdir dir="${native.build.dir}/gmp" />
-										<mkdir dir="${querier.build.dir}" />
-										<mkdir dir="${native.build.dir}/responder" />
-										<mkdir dir="${native.install.dir}" />
-
-										<!-- Build GMP -->
-										<get src="https://ftp.gnu.org/gnu/gmp/gmp-${gmp.version}.tar.bz2" dest="${gmp.build.dir}" skipexisting="true" />
-
-										<exec dir="${gmp.build.dir}" executable="tar" failonerror="true">
-											<arg line="-xjf" />
-											<arg line="${gmp.build.dir}/gmp-${gmp.version}.tar.bz2" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
-											<arg line="--prefix=${gmp.install.dir}" />
-											<arg line="--enable-fat" />
-											<arg line="--disable-static" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
-											<arg line="--prefix=${gmp.install.dir}" />
-											<arg line="--enable-fat" />
-											<arg line="--disable-static" />
-										</exec>
-
-										<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="${make.cmd}" failonerror="true">
-											<arg line="all" />
-											<arg line="check" />
-											<arg line="install" />
-										</exec>
-
-										<!-- Build Querier -->
-										<exec dir="${querier.src.dir}" executable="${make.cmd}" failonerror="true">
-											<arg line="install" />
-											<arg line="JAVA_HOME=${java.home}/.." />
-											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
-											<arg line="BUILD_DIR=${querier.build.dir}" />
-											<arg line="INSTALL_DIR=${native.install.dir}" />
-											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
-										</exec>
-
-										<!-- Build Responder -->
-										<exec dir="${responder.src.dir}" executable="${make.cmd}" failonerror="true">
-											<arg line="install" />
-											<arg line="JAVA_HOME=${java.home}/.." />
-											<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
-											<arg line="BUILD_DIR=${native.build.dir}/responder" />
-											<arg line="INSTALL_DIR=${native.install.dir}" />
-											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
-										</exec>
-
-										<copy todir="${native.install.dir}">
-											<!-- <fileset dir="${gmp.install.dir}/lib" /> -->
-											<fileset dir="${gmp.install.dir}/lib" includes="libgmp.${native.library.ext}"/>
-											<fileset dir="${gmp.install.dir}/lib" includes="libresponder.${native.library.ext}"/>
-											<fileset dir="${gmp.install.dir}/lib" includes="libquerygen.${native.library.ext}"/>
-										</copy>
-										
-										<copy todir="${project.build.directory}/classes/native/${native.resource.dir}">
- 											<fileset dir="${native.install.dir}"/>
-<!--   											<fileset dir="${native.install.dir}" includes="libgmp.${native.library.ext}"/>
-											<fileset dir="${native.install.dir}" includes="libresponder.${native.library.ext}"/>
-											<fileset dir="${native.install.dir}" includes="libquerygen.${native.library.ext}"/>
- -->
- 										</copy>
-									</target>
+									<target>
+					                    <ant antfile="build-cpu-libraries.xml">
+					                        <target name="build"/>
+					                    </ant>
+					                </target>
+								</configuration>
+							</execution>
+							<execution>
+								<id>build-gpu</id>
+								<phase>compile</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target unless="${skip.gpu.native.libs}">
+					                    <ant antfile="build-gpu-libraries.xml">
+					                        <target name="build"/>
+					                    </ant>
+					                </target>
+								</configuration>
+							</execution>
+							<execution>
+								<id>create-bnd-file</id>
+								<phase>compile</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target>
+					                    <ant antfile="create-bnd-file.xml">
+					                        <target name="build"/>
+					                    </ant>
+					                </target>
 								</configuration>
 							</execution>
 						</executions>
-						<dependencies>
-							<dependency>
-								<groupId>org.apache.ant</groupId>
-								<artifactId>ant</artifactId>
-								<version>1.10.3</version>
-							</dependency>
-						</dependencies>
+					</plugin>
+					<plugin>
+						<groupId>biz.aQute.bnd</groupId>
+						<artifactId>bnd-maven-plugin</artifactId>
+						<configuration>
+							<bndfile>${project.build.directory}/final-bnd.bnd</bndfile>
+						</configuration>
 					</plugin>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
@@ -302,9 +225,9 @@
 		</profile>
 		<profile>
 			<id>with-precompiled-native-libs</id>
-			<properties>
+<!-- 			<properties>
 				<using.precompiled.libs>true</using.precompiled.libs>
-			</properties>
+			</properties> -->
 			<build>
 				<plugins>
 					<plugin>
@@ -333,6 +256,33 @@
 								</configuration>
 							</execution>
 						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+	          			<artifactId>maven-antrun-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>create-bnd-file</id>
+								<phase>compile</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target>
+					                    <ant antfile="create-bnd-file.xml">
+					                        <target name="build"/>
+					                    </ant>
+					                </target>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>biz.aQute.bnd</groupId>
+						<artifactId>bnd-maven-plugin</artifactId>
+						<configuration>
+							<bndfile>${project.build.directory}/final-bnd.bnd</bndfile>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>

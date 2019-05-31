@@ -1,0 +1,69 @@
+<project name="BuildGPULibraries" basedir=".">
+
+	<target name="build-xmp" unless="${skip.gpu.native.libs}">
+		<property name="xmp.src.dir" value="${project.basedir}/src/main/native/xmp" />
+		<property name="xmp.build.dir" value="${native.build.dir}/xmp" />
+
+		<mkdir dir="${xmp.build.dir}" />
+
+		<copy todir="${xmp.build.dir}">
+			<fileset dir="${xmp.src.dir}" />
+		</copy>
+
+		<exec dir="${xmp.build.dir}" executable="make" failonerror="true">
+			<arg line="-j4" />
+		</exec>
+
+		<copy todir="${project.build.directory}/classes/native/${native.resource.dir}">
+			<fileset dir="${xmp.build.dir}" includes=" libxmp.${native.library.ext}" />
+		</copy>
+	</target>
+
+	<target name="build-colproc" unless="${skip.gpu.native.libs}" depends="build-xmp">
+		<property name="colproc.src.dir" value="${project.basedir}/src/main/native/colproc_gpu" />
+		<property name="colproc.build.dir" value="${native.build.dir}/colproc_gpu" />
+
+		<mkdir dir="${colproc.build.dir}" />
+
+		<copy todir="${colproc.build.dir}">
+			<fileset dir="${colproc.src.dir}" />
+		</copy>
+
+		<exec dir="${colproc.build.dir}" executable="make" failonerror="true">
+			<arg line="-j4" />
+			<arg line="JAVA_HOME=${java.home}/.." />
+			<arg line="GMP_INSTALL_DIR=${native.build.dir}/gmp" />
+			<arg line="XMP_DIR=${native.build.dir}/xmp"/>
+			<arg line="RESPONDER_SRC_DIR=${project.basedir}/src/main/native/responder"/>
+			<arg line="RESPONDER_LIB_DIR=${native.build.dir}/responder"/>
+		</exec>
+
+		<copy todir="${project.build.directory}/classes/native/${native.resource.dir}">
+			<fileset dir="${colproc.build.dir}" includes="libgpucolproc.${native.library.ext}" />
+		</copy>
+	</target>
+	
+	<target name="build-decryptor" unless="${skip.gpu.native.libs}" depends="build-xmp">
+		<property name="decryptor.src.dir" value="${project.basedir}/src/main/native/decryptor_gpu" />
+		<property name="decryptor.build.dir" value="${native.build.dir}/decryptor_gpu" />
+
+		<mkdir dir="${decryptor.build.dir}" />
+
+		<copy todir="${decryptor.build.dir}">
+			<fileset dir="${decryptor.src.dir}" />
+		</copy>
+
+		<exec dir="${decryptor.build.dir}" executable="make" failonerror="true">
+			<arg line="-j4" />
+			<arg line="JAVA_HOME=${java.home}/.." />
+			<arg line="GMP_INSTALL_DIR=${native.build.dir}/gmp" />
+			<arg line="XMP_DIR=${native.build.dir}/xmp"/>
+		</exec>
+
+		<copy todir="${project.build.directory}/classes/native/${native.resource.dir}">
+			<fileset dir="${decryptor.build.dir}" includes="libgpudecryptor.${native.library.ext}" />
+		</copy>
+	</target>
+
+	<target name="build" depends="build-colproc, build-decryptor" />
+</project>

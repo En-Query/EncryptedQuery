@@ -53,10 +53,13 @@ public class Responder extends BaseQueryExecutor {
 	}
 
 	public void run() throws Exception {
+		run(ExecutionEnvironment.getExecutionEnvironment());
+	}
+
+	public void run(ExecutionEnvironment env) throws Exception {
 		initializeCommon();
 		initializeBatch();
 
-		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 		JDBCInputFormat inputBuilder = JDBCInputFormat.buildJDBCInputFormat()
 				.setDrivername(driverClassName)
 				.setDBUrl(connectionUrl)

@@ -116,9 +116,9 @@ public class YaoColumnProcessor implements ColumnProcessor {
 	 * @see org.enquery.encryptedquery.encryption.ColumnProcessor#compute()
 	 */
 	@Override
-	public CipherText compute() {
+	public CipherText computeAndClear() {
 		if (useMontgomery) {
-			return computeColumnAndClearDataMontgomery();
+			return computeColumnMontgomery();
 		}
 
 		BigInteger out = BigInteger.ONE;
@@ -133,7 +133,7 @@ public class YaoColumnProcessor implements ColumnProcessor {
 		return new PaillierCipherText(out);
 	}
 
-	private CipherText computeColumnAndClearDataMontgomery() {
+	private CipherText computeColumnMontgomery() {
 		// TODO: handle Montgomery case:
 		BigInteger out = mont.getMontOne();
 		BigInteger a = mont.getMontOne();
@@ -143,7 +143,6 @@ public class YaoColumnProcessor implements ColumnProcessor {
 			}
 			out = mont.montMultiply(out, a);
 		}
-		clear();
 		return new PaillierCipherText(out);
 	}
 

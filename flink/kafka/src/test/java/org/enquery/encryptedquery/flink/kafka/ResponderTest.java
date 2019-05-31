@@ -18,6 +18,11 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.flink.configuration.AkkaOptions;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CoreOptions;
+import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.DataSchema;
@@ -38,6 +43,7 @@ import org.enquery.encryptedquery.utils.RandomProvider;
 import org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -107,6 +113,13 @@ public class ResponderTest implements FlinkTypes {
 		clearTextResponseConverter = new ClearTextResponseTypeConverter();
 	}
 
+	@After
+	public void after() throws Exception {
+		if (crypto != null) {
+			crypto.close();
+			crypto = null;
+		}
+	}
 
 	@Test
 	public void testTwitter() throws Exception {
@@ -155,7 +168,8 @@ public class ResponderTest implements FlinkTypes {
 		runJob(PCAP_FILE_NAME, querySchema, 60L, 5_000);
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
-		assertTrue(responses.size() == 6 || responses.size() == 7);
+		assertTrue("Unexpected response size: " + responses.size(), responses.size() >= 5 &&
+				responses.size() <= 7);
 	}
 
 	@Test
@@ -230,31 +244,43 @@ public class ResponderTest implements FlinkTypes {
 
 	private void runJob(Path fileName, QuerySchema querySchema, long maxRuntime, int maxDelayBetweenRows) throws Exception {
 
-		Responder responder = new Responder();
-		responder.setConfig(config);
-		responder.setInputFileName(QUERY_FILE_NAME);
-		responder.setOutputFileName(RESPONSE_FILE_NAME);
+		config.put("stream.runtime.seconds", Long.toString(maxRuntime));
+		try (Responder responder = new Responder()) {
+			responder.setConfig(config);
+			responder.setInputFileName(QUERY_FILE_NAME);
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.initializeCommon();
+			responder.initializeStreaming();
 
-		FileTestSource source = new FileTestSource(fileName,
-				RESPONSE_FILE_NAME,
-				maxRuntime,
-				maxDelayBetweenRows);
+			FileTestSource source = new FileTestSource(fileName,
+					RESPONSE_FILE_NAME,
+					responder.getMaxTimestamp(),
+					maxDelayBetweenRows);
 
-		responder.runWithSource(source);
-		log.info("Flink job ended.");
+			Configuration cfg = new Configuration();
+			cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
+			cfg.setString(AkkaOptions.CLIENT_TIMEOUT, "2 min");
+			cfg.setInteger(CoreOptions.DEFAULT_PARALLELISM, 4);
+			cfg.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, 4);
 
-		assertTrue(!Files.exists(RESPONSE_FILE_NAME.resolve("job-running")));
+			StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(4, cfg);
+
+			responder.runWithSourceAndEnvironment(source, env);
+			log.info("Flink job ended.");
+			assertTrue(!Files.exists(RESPONSE_FILE_NAME.resolve("job-running")));
+		}
 	}
 
 	@Test
 	@Ignore("manually run, requires external kafka")
 	public void kafkaLiveTest() throws Exception {
-		Responder responder = new Responder();
-		responder.setConfig(config);
-		responder.setInputFileName(QUERY_FILE_NAME);
-		responder.setOutputFileName(RESPONSE_FILE_NAME);
-		responder.setBrokers("192.168.200.57:9092");
-		responder.run();
+		try (Responder responder = new Responder()) {
+			responder.setConfig(config);
+			responder.setInputFileName(QUERY_FILE_NAME);
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.setBrokers("192.168.200.57:9092");
+			responder.run();
+		}
 	}
 
 

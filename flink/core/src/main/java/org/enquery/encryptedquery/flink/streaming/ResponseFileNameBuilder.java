@@ -78,16 +78,18 @@ public class ResponseFileNameBuilder {
 		return filePath;
 	}
 
-	public static Path createEmptyInProgressFile(String responseFilePath, long start, long end) throws IOException {
+	public static boolean createEmptyInProgressFile(String responseFilePath, long start, long end) throws IOException {
 		Path path = ResponseFileNameBuilder
 				.makeInProgressFileName(responseFilePath, start, end);
 
+		boolean result = true;
 		Files.createDirectories(path.getParent());
 		try {
 			Files.createFile(path);
 		} catch (FileAlreadyExistsException ignore) {
 			// ok to ignore, file was previously created
+			result = false;
 		}
-		return path;
+		return result;
 	}
 }

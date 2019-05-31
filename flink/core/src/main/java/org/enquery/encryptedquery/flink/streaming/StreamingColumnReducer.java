@@ -20,6 +20,7 @@ import java.security.PublicKey;
 import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -39,7 +40,6 @@ public class StreamingColumnReducer extends ProcessWindowFunction<WindowPerRowHa
 	private final Map<String, String> config;
 
 	// non serializable
-	private transient boolean initialized = false;
 	private transient CryptoScheme crypto;
 
 	public StreamingColumnReducer(PublicKey publicKey,
@@ -50,9 +50,16 @@ public class StreamingColumnReducer extends ProcessWindowFunction<WindowPerRowHa
 		this.config = config;
 	}
 
-	private void initialize() throws Exception {
+	@Override
+	public void open(Configuration parameters) throws Exception {
+		super.open(parameters);
 		crypto = CryptoSchemeFactory.make(config);
-		initialized = true;
+	}
+
+	@Override
+	public void close() throws Exception {
+		crypto.close();
+		super.close();
 	}
 
 	/*
@@ -68,11 +75,6 @@ public class StreamingColumnReducer extends ProcessWindowFunction<WindowPerRowHa
 			ProcessWindowFunction<WindowPerRowHashResult, WindowPerColumnResult, Integer, TimeWindow>.Context context,
 			Iterable<WindowPerRowHashResult> values,
 			Collector<WindowPerColumnResult> out) throws Exception {
-
-		if (!initialized) {
-			initialize();
-		}
-
 
 		WindowPerRowHashResult first = null;
 		int count = 0;
@@ -93,8 +95,9 @@ public class StreamingColumnReducer extends ProcessWindowFunction<WindowPerRowHa
 		out.collect(result);
 
 		if (log.isDebugEnabled()) {
-			log.debug("Reduced column {} of window ending in '{}' with {} elements.",
+			log.debug("Reduced column {} of window with rowHash {} ending in '{}' with {} elements.",
 					column,
+					first.rowHash,
 					TimestampFormatter.format(first.windowMaxTimestamp),
 					count);
 		}

@@ -19,6 +19,7 @@ package org.enquery.encryptedquery.flink.kafka;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -78,7 +79,7 @@ public class Responder extends BaseQueryExecutor {
 				brokers,
 				query.getQueryInfo().getIdentifier(),
 				startOffset,
-				runtimeSeconds,
+				maxTimestamp,
 				outputFileName);
 
 
@@ -86,6 +87,13 @@ public class Responder extends BaseQueryExecutor {
 	}
 
 	public void runWithSource(SourceFunction<String> consumer) throws Exception, IOException {
+		runWithSourceAndEnvironment(consumer, StreamExecutionEnvironment.getExecutionEnvironment());
+	}
+
+	public void runWithSourceAndEnvironment(SourceFunction<String> consumer, final StreamExecutionEnvironment env) throws Exception, IOException {
+		Validate.notNull(consumer);
+		Validate.notNull(env);
+
 		final boolean debugging = log.isDebugEnabled();
 
 		initializeCommon();
@@ -95,13 +103,9 @@ public class Responder extends BaseQueryExecutor {
 		// create it early
 		Files.createDirectories(outputFileName);
 
-		// final long startTime = System.currentTimeMillis();
-		// set up the streaming execution environment
-		final StreamExecutionEnvironment streamingEnv = StreamExecutionEnvironment.getExecutionEnvironment();
-		streamingEnv.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
-
-
-		final DataStreamSource<String> source = streamingEnv.addSource(consumer);
+		// ingestion time is the source of time
+		env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
+		final DataStreamSource<String> source = env.addSource(consumer);
 
 		final int index = selectorFieldIndex;
 
@@ -114,6 +118,6 @@ public class Responder extends BaseQueryExecutor {
 					return present;
 				});
 
-		run(streamingEnv, stream);
+		run(env, stream);
 	}
 }

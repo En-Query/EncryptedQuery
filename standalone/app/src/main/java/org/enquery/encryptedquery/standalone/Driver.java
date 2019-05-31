@@ -16,7 +16,6 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,12 +29,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.data.Query;
-import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.utils.FileIOUtils;
-import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 
 public class Driver {
 
@@ -68,7 +62,7 @@ public class Driver {
 			.build();
 
 	private Map<String, String> config;
-	private Query query;
+	// private Query query;
 	private Path inputDataFile;
 
 	public static void main(String[] args) {
@@ -100,24 +94,6 @@ public class Driver {
 		Validate.isTrue(!Files.exists(outputFileName), "Output file %s exists. Delete first.", outputFileName);
 
 		config = FileIOUtils.loadPropertyFile(Paths.get(getValue(configPropertyFileOption)));
-
-		final CryptoScheme crypto = CryptoSchemeFactory.make(config);
-		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
-			@Override
-			public CryptoScheme cryptoSchemeByName(String schemeId) {
-				if (schemeId == null) return null;
-				if (schemeId.equals(crypto.name())) return crypto;
-				return null;
-			}
-		};
-
-		QueryTypeConverter queryConverter = new QueryTypeConverter();
-		queryConverter.setCryptoRegistry(registry);
-		queryConverter.initialize();
-
-		try (FileInputStream fis = new FileInputStream(queryFileName.toFile())) {
-			query = queryConverter.toCoreQuery(queryConverter.unmarshal(fis));
-		}
 	}
 
 	public static Options getOptions() {
@@ -132,11 +108,12 @@ public class Driver {
 	}
 
 	public void run() throws Exception {
-		Responder responder = new Responder();
-		responder.setQuery(query);
-		responder.setOutputFileName(outputFileName);
-		responder.setInputDataFile(inputDataFile);
-		responder.run(config);
+		try (Responder responder = new Responder();) {
+			responder.setQueryFileName(queryFileName);
+			responder.setOutputFileName(outputFileName);
+			responder.setInputDataFile(inputDataFile);
+			responder.run(config);
+		}
 	}
 
 	private String getValue(Option opt) {

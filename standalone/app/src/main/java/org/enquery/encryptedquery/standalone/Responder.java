@@ -16,10 +16,7 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
@@ -28,17 +25,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.management.timer.Timer;
-import javax.xml.bind.JAXBException;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.Partitioner;
@@ -47,252 +46,80 @@ import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.responder.QueueRecord;
-import org.enquery.encryptedquery.responder.RecordPartitioner;
-import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
-import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Responder {
+@SuppressWarnings("rawtypes")
+public class Responder implements AutoCloseable {
 
 	private static final Logger log = LoggerFactory.getLogger(Responder.class);
-	private DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
+	private static final DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
 
 	private Path inputDataFile;
 	private int numberOfProcessorThreads = 1;
 
-	// conservative default queue size, in case the records a very large
+	// conservative default queue size, in case the records are very large
 	private int maxQueueSize = 100;
 	private int maxHitsPerSelector = 1000;
 
-	// keeps track of how many hits a given
-	// selector has
-	private HashMap<Integer, Integer> rowIndexCounter = new HashMap<>();
+	private List<BlockingQueue<QueueRecord>> newRecordQueues = new ArrayList<>();
+	private LinkedBlockingQueue<Response> responseQueue = new LinkedBlockingQueue<>();
 
-	// Log how many records exceeded the maxHitsPerSelector limit
-	private HashMap<Integer, Integer> rowIndexOverflowCounter = new HashMap<>();
-
-	private List<ArrayBlockingQueue<QueueRecord>> newRecordQueues = new ArrayList<>();
-	private ConcurrentLinkedQueue<Response> responseQueue = new ConcurrentLinkedQueue<>();
-
-	private long recordCounter = 0;
-	private List<ColumnBasedResponderProcessor> responderProcessors = new ArrayList<>();
 	private Query query;
 	private Path outputFileName;
+	private Path queryFileName;
 
 	private Map<String, String> runParameters = new HashMap<>();
 	private Partitioner partitioner = new Partitioner();
 	private ExecutorService executionService;
-	// private int hashGroupSize;
-	private long selectorNullCount;
-	private AtomicLong lineNumber;
-	private List<Future<Response>> futures;
+	private CompletionService completionService;
 	private CryptoScheme crypto;
+	private QueryTypeConverter queryConverter;
+	private Future<Integer> responseWriterFuture;
+	private AtomicLong globalRecordsProcessed = new AtomicLong();
+	private AtomicLong globalRecordsRead = new AtomicLong();
+	private int computeThreshold;
+	private int taskCount;
 
-	public Responder() {}
-
-	public int getPercentComplete() {
-		return ProcessingUtils.getPercentComplete(recordCounter, responderProcessors);
-	}
-
-	private void configure(Map<String, String> config) throws Exception {
+	private void initialize(Map<String, String> config) throws Exception {
 		Validate.notNull(config);
 		runParameters.putAll(config);
 
 		if (runParameters.containsKey(StandaloneConfigurationProperties.PROCESSING_THREADS)) {
 			numberOfProcessorThreads = Integer.valueOf(runParameters.get(StandaloneConfigurationProperties.PROCESSING_THREADS));
 		}
+
+		// if no queue size is given, use the compute threshold if given, otherwise keep it low
+		String ct = config.get(StandaloneConfigurationProperties.COMPUTE_THRESHOLD);
+		Validate.notNull(ct, StandaloneConfigurationProperties.COMPUTE_THRESHOLD + " property missing.");
+		computeThreshold = Integer.parseInt(ct);
+
 		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_QUEUE_SIZE)) {
 			String mqs = runParameters.get(StandaloneConfigurationProperties.MAX_QUEUE_SIZE).toString();
 			maxQueueSize = Integer.parseInt(mqs);
+		} else {
+			// if no queue size is given, use the compute threshold
+			maxQueueSize = computeThreshold;
+		}
+		// it does not make sense to use queue with more then computeThreshold slots
+		if (maxQueueSize > computeThreshold) {
+			maxQueueSize = computeThreshold;
 		}
 
 		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
 			maxHitsPerSelector = Integer.parseInt(runParameters.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR));
 		}
 
-		log.info("Standalone Query Configuration:");
-		for (Map.Entry<String, String> entry : runParameters.entrySet()) {
-			log.info("  {} = {}", entry.getKey(), entry.getValue());
-		}
-	}
-
-	public void run(Map<String, String> config) throws Exception {
-		Validate.notNull(query);
-		Validate.notNull(outputFileName);
-		Validate.isTrue(!Files.exists(outputFileName));
-		Validate.notNull(inputDataFile);
-		Validate.isTrue(Files.exists(inputDataFile));
-
-		configure(config);
-
-		log.info("Running Standalone Query '{}' on file '{}'.", query.getQueryInfo().getQueryName(), inputDataFile);
-
-		initialize();
-		processFile();
-		shutdown();
-		waitUntilFinished();
-		outputResponse();
-	}
-
-	private void processFile() throws IOException {
-		try (Stream<String> lines = Files.lines(inputDataFile)) {
-			lines.forEach(line -> processLine(line));
+		if (executionService == null) {
+			// we use two additional threads, for reading file and aggregating results
+			executionService = Executors.newFixedThreadPool(numberOfProcessorThreads + 2);
 		}
 
-		if (log.isWarnEnabled()) {
-			if (selectorNullCount > 0) {
-				log.warn("{} Records had a null selector from source", selectorNullCount);
-			}
+		if (crypto == null) {
+			crypto = CryptoSchemeFactory.make(runParameters, executionService);
 		}
-
-		if (log.isInfoEnabled()) {
-			log.info("Imported {} records for processing", numFormat.format(recordCounter));
-			if (rowIndexOverflowCounter.size() > 0) {
-				log.warn("{} Row Hashs overflowed because of MaxHitsPerSelector.  Increase MaxHitsPerSelector to reduce this if resources allow.", rowIndexOverflowCounter.size());
-				if (log.isDebugEnabled()) {
-					for (int i : rowIndexOverflowCounter.keySet()) {
-						log.debug("rowIndex {} exceeded max Hits {} by {}", i, maxHitsPerSelector,
-								rowIndexOverflowCounter.get(i));
-					}
-				}
-			}
-		}
-	}
-
-	private void shutdown() throws InterruptedException {
-		// All data has been submitted to the queue so send an EOF marker
-		QueueRecord eof = new QueueRecord();
-		eof.setIsEndOfFile(true);
-		for (ArrayBlockingQueue<QueueRecord> q : newRecordQueues) {
-			q.put(eof);
-		}
-		executionService.shutdown();
-	}
-
-	private void waitUntilFinished() throws InterruptedException {
-		// Loop through processing threads until they are finished processing. Report how many
-		// are still running every minute.
-		long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
-		boolean terminated = executionService.awaitTermination(1, TimeUnit.SECONDS);
-		while (!terminated) {
-			if (System.currentTimeMillis() > notificationTimer) {
-				long running = futures.stream().filter(f -> !f.isDone()).count();;
-				long recordsProcessed = ProcessingUtils.recordsProcessed(responderProcessors);
-				log.info("There are {} responder processes running, {} records processed / {} % complete",
-						running, numFormat.format(recordsProcessed), numFormat.format(getPercentComplete()));
-
-				notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
-			}
-			terminated = executionService.awaitTermination(1, TimeUnit.SECONDS);
-		}
-	}
-
-	private void processLine(String line) {
-		Map<String, Object> jsonData = null;
-		try {
-			jsonData = JSONStringConverter.toStringObjectFlatMap(line);
-			// .toStringObjectMapFromList(querySchemaElementNames, line);
-		} catch (Exception e) {
-			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
-			return;
-		}
-
-		if (jsonData != null && jsonData.size() > 0) {
-			processRow(jsonData);
-			lineNumber.incrementAndGet();
-		} else if (jsonData.size() < 1) {
-			log.warn("jsonData has no data, input line: {}", line);
-			return;
-		} else {
-			log.warn("jsonData is null, input line: {}", line);
-			return;
-		}
-	}
-
-	private void processRow(Map<String, Object> jsonData) {
-
-		final String selector = RecordPartitioner.getSelectorValue(query.getQueryInfo().getQuerySchema(), jsonData).trim();
-		// log.info("Selector Value {}", selector);
-		if (selector == null || selector.length() <= 0) {
-			selectorNullCount++;
-			return;
-		}
-
-		try {
-			int rowIndex = KeyedHash.hash(query.getQueryInfo().getHashKey(), query.getQueryInfo().getHashBitSize(), selector);
-			// logger.info("Selector {} / Hash {}", selector, rowIndex);
-
-			// Track how many "hits" there are for each selector (Converted into
-			// rowIndex)
-			if (rowIndexCounter.containsKey(rowIndex)) {
-				rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
-			} else {
-				rowIndexCounter.put(rowIndex, 1);
-			}
-
-			// If we are not over the max hits value add the record to the
-			// appropriate queue
-			if (rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-				List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, query.getQueryInfo(), jsonData);
-				QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
-				int whichQueue = rowIndex % numberOfProcessorThreads;
-				// log.info("Hash {} going to queue {} with {} bytes", rowIndex, whichQueue,
-				// parts.size());
-
-				// insert element in queue, waits until space is available
-				newRecordQueues.get(whichQueue).put(qr);
-				recordCounter++;
-			} else {
-				if (rowIndexOverflowCounter.containsKey(rowIndex)) {
-					rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
-				} else {
-					rowIndexOverflowCounter.put(rowIndex, 1);
-				}
-			}
-		} catch (Exception e) {
-			log.error("Exception adding record selector {} / record {}, Exception: {}", selector, recordCounter, e.getMessage());
-		}
-	}
-
-	private void initialize() throws Exception {
-		selectorNullCount = 0;
-		lineNumber = new AtomicLong(0);
-		crypto = CryptoSchemeFactory.make(runParameters);
-
-		// Create a Queue for each thread
-		for (int i = 0; i < numberOfProcessorThreads; i++) {
-			newRecordQueues.add(new ArrayBlockingQueue<QueueRecord>(maxQueueSize));
-		}
-
-		// Initialize & Start Processing Threads
-		executionService = Executors.newFixedThreadPool(numberOfProcessorThreads);
-		for (int i = 0; i < numberOfProcessorThreads; i++) {
-			ColumnBasedResponderProcessor processor = new ColumnBasedResponderProcessor(
-					newRecordQueues.get(i),
-					responseQueue,
-					query,
-					crypto,
-					runParameters,
-					partitioner);
-
-			responderProcessors.add(processor);
-		}
-
-		futures = responderProcessors.stream()
-				.map(task -> executionService.submit(task))
-				.collect(Collectors.toList());
-	}
-
-	// Compile the results from all the threads into one response file.
-	private void outputResponse() throws FileNotFoundException, IOException, JAXBException {
-		log.info("Writing response to file: '{}'", outputFileName);
-
-		ConsolidateResponse aggregator = new ConsolidateResponse(crypto);
-		Response outputResponse = aggregator.consolidateResponse(responseQueue, query.getQueryInfo());
 
 		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
 			@Override
@@ -303,27 +130,107 @@ public class Responder {
 			}
 		};
 
-		QueryTypeConverter queryConverter = new QueryTypeConverter();
+		queryConverter = new QueryTypeConverter();
 		queryConverter.setCryptoRegistry(registry);
 		queryConverter.initialize();
 
-		ResponseTypeConverter converter = new ResponseTypeConverter();
-		converter.setQueryConverter(queryConverter);
-		converter.setSchemeRegistry(registry);
-		converter.initialize();
+		// Create a Queue for each thread
+		for (int i = 0; i < numberOfProcessorThreads; i++) {
+			newRecordQueues.add(new ArrayBlockingQueue<QueueRecord>(maxQueueSize));
+		}
 
-		try (OutputStream output = new FileOutputStream(outputFileName.toFile())) {
-			org.enquery.encryptedquery.xml.schema.Response xml = converter.toXML(outputResponse);
-			converter.marshal(xml, output);
+		// load the query
+		try (FileInputStream fis = new FileInputStream(queryFileName.toFile())) {
+			query = queryConverter.toCoreQuery(queryConverter.unmarshal(fis));
+		}
+
+		log.info("Standalone Query Configuration:");
+		for (Map.Entry<String, String> entry : runParameters.entrySet()) {
+			log.info("  {} = {}", entry.getKey(), entry.getValue());
 		}
 	}
 
-	public Query getQuery() {
-		return query;
+	public void run(Map<String, String> config) throws Exception {
+		Validate.notNull(queryFileName);
+		Validate.isTrue(Files.exists(queryFileName));
+		Validate.notNull(outputFileName);
+		Validate.isTrue(!Files.exists(outputFileName));
+		Validate.notNull(inputDataFile);
+		Validate.isTrue(Files.exists(inputDataFile));
+
+		initialize(config);
+		startProcessing();
+		waitForColumnProcessingCompletion();
+
+		// once the file reader and column processors are finished, send a special marker to tell
+		// the response aggregator to end
+		responseQueue.put(new EofReponse(query.getQueryInfo()));
+		// now wait for the response to be written, and propagate any exceptions
+		responseWriterFuture.get();
+		executionService.shutdown();
+		log.info("Finished.");
 	}
 
-	public void setQuery(Query query) {
-		this.query = query;
+	private void waitForColumnProcessingCompletion() throws InterruptedException, ExecutionException, TimeoutException {
+		// Loop through processing threads until they are finished processing. Report how many
+		// are still running every minute.
+		long notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
+		while (taskCount > 0) {
+			Future<?> f = completionService.poll(1, TimeUnit.MINUTES);
+
+			if (f != null) {
+				--taskCount;
+				// allow the futures to throw exceptions
+				f.get();
+			}
+
+			if (System.currentTimeMillis() > notificationTimer) {
+				logProgress();
+				notificationTimer = System.currentTimeMillis() + Timer.ONE_MINUTE;
+			}
+		}
+	}
+
+	/**
+	 * Initialize & Start Processing Threads
+	 * 
+	 * @throws Exception
+	 */
+	@SuppressWarnings("unchecked")
+	private void startProcessing() throws Exception {
+
+		FileReader fileReader = new FileReader(inputDataFile,
+				query.getQueryInfo(),
+				maxHitsPerSelector,
+				newRecordQueues,
+				partitioner,
+				globalRecordsRead);
+
+		completionService = new ExecutorCompletionService<>(executionService);
+		completionService.submit(fileReader);
+		++taskCount;
+
+		for (int i = 0; i < numberOfProcessorThreads; i++, ++taskCount) {
+			completionService.submit(new ColumnBasedResponderProcessor(
+					newRecordQueues.get(i),
+					responseQueue,
+					query,
+					crypto,
+					partitioner,
+					globalRecordsProcessed,
+					computeThreshold));
+		}
+
+		// the response writer task is not waited on, since it wont finish until EofReponse is
+		// put in the responseQueue, which have to be done only after all column processors finish
+		responseWriterFuture = executionService.submit(
+				new ResponseWriter(crypto,
+						this.responseQueue,
+						query.getQueryInfo(),
+						outputFileName,
+						queryConverter));
+
+		log.info("Running Standalone Query '{}' on file '{}'.", query.getQueryInfo().getQueryName(), inputDataFile);
 	}
 
 	public Path getOutputFileName() {
@@ -342,5 +249,40 @@ public class Responder {
 		this.inputDataFile = inputDataFile;
 	}
 
+	public Path getQueryFileName() {
+		return queryFileName;
+	}
 
+	public void setQueryFileName(Path queryFileName) {
+		this.queryFileName = queryFileName;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.AutoCloseable#close()
+	 */
+	@Override
+	public void close() throws Exception {
+		if (crypto != null) {
+			crypto.close();
+			crypto = null;
+		}
+	}
+
+	public void logProgress() {
+		long processed = globalRecordsProcessed.get();
+		long read = globalRecordsRead.get();
+		int pct = 0;
+
+		if (read != 0) {
+			pct = (int) Math.round((processed / (double) read) * 100.0);
+		}
+
+		// long globalRecordsProcessed = ProcessingUtils.recordsProcessed(responderProcessors);
+		log.info("Processed {} records.  {} % complete",
+				numFormat.format(processed),
+				numFormat.format(pct));
+
+	}
 }

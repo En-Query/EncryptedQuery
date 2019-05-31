@@ -29,10 +29,18 @@ typedef struct derooij_ctx_t {
 } derooij_ctx_t;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void derooij_init(derooij_ctx_t *ctx, mpz_t NSquared, int capacity);
 extern void derooij_fini(derooij_ctx_t *ctx);
 extern void derooij_insert_data_part2(derooij_ctx_t *ctx, mpz_t queryElement, mpz_t part);
 extern void derooij_compute_column_and_clear_data(derooij_ctx_t *ctx, mpz_t out);
 extern void derooij_clear_data(derooij_ctx_t *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // DEROOIJ_H

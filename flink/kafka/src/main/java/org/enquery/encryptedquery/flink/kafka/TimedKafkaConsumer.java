@@ -63,18 +63,18 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 			String bootstrapServers,
 			String groupId,
 			StartOffset startOffset,
-			Long runtimeInSeconds,
+			Long maxTimestamp,
 			Path outputPath) {
 
-		super(runtimeInSeconds, outputPath);
+		super(maxTimestamp, outputPath);
 
 		this.bootstrap_servers = bootstrapServers;
 		this.groupId = groupId;
 		this.topic = topic;
 		this.startOffset = startOffset;
 
-		log.info("Created TimedKafkaConsumer with runtimeInSeconds={}, topic={}, groupId={}, startOffset={}, bootstrap_servers={}",
-				runtimeInSeconds,
+		log.info("Created TimedKafkaConsumer with maxTimestamp={}, topic={}, groupId={}, startOffset={}, bootstrap_servers={}",
+				maxTimestamp,
 				topic,
 				groupId,
 				startOffset,

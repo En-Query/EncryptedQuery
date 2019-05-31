@@ -1,7 +1,21 @@
-# Encrypted Query v2.1.2 - Release Notes
+# Encrypted Query v2.1.3 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
 
+
+#### Changes in release 2.1.3
+* Added GPU processing support for Paillier encryption scheme.  Support is only available for Nvidia GPU's.   To enable GPU support will require an Nvidia video card, Nvidia drivers, and Nvidia CUDA 10.1+ installed on the server.  The software will need to be built on a platform that includes an Nvidia Card, Nvidia drivers, and Nvidia CUDA 10.1+ development tools.  Refer to the Build documentation  [Building-README.md][PlDb] to build with GPU support.
+  
+  - To enable GPU support edit the `org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme.cfg` file.
+  
+   * On the responder side add/modify the property `paillier.column.processor=GPU` to enable GPU processing.
+   * When processing with GPU support set the `paillier.gpu.libresponder.busy.policy` property to one of the following:
+   ```
+   CallerRuns       <-- If GPU is busy compute using the CPU.  (Default value)
+   Wait             <-- If GPU is busy, wait until it frees up before continuing.
+   GPUNow           <-- Running thread will immediately begin to use the GPU, oversubscribing GPUs if necessary 
+   ```  
+   * To enable GPU support on the querier for decryption set the `paillier.decrypt.response.method=GPU` property.    (Default is CPU)
 #### Changes in release 2.1.2
 * Fixed bug with ISO8601Date format.
 * Modified Paillier Encryption to enhance decryption performance.
@@ -77,3 +91,7 @@ query.execution.results.path=/opt/enquery/nfsshare-folder
   ```
 * System has not been tested with versions of Java above 1.8
 * The build process will sometimes fail.  Try repeating the build command.   Timing of integration tests and unit tests can be touchy.
+
+[//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
+
+   [PlDb]: <https://github.com/En-Query/EncryptedQuery/blob/master/doc/Building-README.md>

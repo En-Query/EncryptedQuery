@@ -31,14 +31,16 @@ import org.enquery.encryptedquery.data.QueryInfo;
  * 
  * 
  */
-public interface CryptoScheme {
+public interface CryptoScheme extends AutoCloseable {
 
 	/**
-	 * Call once after creation.
+	 * Call once after creation. Any resources obtained during this initialization should be
+	 * released in the AutoCloseable#close() method
 	 * 
 	 * @param config
 	 */
 	void initialize(Map<String, String> config) throws Exception;
+
 
 	/**
 	 * Read only access to configuration used to initialize this CryptoScheme
@@ -62,12 +64,34 @@ public interface CryptoScheme {
 	String description();
 
 	/**
+	 * Initializes the Crypto subsystem with a Query to be executed. This should be used by
+	 * Responder as part of running a query. The query data is used by one more more Column
+	 * Processors returned by <code>makeColumnProcessor</code>. The content of the returned handle
+	 * is implementation dependent, and should be considered opaque, and not modified in any form.
+	 * 
+	 * @param queryInfo
+	 * @param queryElements
+	 * @return Opaque handle to the Crypto internal query.
+	 */
+	byte[] loadQuery(QueryInfo queryInfo, Map<Integer, CipherText> queryElements);
+
+	/**
+	 * Destroy previously initialized Query given its handle. Any memory or other resources
+	 * allocated by <code>loadQuery</code> call will be dellocated by this call. Any running
+	 * processes associated to this query will be interrupted. The handle becomes invalid and can't
+	 * be used any longer.
+	 * 
+	 * @param handle Handle obtained from <code>createQuery</code>
+	 */
+	void unloadQuery(byte[] handle);
+
+	/**
 	 * Initializes and return a new instance of ColumnProcessor.
 	 * 
+	 * @param handle Handle obtained from <code>createQuery</code>
 	 * @return a column processor
 	 */
-	ColumnProcessor makeColumnProcessor(QueryInfo queryInfo,
-			Map<Integer, CipherText> queryElements);
+	ColumnProcessor makeColumnProcessor(byte[] handle);
 
 	/**
 	 * Generates a key pair.

@@ -56,8 +56,6 @@ public class DeRooijJNIColumnProcessor implements ColumnProcessor {
 
 		this.publicKey = publicKey;
 
-		JNILoader.load();
-
 		final int maxRowIndex = 1 << queryInfo.getHashBitSize();
 
 		this.hContext = derooijNew(publicKey.getNSquared().toByteArray(), maxRowIndex);
@@ -90,8 +88,9 @@ public class DeRooijJNIColumnProcessor implements ColumnProcessor {
 	 * @see org.enquery.encryptedquery.encryption.ColumnProcessor#compute()
 	 */
 	@Override
-	public CipherText compute() {
+	public CipherText computeAndClear() {
 		byte[] bytes = derooijComputeColumnAndClearData(hContext);
+		clear();
 		return new PaillierCipherText(new BigInteger(1, bytes));
 	}
 

@@ -1,0 +1,68 @@
+<project name="BuildCPULibraries" basedir=".">
+
+	<target name="build-native">
+		<property name="make.cmd" value="make" />
+		<property name="javac.cmd" value="${java.home}/../bin/javac" />
+		<property name="gmp.src.dir" value="${project.basedir}/src/main/native/gmp" />
+		<property name="querier.src.dir" value="${project.basedir}/src/main/native/querier" />
+		<property name="responder.src.dir" value="${project.basedir}/src/main/native/responder" />
+		<property name="gmp.install.dir" value="${project.build.directory}/gmp" />
+		<property name="native.install.dir" value="${project.build.directory}/classes/native/${native.resource.dir}" />
+		<property name="querier.build.dir" value="${native.build.dir}/querier" />
+		<property name="responder.build.dir" value="${native.build.dir}/responder" />
+
+		<mkdir dir="${native.build.dir}" />
+		<mkdir dir="${native.build.dir}/gmp" />
+		<mkdir dir="${querier.build.dir}" />
+		<mkdir dir="${responder.build.dir}" />
+
+		<get src="https://ftp.gnu.org/gnu/gmp/gmp-${gmp.version}.tar.bz2" dest="${gmp.build.dir}" skipexisting="true" />
+
+		<exec dir="${gmp.build.dir}" executable="tar" failonerror="true">
+			<arg line="-xjf" />
+			<arg line="${gmp.build.dir}/gmp-${gmp.version}.tar.bz2" />
+		</exec>
+
+		<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
+			<arg line="--prefix=${gmp.install.dir}" />
+			<arg line="--enable-fat" />
+			<arg line="--disable-static" />
+		</exec>
+
+		<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="./configure" failonerror="true">
+			<arg line="--prefix=${gmp.install.dir}" />
+			<arg line="--enable-fat" />
+			<arg line="--disable-static" />
+		</exec>
+
+		<exec dir="${gmp.build.dir}/gmp-${gmp.version}" executable="${make.cmd}" failonerror="true">
+			<arg line="all" />
+			<arg line="check" />
+			<arg line="install" />
+		</exec>
+
+		<exec dir="${querier.src.dir}" executable="${make.cmd}" failonerror="true">
+			<arg line="-j4" />
+			<arg line="JAVA_HOME=${java.home}/.." />
+			<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
+			<arg line="BUILD_DIR=${querier.build.dir}" />
+			<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
+		</exec>
+
+		<exec dir="${responder.src.dir}" executable="${make.cmd}" failonerror="true">
+			<arg line="-j4" />
+			<arg line="JAVA_HOME=${java.home}/.." />
+			<arg line="GMP_INSTALL_DIR=${gmp.install.dir}" />
+			<arg line="BUILD_DIR=${responder.build.dir}" />
+			<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
+		</exec>
+		
+		<copy todir="${native.install.dir}">
+			<fileset dir="${gmp.install.dir}/lib" includes="libgmp.${native.library.ext}" />
+			<fileset dir="${responder.build.dir}" includes="libresponder.${native.library.ext}" />
+			<fileset dir="${querier.build.dir}" includes="libquerygen.${native.library.ext}" />
+		</copy>
+	</target>
+
+	<target name="build" depends="build-native" />
+</project>

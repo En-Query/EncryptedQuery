@@ -34,6 +34,8 @@ import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.PlainText;
+import org.enquery.encryptedquery.encryption.impl.AbstractCryptoScheme;
+import org.enquery.encryptedquery.encryption.impl.QueryData;
 import org.enquery.encryptedquery.responder.ColumnProcessorBasic;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -45,18 +47,18 @@ import org.slf4j.LoggerFactory;
  *
  */
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class NullCipherCryptoScheme implements CryptoScheme {
+public class NullCipherCryptoScheme extends AbstractCryptoScheme implements CryptoScheme {
 
 	private final Logger log = LoggerFactory.getLogger(NullCipherCryptoScheme.class);
 
 	public static final int DEFAULT_PLAINTEXT_BYTE_SIZE = 383;
 	public static final int DEFAULT_PADDING_BYTE_SIZE = 0;
-	
+
 	// used only to create public keys, after that, the value in the public key should be used
 	private int plainTextByteSize = DEFAULT_PLAINTEXT_BYTE_SIZE;
 	private int paddingByteSize = DEFAULT_PADDING_BYTE_SIZE;
 	private Map<String, String> config;
-	
+
 	@Override
 	@Activate
 	public void initialize(Map<String, String> cfg) throws Exception {
@@ -66,9 +68,9 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 
 		plainTextByteSize = Integer.parseInt(config.getOrDefault(NullCipherProperties.PLAINTEXT_BYTE_SIZE, Integer.toString(DEFAULT_PLAINTEXT_BYTE_SIZE)));
 		paddingByteSize = Integer.parseInt(config.getOrDefault(NullCipherProperties.PADDING_BYTE_SIZE, Integer.toString(DEFAULT_PADDING_BYTE_SIZE)));
-		
-                Validate.isTrue(plainTextByteSize >= 1);
-                Validate.isTrue(paddingByteSize >= 0);
+
+		Validate.isTrue(plainTextByteSize >= 1);
+		Validate.isTrue(paddingByteSize >= 0);
 
 		log.info("Initialized with: " + config);
 	}
@@ -96,28 +98,11 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#makeColumnProcessor(java.security.
-	 * PublicKey, java.util.Map)
-	 */
-	@Override
-	public ColumnProcessor makeColumnProcessor(QueryInfo queryInfo,
-			Map<Integer, CipherText> queryElements) {
-
-		Validate.notNull(queryInfo);
-		Validate.notNull(queryElements);
-
-		ColumnProcessor result = new ColumnProcessorBasic(queryInfo.getPublicKey(), queryElements, this);
-		return result;
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
 	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#generateKeyPair()
 	 */
 	@Override
 	public KeyPair generateKeyPair() {
-		NullCipherPrivateKey priv = 	new NullCipherPrivateKey(
+		NullCipherPrivateKey priv = new NullCipherPrivateKey(
 				plainTextByteSize,
 				paddingByteSize);
 		NullCipherPublicKey pub = new NullCipherPublicKey(
@@ -176,7 +161,7 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 		NullCipherKeyPair nullCipherKeyPair = new NullCipherKeyPair(keyPair);
 		NullCipherPrivateKey priv = nullCipherKeyPair.getPriv();
 
-		BigInteger d = c.shiftRight(8*priv.getPaddingByteSize());
+		BigInteger d = c.shiftRight(8 * priv.getPaddingByteSize());
 		byte[] dBytes = d.toByteArray();
 		return new NullCipherPlainText(dBytes);
 	}
@@ -190,7 +175,7 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 	@Override
 	public List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c) {
 		return c.stream().map(ct -> decrypt(keyPair, ct)).collect(Collectors.toList());
-		
+
 	}
 
 	/*
@@ -237,7 +222,7 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 			NullCipherCipherText queryElement = new NullCipherCipherText(c);
 			queryElements.put(i, queryElement);
 		}
-		
+
 		return queryElements;
 	}
 
@@ -302,22 +287,23 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 		Validate.isTrue((chunkIndex + 1) * dataChunkSize <= pub.getPlainTextByteSize());
 
 		NullCipherPlainText ppt = NullCipherPlainText.from(plainText);
-		
-        byte[] bytes = ppt.getBytes();
-        final int start = bytes.length - (chunkIndex + 1) * dataChunkSize;
-        final int end = start + dataChunkSize;
-        byte[] output;
-        if (start >= 0) {
-        		output = Arrays.copyOfRange(bytes, start, end);
-        } else {
-        		output = new byte[dataChunkSize];  // defaults to zeros
-        		if (end > 0) {
-        			System.arraycopy(bytes, 0, output, -start, end);
-        		}
-        }
 
-        Validate.isTrue(output.length == dataChunkSize);  // XXX remove this once we've done enough testing?
-        return output;
+		byte[] bytes = ppt.getBytes();
+		final int start = bytes.length - (chunkIndex + 1) * dataChunkSize;
+		final int end = start + dataChunkSize;
+		byte[] output;
+		if (start >= 0) {
+			output = Arrays.copyOfRange(bytes, start, end);
+		} else {
+			output = new byte[dataChunkSize]; // defaults to zeros
+			if (end > 0) {
+				System.arraycopy(bytes, 0, output, -start, end);
+			}
+		}
+
+		Validate.isTrue(output.length == dataChunkSize); // XXX remove this once we've done enough
+															// testing?
+		return output;
 	}
 
 	/*
@@ -346,5 +332,23 @@ public class NullCipherCryptoScheme implements CryptoScheme {
 		}
 		return result;
 	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#makeColumnProcessor(byte[])
+	 */
+	@Override
+	synchronized public ColumnProcessor makeColumnProcessor(byte[] handle) {
+		final QueryData queryData = findQueryFromHandle(handle);
+		ColumnProcessor result = new ColumnProcessorBasic(//
+				queryData.getQueryInfo().getPublicKey(),
+				queryData.getQueryElements(),
+				this);
+
+		return result;
+	}
+
 
 }

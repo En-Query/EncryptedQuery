@@ -214,17 +214,23 @@ public class PaillierTest {
 			assertArrayEquals(chunk, dataChunks[i]);
 		}
 
-		// Repeating the same test, this time with a column processor
-		ColumnProcessor cp = scheme.makeColumnProcessor(queryInfo, queryVector);
-		for (int i = 0; i < (1 << hashBitSize); i++) {
-			byte[] pt = (map.get(i) == null) ? dummyChunk : dataChunks[map.get(i)];
-			cp.insert(i, pt);
-		}
-		CipherText acc2 = cp.compute();
-		PlainText decrypt2 = scheme.decrypt(kp, acc2);
-		for (int i = 0; i < invMap.length; ++i) {
-			byte[] chunk = scheme.plainTextChunk(queryInfo, decrypt2, i);
-			assertArrayEquals(chunk, dataChunks[i]);
+		byte[] handle = scheme.loadQuery(queryInfo, queryVector);
+		try {
+			// Repeating the same test, this time with a column processor
+			ColumnProcessor cp = scheme.makeColumnProcessor(handle);
+			for (int i = 0; i < (1 << hashBitSize); i++) {
+				byte[] pt = (map.get(i) == null) ? dummyChunk : dataChunks[map.get(i)];
+				cp.insert(i, pt);
+			}
+			CipherText acc2 = cp.computeAndClear();
+			PlainText decrypt2 = scheme.decrypt(kp, acc2);
+			for (int i = 0; i < invMap.length; ++i) {
+				byte[] chunk = scheme.plainTextChunk(queryInfo, decrypt2, i);
+				assertArrayEquals(chunk, dataChunks[i]);
+			}
+
+		} finally {
+			scheme.unloadQuery(handle);
 		}
 	}
 
@@ -233,8 +239,9 @@ public class PaillierTest {
 	public void initializeSchemeWithInvalidColumnProcessor() throws Exception {
 		HashMap<String, String> cfg = new HashMap<>();
 		cfg.put(PaillierProperties.COLUMN_PROCESSOR, "NoSuchColumnProcessor");
-		PaillierCryptoScheme scheme = new PaillierCryptoScheme();
-		scheme.initialize(cfg);
+		try (PaillierCryptoScheme scheme = new PaillierCryptoScheme()) {
+			scheme.initialize(cfg);
+		}
 	}
 
 	/**

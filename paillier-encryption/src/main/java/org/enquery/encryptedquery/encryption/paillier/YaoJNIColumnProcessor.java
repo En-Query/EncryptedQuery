@@ -75,9 +75,6 @@ public class YaoJNIColumnProcessor implements ColumnProcessor {
 		final int maxRowIndex = 1 << queryInfo.getHashBitSize();
 		validateParameters(dataChunkSize);
 
-		JNILoader.load();
-		// JNILoader.loadLibrary(config.get(PaillierProperties.JNI_LIBRARIES));
-
 		this.hContext = yaoNew(publicKey.getNSquared().toByteArray(), maxRowIndex, 8 * dataChunkSize);
 		if (0L == this.hContext) {
 			throw new NullPointerException("failed to allocate context from native code");
@@ -128,11 +125,11 @@ public class YaoJNIColumnProcessor implements ColumnProcessor {
 	 * @see org.enquery.encryptedquery.encryption.ColumnProcessor#compute()
 	 */
 	@Override
-	public CipherText compute() {
+	public CipherText computeAndClear() {
 		final byte[] bytes = yaoComputeColumnAndClearData(hContext);
+		clear();
 		return new PaillierCipherText(new BigInteger(1, bytes));
 	}
-
 
 	/*
 	 * (non-Javadoc)

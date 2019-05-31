@@ -22,12 +22,15 @@ package org.enquery.encryptedquery.encryption.paillier;
 public interface PaillierProperties {
 	String ENCRYPT_QUERY_TASK_COUNT = "paillier.encrypt.query.task.count";
 	String ENCRYPT_QUERY_METHOD = "paillier.encrypt.query.method";
+	String DECRYPT_RESPONSE_METHOD = "paillier.decrypt.response.method";
 	String MODULUS_BIT_SIZE = "paillier.modulus.bit.size";
 	String COLUMN_PROCESSOR = "paillier.column.processor";
 	String PRIME_CERTAINTY = "paillier.prime.certainty";
 	String SECURE_RANDOM_ALG = "paillier.secureRandom.algorithm";
 	String SECURE_RANDOM_PROVIDER = "paillier.secureRandom.provider";
 	String MOD_POW_CLASS_NAME = "paillier.mod.pow.class.name";
+	String GPU_LIBRESPONDER_BUSY_POLICY = "paillier.gpu.libresponder.busy.policy";
+	String GPU_LIBDECRYPTOR_BUSY_POLICY = "paillier.gpu.libdecryptor.busy.policy";
 	String CORE_POOL_SIZE = "paillier.thread.pool.core.size";
 	String MAX_TASK_QUEUE_SIZE = "paillier.thread.pool.max.task.queue.size";
 	String SHUTDOWN_WAIT_TIME_SECONDS = "paillier.thread.pool.shutdown.wait.time.seconds";
@@ -36,12 +39,15 @@ public interface PaillierProperties {
 
 	String[] PROPERTIES = {ENCRYPT_QUERY_TASK_COUNT,
 			ENCRYPT_QUERY_METHOD,
+			DECRYPT_RESPONSE_METHOD,
 			MODULUS_BIT_SIZE,
 			COLUMN_PROCESSOR,
 			PRIME_CERTAINTY,
 			SECURE_RANDOM_ALG,
 			SECURE_RANDOM_PROVIDER,
 			MOD_POW_CLASS_NAME,
+			GPU_LIBRESPONDER_BUSY_POLICY,
+			GPU_LIBDECRYPTOR_BUSY_POLICY,
 			CORE_POOL_SIZE,
 			MAX_TASK_QUEUE_SIZE,
 			SHUTDOWN_WAIT_TIME_SECONDS,

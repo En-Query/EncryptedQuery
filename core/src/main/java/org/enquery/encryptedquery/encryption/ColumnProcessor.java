@@ -45,10 +45,10 @@ public interface ColumnProcessor {
 	 * 
 	 * @return computed cipher text
 	 */
-	CipherText compute();
-
+	CipherText computeAndClear();
+	
 	/**
-	 * Reset all values.
+	 * Reset all inserted values.
 	 */
 	void clear();
 }

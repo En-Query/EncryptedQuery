@@ -19,20 +19,18 @@ package org.enquery.encryptedquery.standalone;
 import java.security.PublicKey;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.Query;
-import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
@@ -45,100 +43,104 @@ import org.slf4j.LoggerFactory;
 
 public class ColumnBasedResponderProcessor implements Callable<Response> {
 
-	private static final Logger logger = LoggerFactory.getLogger(ColumnBasedResponderProcessor.class);
+	private static final Logger log = LoggerFactory.getLogger(ColumnBasedResponderProcessor.class);
 	private final DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
 
 	private final Query query;
-	private QueryInfo queryInfo;
-	private int dataChunkSize;
-	private Response response;
+	private final int dataChunkSize;
 	private long threadId;
 	private long recordCount;
-	private long computeThreshold;
+	private int computeThreshold;
 	private Partitioner partitioner;
 	private HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
 	// the column values for the encrypted query calculations
 	private TreeMap<Integer, CipherText> columns = null;
 	// keeps track of column location for each rowIndex (Selector Hash)
 	private int[] rowColumnCounters;
-	private ArrayBlockingQueue<QueueRecord> inputQueue;
-	private ConcurrentLinkedQueue<Response> responseQueue;
+	private BlockingQueue<QueueRecord> inputQueue;
+	private BlockingQueue<Response> responseQueue;
 	private CryptoScheme crypto;
 	private ColumnProcessor columnProcessor;
+	private byte[] handle;
+	private final AtomicLong globalRecordCount;
 
-	public ColumnBasedResponderProcessor(ArrayBlockingQueue<QueueRecord> queue,
-			ConcurrentLinkedQueue<Response> responseQueue,
+	public ColumnBasedResponderProcessor(BlockingQueue<QueueRecord> queue,
+			BlockingQueue<Response> responseQueue,
 			Query query,
 			CryptoScheme crypto,
-			Map<String, String> config,
-			Partitioner partitioner) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+			Partitioner partitioner,
+			AtomicLong recordsProcessed,
+			int computeThreshold) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
 
 		Validate.notNull(queue);
 		Validate.notNull(query);
-		Validate.notNull(config);
 		Validate.notNull(partitioner);
 		Validate.notNull(crypto);
+		Validate.notNull(recordsProcessed);
 
 		this.query = query;
 		this.inputQueue = queue;
 		this.responseQueue = responseQueue;
 		this.partitioner = partitioner;
 		this.crypto = crypto;
-
-		queryInfo = query.getQueryInfo();
-		dataChunkSize = queryInfo.getDataChunkSize();
-
-		String ct = config.get(StandaloneConfigurationProperties.COMPUTE_THRESHOLD);
-		Validate.notNull(ct, StandaloneConfigurationProperties.COMPUTE_THRESHOLD + " property missing.");
-		computeThreshold = Long.parseLong(ct);
+		this.globalRecordCount = recordsProcessed;
+		this.computeThreshold = computeThreshold;
+		this.dataChunkSize = query.getQueryInfo().getDataChunkSize();
 	}
 
-	public long getRecordsProcessed() {
-		return recordCount;
-	}
 
 	@Override
 	public Response call() throws PIRException, InterruptedException {
 
 		threadId = Thread.currentThread().getId();
-		logger.info("Starting Responder Processing Thread {}", threadId);
+		log.info("Starting Responder Processing Thread {}", threadId);
 
-		resetResponse();
+		setup();
+		try {
+			// this Queue blocks until item is available
+			QueueRecord nextRecord = null;
+			while ((nextRecord = inputQueue.take()) != null) {
 
-		// this Queue blocks until item is available
-		QueueRecord nextRecord = null;
-		while ((nextRecord = inputQueue.take()) != null) {
+				// magic marker, input is exhausted
+				if (nextRecord.isEndOfFile()) break;
 
-			// magic marker, input is exhausted
-			if (nextRecord.isEndOfFile()) break;
+				try {
+					addDataElement(nextRecord);
 
-			try {
-				addDataElement(nextRecord);
-				recordCount++;
-				if ((recordCount % computeThreshold) == 0) {
-					logger.info("Thread {} Retrieved {} records so far will pause queue to compute", threadId, numFormat.format(recordCount));
-					processColumns();
-					logger.info("Thread {} compute finished, resuming queue input", threadId);
+					// increment local counter
+					recordCount++;
+
+					// increment global counter
+					globalRecordCount.incrementAndGet();
+
+					if ((recordCount % computeThreshold) == 0) {
+						log.info("Thread {} Retrieved {} records so far will pause queue to compute", threadId, numFormat.format(recordCount));
+						processColumns();
+						log.info("Thread {} compute finished, resuming queue input", threadId);
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(
+							String.format(
+									"Exception processing record %s in Queue Processing Thread %s",
+									nextRecord,
+									threadId),
+							e);
 				}
-			} catch (Exception e) {
-				throw new RuntimeException(
-						String.format(
-								"Exception processing record %s in Queue Processing Thread %s",
-								nextRecord,
-								threadId),
-						e);
 			}
+
+			// Process remaining data in dataColumns array
+			computeEncryptedColumns();
+
+			Response response = new Response(query.getQueryInfo());
+			response.addResponseElements(columns);
+			responseQueue.put(response);
+
+			log.info("Thread {} processed {} records", threadId, recordCount);
+
+			return response;
+		} finally {
+			tearDown();
 		}
-
-		// Process remaining data in dataColumns array
-		computeEncryptedColumns();
-
-		response.addResponseElements(columns);
-		responseQueue.add(response);
-
-		logger.info("Thread {} processed {} records", threadId, recordCount);
-
-		return response;
 	}
 
 	/**
@@ -157,7 +159,7 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 		List<byte[]> hitValPartitions = partitioner.createPartitions(qr.getParts(), dataChunkSize);
 
 		// For Debugging Only
-		// listPartitions(hitValPartitions);
+		// listPartitions(qr.getRowIndex(), hitValPartitions);
 
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters[rowIndex];
@@ -166,10 +168,6 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 			if (!dataColumns.containsKey(i + rowCounter)) {
 				dataColumns.put(i + rowCounter, new ArrayList<Pair<Integer, byte[]>>());
 			}
-			// logger.info("rowIndex {} Partition {} added to dataColumns index {} Value {}",
-			// rowIndex,
-			// i, i + rowCounter,
-			// ConversionUtils.byteArrayToHexString(ConversionUtils.toPrimitives(hitValPartitions.get(i))));
 			dataColumns.get(i + rowCounter).add(Pair.of(rowIndex, hitValPartitions.get(i)));
 		}
 
@@ -191,17 +189,27 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 	 * single value. That value is then stored to be computed with the next batch of values.
 	 */
 	public void computeEncryptedColumns() {
+		final boolean debugging = log.isDebugEnabled();
 		final PublicKey publicKey = query.getQueryInfo().getPublicKey();
-
 		for (final Map.Entry<Integer, List<Pair<Integer, byte[]>>> entry : dataColumns.entrySet()) {
 			final int col = entry.getKey();
 			final List<Pair<Integer, byte[]>> dataCol = entry.getValue();
+			int loadSize = 0;
 			for (int i = 0; i < dataCol.size(); ++i) {
-				if (null != dataCol.get(i)) {
-					columnProcessor.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
+				final Pair<Integer, byte[]> pair = dataCol.get(i);
+				if (pair != null) {
+					columnProcessor.insert(pair.getLeft(), pair.getRight());
+					++loadSize;
 				}
 			}
-			final CipherText newValue = columnProcessor.compute();
+			final long started = System.currentTimeMillis();
+			final CipherText newValue = columnProcessor.computeAndClear();
+			final long ended = System.currentTimeMillis();
+			if (debugging) {
+				long elapsed = ended - started;
+				log.debug("computeAndClear() completed in {} ms on a load of size {}", elapsed, loadSize);
+			}
+
 			CipherText prevValue = columns.get(col);
 			if (prevValue == null) {
 				prevValue = crypto.encryptionOfZero(publicKey);
@@ -214,20 +222,23 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 	/**
 	 * Reset The response for the next iteration
 	 */
-	private void resetResponse() {
-
+	private void setup() {
 		dataColumns = new HashMap<>();
-		response = new Response(queryInfo);
 		columns = new TreeMap<>();
-		columnProcessor = crypto.makeColumnProcessor(query.getQueryInfo(), query.getQueryElements());
+		rowColumnCounters = new int[1 << query.getQueryInfo().getHashBitSize()];
+		handle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
+		columnProcessor = crypto.makeColumnProcessor(handle);
+	}
 
-		// Initialize row counters
-		final int size = 1 << queryInfo.getHashBitSize();
-		if (rowColumnCounters == null) {
-			rowColumnCounters = new int[size];
-		} else {
-			Arrays.fill(rowColumnCounters, 0);
+	private void tearDown() {
+		if (handle != null) {
+			crypto.unloadQuery(handle);
+			handle = null;
 		}
+		crypto = null;
+		dataColumns = null;
+		columns = null;
+		rowColumnCounters = null;
 	}
 
 }

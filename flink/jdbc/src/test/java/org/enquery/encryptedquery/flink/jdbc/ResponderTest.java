@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.flink.jdbc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileInputStream;
@@ -38,6 +39,12 @@ import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
 
+import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.LocalEnvironment;
+import org.apache.flink.configuration.AkkaOptions;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CoreOptions;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.DataSchema;
@@ -123,17 +130,34 @@ public class ResponderTest extends JDBCTestBase {
 		}
 	}
 
+	@After
+	public void after() throws Exception {
+		if (crypto != null) {
+			crypto.close();
+			crypto = null;
+		}
+	}
+
 	@Test
 	public void test() throws Exception {
 
-		Responder q = new Responder();
-		q.setInputFileName(QUERY_FILE_NAME);
-		q.setOutputFileName(RESPONSE_FILE_NAME);
-		q.setDriverClassName(DRIVER_CLASS);
-		q.setConnectionUrl(DB_URL);
-		q.setSqlQuery(SELECT_ALL_BOOKS);
-		q.setConfig(config);
-		q.run();
+		Configuration cfg = new Configuration();
+		cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
+		cfg.setString(AkkaOptions.CLIENT_TIMEOUT, "2 min");
+		cfg.setInteger(CoreOptions.DEFAULT_PARALLELISM, 4);
+		cfg.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, 4);
+
+		LocalEnvironment env = ExecutionEnvironment.createLocalEnvironment(cfg);
+
+		try (Responder q = new Responder()) {
+			q.setInputFileName(QUERY_FILE_NAME);
+			q.setOutputFileName(RESPONSE_FILE_NAME);
+			q.setDriverClassName(DRIVER_CLASS);
+			q.setConnectionUrl(DB_URL);
+			q.setSqlQuery(SELECT_ALL_BOOKS);
+			q.setConfig(config);
+			q.run(env);
+		}
 
 		Response response = loadResponseFile();
 		response.getQueryInfo().printQueryInfo();
@@ -147,25 +171,34 @@ public class ResponderTest extends JDBCTestBase {
 		dr.activate();
 
 		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		assertNotNull(answer);
+		assertEquals(1, answer.selectorCount());
+		int[] hitCount = {0};
+		int[] recordCount = {0};
 		answer.forEach(sel -> {
 			log.info("Selector {}", sel);
 			assertEquals("title", sel.getName());
 			sel.forEachHits(h -> {
+				hitCount[0]++;
 				assertEquals("A Cup of Java", h.getSelectorValue());
 				assertEquals(1, h.recordCount());
 				h.forEachRecord(r -> {
+					recordCount[0]++;
 					r.forEachField(f -> {
 						log.info("Field {}.", f);
 						if (f.getName().equalsIgnoreCase("price")) {
 							assertEquals(Double.valueOf("44.44"), f.getValue());
 						} else if (f.getName().equalsIgnoreCase("release_dt")) {
-							assertTrue("2001-01-03T11:18:00.000Z".equals(f.getValue().toString()) || "2001-01-03T11:18:00Z".equals(f.getValue().toString()) );
-//							assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
+							assertTrue("2001-01-03T11:18:00.000Z".equals(f.getValue().toString()) || "2001-01-03T11:18:00Z".equals(f.getValue().toString()));
+							// assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
 						}
 					});
 				});
 			});
 		});
+
+		assertEquals(1, hitCount[0]);
+		assertEquals(1, recordCount[0]);
 	}
 
 	private Response loadResponseFile() throws FileNotFoundException, IOException, JAXBException {

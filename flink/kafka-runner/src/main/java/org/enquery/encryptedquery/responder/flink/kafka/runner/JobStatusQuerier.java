@@ -26,7 +26,7 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.http4.HttpComponent;
 import org.apache.camel.component.properties.PropertiesComponent;
-import org.apache.camel.core.osgi.OsgiClassResolver;
+// import org.apache.camel.core.osgi.OsgiClassResolver;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.SimpleRegistry;
 import org.apache.commons.lang3.Validate;
@@ -56,7 +56,7 @@ public class JobStatusQuerier {
 		camelContext.setTracing(true);
 		camelContext.setStreamCaching(false);
 		camelContext.setName(this.getClass().getSimpleName());
-		camelContext.setClassResolver(new OsgiClassResolver(camelContext, bundleContext));
+		// camelContext.setClassResolver(new OsgiClassResolver(camelContext, bundleContext));
 
 		Properties props = new Properties();
 		props.setProperty("history.server.uri", historyServerUri);

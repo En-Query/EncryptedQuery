@@ -13,7 +13,7 @@
 
 	<fileSets>
 		<fileSet>
-			<directory>${project.build.directory}/lib/native</directory>
+			<directory>${project.build.directory}/classes/native/darwin</directory>
 			<outputDirectory>darwin</outputDirectory>
 		</fileSet>
 		<fileSet>

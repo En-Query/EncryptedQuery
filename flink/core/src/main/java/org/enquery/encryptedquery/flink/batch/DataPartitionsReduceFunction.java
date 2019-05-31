@@ -16,16 +16,19 @@
  */
 package org.enquery.encryptedquery.flink.batch;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.RichGroupReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.Query;
@@ -37,25 +40,27 @@ import org.enquery.encryptedquery.responder.QueueRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataPartitionsReduceFunction implements
-		GroupReduceFunction<QueueRecord, Tuple2<Integer, CipherText>>, FieldTypes {
+public class DataPartitionsReduceFunction extends RichGroupReduceFunction<QueueRecord, Tuple2<Integer, CipherText>> implements FieldTypes {
 
 	private static final long serialVersionUID = -2249924018671569475L;
 	private static final Logger log = LoggerFactory.getLogger(DataPartitionsReduceFunction.class);
+	private final DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
 
 	private final Map<String, String> cryptoSchemeConfig;
 	private final long computeThreshold;
 	private final Query query;
+	private UUID processId;
 
 	// non serializable
 	private transient CryptoScheme crypto;
-	private transient ColumnProcessor cec;
-	private transient boolean initialized = false;
+	private transient ColumnProcessor columnProcessor;
+	// private transient boolean initialized = false;
 	// keeps track of column location for each rowIndex (Selector Hash)
 	private transient int[] rowColumnCounters;
 	private transient HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
 	// the column values for the encrypted query calculations
 	private transient HashMap<Integer, CipherText> columns;
+	private transient byte[] queryHandle;
 
 	public DataPartitionsReduceFunction(Query query, long computeThreshold, Map<String, String> cryptoSchemeConfig) {
 		Validate.notNull(query);
@@ -65,40 +70,54 @@ public class DataPartitionsReduceFunction implements
 		this.cryptoSchemeConfig = cryptoSchemeConfig;
 	}
 
-	private void initialize() throws Exception {
+	@Override
+	public void open(Configuration parameters) throws Exception {
 
+		processId = UUID.randomUUID();
 		crypto = CryptoSchemeFactory.make(cryptoSchemeConfig);
-		cec = crypto.makeColumnProcessor(query.getQueryInfo(), query.getQueryElements());
 
-		// Initialize row counters
-		final int size = 1 << query.getQueryInfo().getHashBitSize();
-		if (rowColumnCounters == null) {
-			rowColumnCounters = new int[size];
-		} else {
-			Arrays.fill(rowColumnCounters, 0);
+		queryHandle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
+		columnProcessor = crypto.makeColumnProcessor(queryHandle);
+	}
+
+	@Override
+	public void close() throws Exception {
+		columnProcessor = null;
+		if (crypto != null) {
+			if (queryHandle != null) {
+				crypto.unloadQuery(queryHandle);
+				queryHandle = null;
+			}
+			crypto.close();
+			crypto = null;
 		}
-
-		columns = new HashMap<>();
-		dataColumns = new HashMap<>();
-
-		initialized = true;
+		rowColumnCounters = null;
+		columns = null;
+		dataColumns = null;
 	}
 
 	@Override
 	public void reduce(Iterable<QueueRecord> values, Collector<Tuple2<Integer, CipherText>> out) throws Exception {
 
-		if (!initialized) {
-			initialize();
-		}
-
 		log.info("Processing data with computeThreshold {}", computeThreshold);
+
+		columns = new HashMap<>();
+		dataColumns = new HashMap<>();
+		if (rowColumnCounters == null) {
+			rowColumnCounters = new int[1 << query.getQueryInfo().getHashBitSize()];
+		} else {
+			Arrays.fill(rowColumnCounters, 0);
+		}
 
 		int recordCount = 0;
 		for (QueueRecord entry : values) {
 			addDataElement(entry);
 			recordCount++;
 			if (recordCount % computeThreshold == 0) {
+
+				log.info("Process {} Compute threshold {} reached, will pause to encrypt/reduce value.  ", processId, numFormat.format(computeThreshold));
 				processColumns();
+				log.info("Process {} Compute finished, resuming data processing. Total records processed so far {}", processId, numFormat.format(recordCount));
 			}
 		}
 
@@ -107,7 +126,7 @@ public class DataPartitionsReduceFunction implements
 
 		columns.forEach((k, v) -> out.collect(Tuple2.of(k, v)));
 
-		log.info("Processed {} records", recordCount);
+		log.info("Process {} Processed {} records", processId, recordCount);
 		columns.clear();
 	}
 
@@ -152,10 +171,10 @@ public class DataPartitionsReduceFunction implements
 			List<Pair<Integer, byte[]>> dataCol = entry.getValue();
 			for (int i = 0; i < dataCol.size(); ++i) {
 				if (null != dataCol.get(i)) {
-					cec.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
+					columnProcessor.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
 				}
 			}
-			CipherText newValue = cec.compute();
+			CipherText newValue = columnProcessor.computeAndClear();
 			CipherText prevValue = columns.get(col);
 			if (prevValue != null) {
 				newValue = crypto.computeCipherAdd(//

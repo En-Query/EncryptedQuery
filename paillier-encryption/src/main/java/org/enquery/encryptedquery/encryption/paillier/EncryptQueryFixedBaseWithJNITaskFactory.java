@@ -64,8 +64,6 @@ public class EncryptQueryFixedBaseWithJNITaskFactory implements EncryptQueryTask
 		this.publicKey = keyPair.getPub();
 		this.privateKey = keyPair.getPriv();
 
-		JNILoader.load();
-
 		this.dataPartitionBitSize = dataPartitionBitSize;
 		this.selectorQueryVecMapping = selectorQueryVecMapping;
 		this.maxExponentBitLength = privateKey.getPMaxExponent().bitLength();

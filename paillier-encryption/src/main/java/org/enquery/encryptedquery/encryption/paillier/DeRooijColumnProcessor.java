@@ -146,7 +146,7 @@ public class DeRooijColumnProcessor implements ColumnProcessor {
 	 * @see org.enquery.encryptedquery.encryption.ColumnProcessor#compute()
 	 */
 	@Override
-	public CipherText compute() {
+	public CipherText computeAndClear() {
 		if (maxHeap.isEmpty()) {
 			BigInteger one;
 			if (useMontgomery) {
@@ -196,6 +196,7 @@ public class DeRooijColumnProcessor implements ColumnProcessor {
 		} else {
 			answer = modPowAbstraction.modPow(g, BigInteger.valueOf(a), publicKey.getNSquared());
 		}
+		clear();
 		return new PaillierCipherText(answer);
 	}
 
@@ -208,20 +209,4 @@ public class DeRooijColumnProcessor implements ColumnProcessor {
 	public void clear() {
 		maxHeap.clear();
 	}
-
-	// public static void main(String args[]) {
-	// System.out.println("hello, world!");
-	// HashMap<Integer, BigInteger> queryElements = new HashMap<>();
-	// DeRooijColumnProcessor cec = new DeRooijColumnProcessor(queryElements,
-	// BigInteger.ONE);
-	// cec.maxHeap.add(new ExponentAndBase(Long.valueOf(3), BigInteger.valueOf(0)));
-	// cec.maxHeap.add(new ExponentAndBase(Long.valueOf(-2), BigInteger.valueOf(1)));
-	// cec.maxHeap.add(new ExponentAndBase(Long.valueOf(4), BigInteger.valueOf(2)));
-	// System.out.println("cec.size(): " + cec.maxHeap.size());
-	// cec.dump();
-	// cec.dump();
-	// cec.dumpAndClearHeap();
-	// cec.dump();
-	// System.out.println("cec.size(): " + cec.maxHeap.size());
-	// }
 }

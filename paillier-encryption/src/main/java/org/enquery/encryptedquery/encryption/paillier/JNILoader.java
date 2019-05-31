@@ -26,12 +26,15 @@ import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.ProviderNotFoundException;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
@@ -42,35 +45,41 @@ import com.sun.jna.Platform;
 
 public class JNILoader {
 
+	private static final String SOURCE = "/native/" + Platform.RESOURCE_PREFIX;
+	private static final String LIBRARY_FILE_EXT = Platform.getOSType() == Platform.MAC ? ".dylib" : ".so";
+
 	private static final Logger log = LoggerFactory.getLogger(JNILoader.class);
 	private static final Set<String> loaded = new HashSet<>();
 
-	public static synchronized void load() {
+	public static synchronized void load(List<String> neededLibs) {
+		Validate.notNull(neededLibs);
+		if (neededLibs.isEmpty()) return;
+
 		if (isRunningInOSGiContainer()) {
-			loadOSGi();
+			loadOSGi(neededLibs);
 		} else {
-			loadStandAlone();
+			loadStandAlone(neededLibs);
 		}
-		if (log.isDebugEnabled()) { log.debug("Finished loading native libraries."); }
+		if (log.isDebugEnabled()) {
+			log.debug("Finished loading native libraries.");
+		}
 	}
 
-	private static void loadOSGi() {
+	private static void loadOSGi(List<String> neededLibs) {
 		log.info("Loading native libraries in a OSGi environment.");
-		loadOSGI("gmp");
-		loadOSGI("responder");
-		loadOSGI("querygen");
+		for (String lib : neededLibs) {
+			loadOSGI(lib);
+		}
 	}
 
-	private static void loadStandAlone() {
+	private static void loadStandAlone(List<String> neededLibs) {
 		log.info("Loading native libraries in a non-OSGi environment.");
-
-		String extension = Platform.getOSType() == Platform.MAC ? ".dylib" : ".so";
 
 		Path tmpDir = copyLibs();
 		try {
-			loadStandAlone(tmpDir, "libgmp" + extension);
-			loadStandAlone(tmpDir, "libresponder" + extension);
-			loadStandAlone(tmpDir, "libquerygen" + extension);
+			for (String lib : neededLibs) {
+				loadStandAlone(tmpDir, lib);
+			}
 		} catch (Exception e) {
 			if (tmpDir != null) {
 				deleteDir(tmpDir);
@@ -95,31 +104,44 @@ public class JNILoader {
 			tmpDir = Files.createTempDirectory("paillier");
 			tmpDir.toFile().deleteOnExit();
 
-			copyFromJar("/native/" + Platform.RESOURCE_PREFIX, tmpDir);
+			copyFromJar(tmpDir);
 			return tmpDir;
 		} catch (IOException | URISyntaxException e) {
 			throw new RuntimeException("Error copying native libraries to a tmp directory.", e);
 		}
 	}
 
-	private static synchronized void loadStandAlone(Path tmpDir, String library) {
-		if (loaded.contains(library)) return;
+	private static synchronized void loadStandAlone(Path tmpDir, String libname) {
+		if (loaded.contains(libname)) return;
 
-		if (log.isDebugEnabled()) { log.debug("Loading library '{}'.", library); }
-		File tmpFile = tmpDir.resolve(library).toFile();
+		if (log.isDebugEnabled()) {
+			log.debug("Loading library '{}'.", libname);
+		}
+
+		final String resourceName = String.format("lib%s%s",
+				libname,
+				LIBRARY_FILE_EXT);
+
+		File tmpFile = tmpDir.resolve(resourceName).toFile();
 		System.load(tmpFile.getAbsolutePath());
-		if (log.isDebugEnabled()) { log.debug("Loaded native library {}", tmpFile.getAbsolutePath()); }
-		loaded.add(library);
+		if (log.isDebugEnabled()) {
+			log.debug("Loaded native library {}", tmpFile.getAbsolutePath());
+		}
+		loaded.add(libname);
 	}
 
 
 	private static void loadOSGI(String library) {
 		if (loaded.contains(library)) return;
 
-		if (log.isDebugEnabled()) { log.debug("Loading library '{}' in a OSGi environment.", library); }
+		if (log.isDebugEnabled()) {
+			log.debug("Loading library '{}' in a OSGi environment.", library);
+		}
 		System.loadLibrary(library);
 		loaded.add(library);
-		if (log.isDebugEnabled()) { log.debug("Loaded library '{}'.", library); }
+		if (log.isDebugEnabled()) {
+			log.debug("Loaded library '{}'.", library);
+		}
 		return;
 	}
 
@@ -147,52 +169,66 @@ public class JNILoader {
 	}
 
 
-	private static void copyFromJar(String source, final Path target) throws URISyntaxException, IOException {
+	private static void copyFromJar(final Path target) throws URISyntaxException, IOException {
 
-		if (log.isDebugEnabled()) { log.debug("Copying native libraries from '{}' to '{}'.", source, target); }
+		if (log.isDebugEnabled()) {
+			log.debug("Copying native libraries to '{}'.", target);
+		}
 
-		URI uri = JNILoader.class.getResource(source).toURI();
-		if (log.isDebugEnabled()) { log.debug("File System URI: {}.", uri); }
-
+		URI uri = JNILoader.class.getResource(SOURCE).toURI();
+		if (log.isDebugEnabled()) {
+			log.debug("URI: {}.", uri);
+			log.debug("Scheme: {}.", uri.getScheme());
+			log.debug("Path: {}.", uri.getPath());
+		}
 
 		FileSystem fileSystem = null;
 		try {
-			fileSystem = FileSystems.getFileSystem(uri);
-		} catch (FileSystemNotFoundException e) {
-			// if not already created, we create it below
-		}
-		if (fileSystem == null) {
-			fileSystem = FileSystems.newFileSystem(
-					uri,
-					Collections.<String, String>emptyMap());
-		}
-		Validate.notNull(fileSystem);
-
-		final Path rootJarPath = fileSystem.getPath(source);
-		if (log.isDebugEnabled()) { log.debug("Root Jar Path: {}.", rootJarPath); }
-
-		Files.walkFileTree(rootJarPath, new SimpleFileVisitor<Path>() {
-
-			private Path currentTarget;
-
-			@Override
-			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-				Path relative = rootJarPath.relativize(dir);
-				if (log.isDebugEnabled()) { log.debug("Directory '{}' , relativized to: '{}'.", dir, relative); }
-				currentTarget = Files.createDirectories(target.resolve(relative.toString()));
-				if (log.isDebugEnabled()) { log.debug("Created '{}'.", currentTarget); }
-				return FileVisitResult.CONTINUE;
+			Path rootJarPath = null;
+			try {
+				rootJarPath = Paths.get(uri);
+			} catch (FileSystemNotFoundException e) {
+				// if not already created, we create it below
+				final Map<String, ?> env = Collections.emptyMap();
+				fileSystem = FileSystems.newFileSystem(uri, env);
+				rootJarPath = fileSystem.provider().getPath(uri);
 			}
 
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				String srcPath = rootJarPath.relativize(file).toString();
-				Path destPath = currentTarget.resolve(srcPath);
-				if (log.isDebugEnabled()) { log.debug("Copying from '{}' to '{}'.", file, destPath); }
-				Files.copy(file, destPath, StandardCopyOption.REPLACE_EXISTING);
-				return FileVisitResult.CONTINUE;
+			if (log.isDebugEnabled()) {
+				log.debug("Root Jar Path: {}.", rootJarPath);
 			}
-		});
+
+			final Path path = rootJarPath;
+			Files.walkFileTree(rootJarPath, new SimpleFileVisitor<Path>() {
+
+				private Path currentTarget;
+
+				@Override
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+					Path relative = path.relativize(dir);
+					if (log.isDebugEnabled()) {
+						log.debug("Directory '{}' , relativized to: '{}'.", dir, relative);
+					}
+					currentTarget = Files.createDirectories(target.resolve(relative.toString()));
+					if (log.isDebugEnabled()) {
+						log.debug("Created '{}'.", currentTarget);
+					}
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					Path destPath = currentTarget.resolve(file.getFileName().toString());
+					if (log.isDebugEnabled()) {
+						log.debug("Copying from '{}' to '{}'.", file, destPath);
+					}
+					Files.copy(file, destPath, StandardCopyOption.REPLACE_EXISTING);
+					return FileVisitResult.CONTINUE;
+				}
+			});
+		} finally {
+			if (fileSystem != null) fileSystem.close();
+		}
 	}
 
 	private static void deleteDir(Path dir) {

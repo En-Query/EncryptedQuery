@@ -13,7 +13,7 @@
 
 	<fileSets>
 		<fileSet>
-			<directory>${project.build.directory}/lib/native</directory>
+			<directory>${project.build.directory}/classes/native/linux-x86-64</directory>
 			<outputDirectory>linux-x86-64</outputDirectory>
 		</fileSet>
 		<fileSet>

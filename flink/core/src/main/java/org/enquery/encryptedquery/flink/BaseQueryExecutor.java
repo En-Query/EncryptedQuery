@@ -61,7 +61,7 @@ import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BaseQueryExecutor implements FlinkTypes {
+public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 
 	private static final Logger log = LoggerFactory.getLogger(BaseQueryExecutor.class);
 
@@ -82,8 +82,10 @@ public class BaseQueryExecutor implements FlinkTypes {
 	protected long computeThreshold;
 	protected boolean initialized;
 	protected long windowSizeInSeconds;
-	protected Long runtimeSeconds;
 	protected String jobName;
+	protected Long maxTimestamp;
+
+	private CryptoScheme crypto;
 
 	public Map<String, String> getConfig() {
 		return config;
@@ -113,12 +115,11 @@ public class BaseQueryExecutor implements FlinkTypes {
 		return rowTypeInfo;
 	}
 
-	public void run(StreamExecutionEnvironment env, DataStream<Row> source) throws Exception {
+	public Long getMaxTimestamp() {
+		return maxTimestamp;
+	}
 
-		Long maxTimestamp = null;
-		if (this.runtimeSeconds != null) {
-			maxTimestamp = System.currentTimeMillis() + (this.runtimeSeconds * 1000);
-		}
+	public void run(StreamExecutionEnvironment env, DataStream<Row> source) throws Exception {
 
 		initializeCommon();
 		initializeStreaming();
@@ -233,12 +234,17 @@ public class BaseQueryExecutor implements FlinkTypes {
 		windowSizeInSeconds = Integer.valueOf(config.getOrDefault(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS, "60"));
 		Validate.isTrue(windowSizeInSeconds > 0, "'%s' must be > 0", FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS);
 
-		runtimeSeconds = null;
+		maxTimestamp = null;
+		Long runtimeSeconds = null;
 		String runtimeStr = config.get(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS);
 		if (runtimeStr != null) {
 			runtimeSeconds = Long.valueOf(runtimeStr);
 		}
 		Validate.isTrue(runtimeSeconds == null || runtimeSeconds > 0, "'%s' must be null or > 0", FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS);
+
+		if (runtimeSeconds != null) {
+			maxTimestamp = System.currentTimeMillis() + (runtimeSeconds * 1000);
+		}
 	}
 
 	/**
@@ -256,7 +262,7 @@ public class BaseQueryExecutor implements FlinkTypes {
 	 */
 	private void initializeCryptoScheme() throws Exception {
 
-		final CryptoScheme crypto = CryptoSchemeFactory.make(config);
+		crypto = CryptoSchemeFactory.make(config);
 
 		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
 			@Override
@@ -317,6 +323,19 @@ public class BaseQueryExecutor implements FlinkTypes {
 
 		if (debugging) log.debug("Selector field index {}, type: {}", selectorFieldIndex, selectorFieldType);
 		return new RowTypeInfo(types, fieldNames);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.AutoCloseable#close()
+	 */
+	@Override
+	public void close() throws Exception {
+		if (crypto != null) {
+			crypto.close();
+			crypto = null;
+		}
 	}
 
 }

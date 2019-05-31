@@ -40,8 +40,8 @@ public class FileTestSource extends TimeBoundStoppableConsumer<String> {
 	/**
 	 * 
 	 */
-	public FileTestSource(Path inputDataFile, Path responseFile, long runtimeInSeconds, int maxDelay) {
-		super(runtimeInSeconds, responseFile);
+	public FileTestSource(Path inputDataFile, Path responseFile, long maxTimestamp, int maxDelay) {
+		super(maxTimestamp, responseFile);
 		this.inputDataFile = inputDataFile.toString();
 		this.maxDelay = maxDelay;
 	}
@@ -56,18 +56,21 @@ public class FileTestSource extends TimeBoundStoppableConsumer<String> {
 	@Override
 	public void run(SourceContext<String> ctx) throws Exception {
 		int count = 0;
-		beginRun();
-
 		Random random = new Random();
+
+		beginRun();
 
 		// final long stoptime = System.currentTimeMillis() + (runtimeInSeconds * 1000);
 		Iterator<String> iter = Files.lines(Paths.get(inputDataFile)).iterator();
 
 		while (canRun() && iter.hasNext()) {
 
+			// delay only after first item
+			if (count > 0) {
 			if (maxDelay > 0) {
 				Thread.sleep(random.nextInt(maxDelay));
 				if (!canRun()) break;
+			}
 			}
 
 			String line = iter.next();

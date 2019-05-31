@@ -22,6 +22,10 @@
 #include <gmp.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static void derooij_node_init(derooij_node_t *node, mpz_t key, mpz_t value) {
   mpz_init_set(node->key, key);
   mpz_init_set(node->value, value);
@@ -101,3 +105,7 @@ void derooij_compute_column_and_clear_data(derooij_ctx_t *ctx, mpz_t out) {
 void derooij_clear_data(derooij_ctx_t *ctx) {
   maxheap_clear(&ctx->heap);
 }
+
+#ifdef __cplusplus
+}
+#endif

@@ -82,7 +82,7 @@ public class ColumnProcessorBasic implements ColumnProcessor {
 	 * @see org.enquery.encryptedquery.encryption.ColumnProcessor#compute()
 	 */
 	@Override
-	public CipherText compute() {
+	public CipherText computeAndClear() {
 		CipherText result = sum;
 		clear();
 		return result;

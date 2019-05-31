@@ -21,7 +21,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,40 +50,6 @@ public class Partitioner implements FieldTypes {
 		Validate.notNull(field);
 
 		parts.addAll(fieldToBytes(fieldValue, dataType, field));
-		// toPartitions(parts, fieldValue, field);
-
-		// byte[] bytes = new byte[0];
-		// switch (fieldType) {
-		// case INT:
-		// bytes = ConversionUtils.intToBytes((Integer) fieldValue);
-		// break;
-		// case LONG:
-		// bytes = ConversionUtils.longToBytes((Long) fieldValue);
-		// break;
-		// case FLOAT:
-		// bytes = ConversionUtils.intToBytes(Float.floatToRawIntBits((Float) fieldValue));
-		// break;
-		// case DOUBLE:
-		// bytes = ConversionUtils.longToBytes(Double.doubleToRawLongBits((Double) fieldValue));
-		// break;
-		// case STRING:
-		// try {
-		// byte[] stringBytes = ((String) fieldValue).getBytes("UTF-8");
-		// collectPartsFromByteArray(parts, stringBytes);
-		// } catch (UnsupportedEncodingException e) {
-		// // UTF-8 is a required encoding.
-		// throw new RuntimeException(e);
-		// }
-		// break;
-		// default:
-		// throw new RuntimeException("type = " + fieldType + " not recognized!");
-		// }
-		//
-		// // Add any bytes to parts list.
-		// for (byte b : bytes) {
-		// // Make sure that BigInteger treats the byte as 'unsigned' literal
-		// parts.add(BigInteger.valueOf((long) b & 0xFF));
-		// }
 	}
 
 	/**
@@ -298,31 +263,31 @@ public class Partitioner implements FieldTypes {
 				}
 				break;
 			case IP4:
-			InetAddress ipv4 = null;
-			try {
-				ipv4 = InetAddress.getByName((String) obj);
-			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-	        if (ipv4 != null) {
-			bytes = ipv4.getAddress();
-				//IP v4 addresses are 4 bytes long
-				Validate.isTrue(bytes.length == 4);
-	        } 
+				InetAddress ipv4 = null;
+				try {
+					ipv4 = InetAddress.getByName((String) obj);
+				} catch (UnknownHostException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				if (ipv4 != null) {
+					bytes = ipv4.getAddress();
+					// IP v4 addresses are 4 bytes long
+					Validate.isTrue(bytes.length == 4);
+				}
 				break;
 			case IP6:
-			InetAddress ipv6 = null;
-			try {
-				ipv6 = InetAddress.getByName((String) obj);
-			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			if (ipv6 != null) {
-				bytes = ipv6.getAddress();
-				Validate.isTrue(bytes.length == 16);
-			}
+				InetAddress ipv6 = null;
+				try {
+					ipv6 = InetAddress.getByName((String) obj);
+				} catch (UnknownHostException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				if (ipv6 != null) {
+					bytes = ipv6.getAddress();
+					Validate.isTrue(bytes.length == 16);
+				}
 				// TODO Add IP6 Coding
 				break;
 			case ISO8601DATE:
@@ -367,100 +332,100 @@ public class Partitioner implements FieldTypes {
 		// element.getSize(),
 		// parts.size(), partsIndex);
 		switch (dataType) {
-		case BYTE:
-			part = parts.get(partsIndex).byteValue();
-			break;
-		case SHORT: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = ConversionUtils.bytesToShort(bytes);
-			break;
-		}
-		case INT: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = ConversionUtils.bytesToInt(bytes);
-			break;
-		}
-		case LONG: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = ConversionUtils.bytesToLong(bytes);
-			break;
-		}
-		case FLOAT: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = Float.intBitsToFloat(ConversionUtils.bytesToInt(bytes));
-			break;
-		}
-		case DOUBLE: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = Double.longBitsToDouble(ConversionUtils.bytesToLong(bytes));
-			break;
-		}
-		case CHAR: {
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = (char) ConversionUtils.bytesToShort(bytes);
-			break;
-		}
-		case STRING: {
-			// logger.info("Processing {} / Type {} /size {} / lengthType {}",
-			// element.getName(), element.getDataType(), element.getSize(),
-			// element.getLengthType());
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			try {
-				// This should remove 0 padding added for partitioning underflowing strings.
-				part = new String(bytes, "UTF-8").trim();
-			} catch (UnsupportedEncodingException e) {
-				// UTF-8 is a required encoding.
-				throw new RuntimeException(e);
+			case BYTE:
+				part = parts.get(partsIndex).byteValue();
+				break;
+			case SHORT: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = ConversionUtils.bytesToShort(bytes);
+				break;
 			}
-			break;
-		}
-		case BYTEARRAY: {
-			// logger.info("Processing {} / Type {} /size {} / lengthType {}",
-			// element.getName(), element.getDataType(), element.getSize(),
-			// element.getLengthType());
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			part = bytes;
-			break;
-		}
-		case IP4:
-			byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			try {
-				part = InetAddress.getByAddress(bytes).getHostAddress();
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				throw new RuntimeException(e);
+			case INT: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = ConversionUtils.bytesToInt(bytes);
+				break;
 			}
-			// if (partsIndex + 3 > parts.size()) {
-			// throw new PIRException("Index overflow for field: " + element.getName() + "
-			// Starting at position: " + (partsIndex) +
-			// " max parts Size: " + parts.size());
-			// }
-			// part = parts.get(partsIndex).toString() + "." + parts.get(partsIndex +
-			// 1).toString() + "." + parts.get(partsIndex + 2).toString() + "."
-			// + parts.get(partsIndex + 3).toString();
+			case LONG: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = ConversionUtils.bytesToLong(bytes);
+				break;
+			}
+			case FLOAT: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = Float.intBitsToFloat(ConversionUtils.bytesToInt(bytes));
+				break;
+			}
+			case DOUBLE: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = Double.longBitsToDouble(ConversionUtils.bytesToLong(bytes));
+				break;
+			}
+			case CHAR: {
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = (char) ConversionUtils.bytesToShort(bytes);
+				break;
+			}
+			case STRING: {
+				// logger.info("Processing {} / Type {} /size {} / lengthType {}",
+				// element.getName(), element.getDataType(), element.getSize(),
+				// element.getLengthType());
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				try {
+					// This should remove 0 padding added for partitioning underflowing strings.
+					part = new String(bytes, "UTF-8").trim();
+				} catch (UnsupportedEncodingException e) {
+					// UTF-8 is a required encoding.
+					throw new RuntimeException(e);
+				}
+				break;
+			}
+			case BYTEARRAY: {
+				// logger.info("Processing {} / Type {} /size {} / lengthType {}",
+				// element.getName(), element.getDataType(), element.getSize(),
+				// element.getLengthType());
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				part = bytes;
+				break;
+			}
+			case IP4:
+				byte[] bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				try {
+					part = InetAddress.getByAddress(bytes).getHostAddress();
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					throw new RuntimeException(e);
+				}
+				// if (partsIndex + 3 > parts.size()) {
+				// throw new PIRException("Index overflow for field: " + element.getName() + "
+				// Starting at position: " + (partsIndex) +
+				// " max parts Size: " + parts.size());
+				// }
+				// part = parts.get(partsIndex).toString() + "." + parts.get(partsIndex +
+				// 1).toString() + "." + parts.get(partsIndex + 2).toString() + "."
+				// + parts.get(partsIndex + 3).toString();
 
-			break;
-		case IP6:
-			bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			try {
-				part = InetAddress.getByAddress(bytes).getHostAddress();
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				throw new RuntimeException(e);
-			}
-			break;
-		case ISO8601DATE:
-			if (partsIndex > parts.size()) {
-				throw new PIRException("Index overflow for field: " + element.getName() + " Starting at position: "
-						+ (partsIndex) + " max parts Size: " + parts.size());
-			}
-			bytes = partsToBytesByte(parts, partsIndex, element, dataType);
-			long dateLongFormat = ConversionUtils.bytesToLong(bytes);
+				break;
+			case IP6:
+				bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				try {
+					part = InetAddress.getByAddress(bytes).getHostAddress();
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					throw new RuntimeException(e);
+				}
+				break;
+			case ISO8601DATE:
+				if (partsIndex > parts.size()) {
+					throw new PIRException("Index overflow for field: " + element.getName() + " Starting at position: "
+							+ (partsIndex) + " max parts Size: " + parts.size());
+				}
+				bytes = partsToBytesByte(parts, partsIndex, element, dataType);
+				long dateLongFormat = ConversionUtils.bytesToLong(bytes);
 
-			part = ISO8601DateParser.fromLongDate(dateLongFormat);
-			break;
-		default:
-			throw new PIRException("dataType = " + dataType + " not recognized!");
+				part = ISO8601DateParser.fromLongDate(dateLongFormat);
+				break;
+			default:
+				throw new PIRException("dataType = " + dataType + " not recognized!");
 		}
 
 		return part;
@@ -519,7 +484,8 @@ public class Partitioner implements FieldTypes {
 		// elements in the parts. In that case the numParts may be larger
 		// then the actual number of parts so return now.
 		if (numParts > parts.size()) {
-			// throw new PIRException("Query Element ("+element.getName() + ") Size of data (" + numParts + ") exceeds part size (" + parts.size() + ") !") ;
+			// throw new PIRException("Query Element ("+element.getName() + ") Size of data (" +
+			// numParts + ") exceeds part size (" + parts.size() + ") !") ;
 			logger.warn("Query Element {} Size of Data {} exceeds part size {} minus number to skip {}", element.getName(), numParts, parts.size(), numberToSkip);
 			return result;
 		}

@@ -112,14 +112,15 @@ public class App {
 	}
 
 	public void run() throws Exception {
-		Responder q = new Responder();
-		q.setConnectionUrl(connectionUrl);
-		q.setDriverClassName(driverClassName);
-		q.setSqlQuery(sqlQuery);
-		q.setInputFileName(queryFileName);
-		q.setOutputFileName(outputFileName);
-		q.setConfig(config);
-		q.run();
+		try (Responder q = new Responder()) {
+			q.setConnectionUrl(connectionUrl);
+			q.setDriverClassName(driverClassName);
+			q.setSqlQuery(sqlQuery);
+			q.setInputFileName(queryFileName);
+			q.setOutputFileName(outputFileName);
+			q.setConfig(config);
+			q.run();
+		}
 	}
 
 	private String getValue(Option opt) {

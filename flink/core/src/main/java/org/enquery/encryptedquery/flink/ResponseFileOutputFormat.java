@@ -27,8 +27,8 @@ import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 
@@ -54,30 +54,31 @@ public class ResponseFileOutputFormat extends FileOutputFormat<Tuple2<Integer, C
 	@Override
 	public void close() throws IOException {
 		try {
-			final CryptoScheme crypto = CryptoSchemeFactory.make(config);
-			final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
-				@Override
-				public CryptoScheme cryptoSchemeByName(String schemeId) {
-					if (schemeId == null) return null;
-					if (schemeId.equals(crypto.name())) return crypto;
-					return null;
-				}
-			};
+			try (final CryptoScheme crypto = CryptoSchemeFactory.make(config)) {
 
-			QueryTypeConverter queryConverter = new QueryTypeConverter();
-			queryConverter.setCryptoRegistry(registry);
-			queryConverter.initialize();
+				final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
+					@Override
+					public CryptoScheme cryptoSchemeByName(String schemeId) {
+						if (schemeId == null) return null;
+						if (schemeId.equals(crypto.name())) return crypto;
+						return null;
+					}
+				};
 
-			ResponseTypeConverter converter = new ResponseTypeConverter();
-			converter.setQueryConverter(queryConverter);
-			converter.setSchemeRegistry(registry);
-			converter.initialize();
+				QueryTypeConverter queryConverter = new QueryTypeConverter();
+				queryConverter.setCryptoRegistry(registry);
+				queryConverter.initialize();
 
-			Response response = new Response(queryInfo);
-			response.addResponseElements(map);
-			converter.marshal(converter.toXML(response), stream);
+				ResponseTypeConverter converter = new ResponseTypeConverter();
+				converter.setQueryConverter(queryConverter);
+				converter.setSchemeRegistry(registry);
+				converter.initialize();
 
-			super.close();
+				Response response = new Response(queryInfo);
+				response.addResponseElements(map);
+				converter.marshal(converter.toXML(response), stream);
+			}
+
 		} catch (Exception e) {
 			throw new IOException("Error saving response.", e);
 		}

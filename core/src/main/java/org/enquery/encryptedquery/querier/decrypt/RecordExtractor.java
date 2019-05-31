@@ -28,10 +28,12 @@ import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
 import org.enquery.encryptedquery.utils.ConversionUtils;
 import org.enquery.encryptedquery.utils.PIRException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RecordExtractor {
 
-	// private static final Logger logger = LoggerFactory.getLogger(RecordExtractor.class);
+	private static final Logger logger = LoggerFactory.getLogger(RecordExtractor.class);
 
 	private static boolean dataDetected(List<Byte> parts, int startIndex, int size) {
 		boolean dataFound = false;
@@ -55,6 +57,7 @@ public class RecordExtractor {
 	 */
 	public static List<ClearTextQueryResponse.Record> getQueryResponseRecords(QueryInfo queryInfo, List<Byte> parts, int bytesPerPartition) throws PIRException {
 
+		final boolean debugging = logger.isDebugEnabled();
 		final List<ClearTextQueryResponse.Record> result = new ArrayList<>();
 		final QuerySchema qSchema = queryInfo.getQuerySchema();
 		Boolean finishedExtracting = false;
@@ -86,7 +89,10 @@ public class RecordExtractor {
 				// logger.info("embeddedSelector {}", embeddedSelector.toString());
 				qrRecord.setSelector(embeddedSelector);
 				partsIndex += 4;
+
+				if (debugging) listPartitions(embeddedSelector, parts);
 			}
+
 
 			final List<QuerySchemaElement> fieldsToExtract = qSchema.getElementList();
 			// logger.info("Field Count to Extract {}", fieldsToExtract.size());
@@ -155,4 +161,12 @@ public class RecordExtractor {
 		return size;
 	}
 
+	private static void listPartitions(int rowIndex, List<Byte> parts) {
+		logger.info("Parts for rowIndex {}:", rowIndex);
+		int counter = 0;
+		for (Byte part : parts) {
+			logger.info("Column {} / Value {}", counter, String.format("%02x", part));
+			counter++;
+		}
+	}
 }

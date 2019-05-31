@@ -39,25 +39,30 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 	/**
 	 * 
 	 */
+	private static final int MARKER_FILE_WAIT_TIME = 30_000;
+
+	/**
+	 * 
+	 */
 	private static final String JOB_RUNNING_MARKER_FILE_NAME = "job-running";
 
 	private static final long serialVersionUID = -2263113444102431195L;
 
 	private static final Logger log = LoggerFactory.getLogger(TimeBoundStoppableConsumer.class);
 
-	private final Long runtimeInSeconds;
+	// private final Long runtimeInSeconds;
+	private final Long maxTimestamp;
 	private final String responseFilePath;
 
 	private transient volatile boolean isRunning = true;
 	private transient volatile boolean failed = false;
-	private transient Long stopTime = null;
 
 
 	/**
 	 * 
 	 */
-	public TimeBoundStoppableConsumer(Long runTimeInSeconds, Path responseFilePath) {
-		runtimeInSeconds = runTimeInSeconds;
+	public TimeBoundStoppableConsumer(Long maxTimestamp, Path responseFilePath) {
+		this.maxTimestamp = maxTimestamp;
 		this.responseFilePath = responseFilePath.toString();
 	}
 
@@ -68,7 +73,7 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 	protected void waitForPendingWindows() throws InterruptedException, IOException {
 		while (inProgressFileExists()) {
 			log.info("Waiting for all responses to be created.");
-			Thread.sleep(2_000);
+			Thread.sleep(MARKER_FILE_WAIT_TIME);
 		}
 	}
 
@@ -115,12 +120,12 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 	}
 
 	protected void beginRun() throws IOException {
-		if (runtimeInSeconds != null) {
-			stopTime = System.currentTimeMillis() + (runtimeInSeconds * 1000);
-			log.info("Will run until: " + TimestampFormatter.format(stopTime));
-		} else {
-			log.info("Will run forever.");
-		}
+		// if (runtimeInSeconds != null) {
+		// maxTimestamp = System.currentTimeMillis() + (runtimeInSeconds * 1000);
+		// log.info("Will run until: " + TimestampFormatter.format(maxTimestamp));
+		// } else {
+		// log.info("Will run forever.");
+		// }
 
 		createJobRunningFileMarker();
 		isRunning = true;
@@ -134,13 +139,13 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 	}
 
 	protected boolean canRun() {
-		return isRunning && (stopTime == null || System.currentTimeMillis() < stopTime);
+		return isRunning && (maxTimestamp == null || System.currentTimeMillis() < maxTimestamp);
 	}
 
 	protected void endRun() throws InterruptedException, IOException {
 		if (failed) {
 			log.info("Failed.");
-		} else if (stopTime != null && System.currentTimeMillis() >= stopTime) {
+		} else if (maxTimestamp != null && System.currentTimeMillis() >= maxTimestamp) {
 			log.info("Exceeded allowed runtime.");
 		} else if (!isRunning) {
 			log.info("Source was externally cancelled.");
@@ -148,9 +153,10 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 			log.info("Source is exhausted.");
 		}
 
-		if (!failed) {
-			waitForPendingWindows();
-		}
+		Thread.sleep(MARKER_FILE_WAIT_TIME);
+		// if (!failed) {
+		waitForPendingWindows();
+		// }
 
 		deleteJobRunningMarkerFile();
 	}
@@ -165,9 +171,9 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 	private void createJobRunningFileMarker() throws IOException {
 		Path file = jobRunningMarkerFile();
 		try (BufferedWriter w = Files.newBufferedWriter(file)) {
-			if (stopTime != null) {
+			if (maxTimestamp != null) {
 				w.write("Running until: ");
-				w.write(TimestampFormatter.format(stopTime));
+				w.write(TimestampFormatter.format(maxTimestamp));
 			} else {
 				w.write("Running forever.");
 			}

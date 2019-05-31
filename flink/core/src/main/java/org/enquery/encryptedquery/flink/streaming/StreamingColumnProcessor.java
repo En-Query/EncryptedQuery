@@ -26,6 +26,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -54,12 +55,12 @@ public class StreamingColumnProcessor extends ProcessWindowFunction<QueueRecord,
 	private transient HashMap<Integer, CipherText> columns;
 	// keeps track of column location for each rowIndex (Selector Hash)
 	// Initialize row counters
-	private transient int size;
+	// private transient int size;
 	private transient int[] rowColumnCounters;
-	HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
+	private transient HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
 	private transient CryptoScheme crypto;
-	private transient ColumnProcessor cec;
-	private transient boolean initialized = false;
+	private transient ColumnProcessor columnProcessor;
+	private transient byte[] queryHandle;
 
 	public StreamingColumnProcessor(Query query,
 			long computeThreshold,
@@ -72,15 +73,32 @@ public class StreamingColumnProcessor extends ProcessWindowFunction<QueueRecord,
 		this.cryptoSchemeConfig = cryptoSchemeConfig;
 	}
 
-	private void initialize() throws Exception {
 
+	@Override
+	public void open(Configuration parameters) throws Exception {
 		crypto = CryptoSchemeFactory.make(cryptoSchemeConfig);
-		cec = crypto.makeColumnProcessor(query.getQueryInfo(), query.getQueryElements());
-		size = 1 << query.getQueryInfo().getHashBitSize();
-		rowColumnCounters = new int[size];
+		queryHandle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
+		columnProcessor = crypto.makeColumnProcessor(queryHandle);
 		columns = new HashMap<>();
 		dataColumns = new HashMap<>();
-		initialized = true;
+	}
+
+
+	@Override
+	public void close() throws Exception {
+		columnProcessor = null;
+		if (crypto != null) {
+			if (queryHandle != null) {
+				crypto.unloadQuery(queryHandle);
+				queryHandle = null;
+			}
+			crypto.close();
+			crypto = null;
+		}
+
+		rowColumnCounters = null;
+		columns = null;
+		dataColumns = null;
 	}
 
 	/*
@@ -98,13 +116,13 @@ public class StreamingColumnProcessor extends ProcessWindowFunction<QueueRecord,
 			Iterable<QueueRecord> values,
 			Collector<WindowPerRowHashResult> out) throws Exception {
 
-		if (!initialized) {
-			initialize();
-		}
-
 		columns.clear();
 		dataColumns.clear();
-		Arrays.fill(rowColumnCounters, 0);
+		if (rowColumnCounters == null) {
+			rowColumnCounters = new int[1 << query.getQueryInfo().getHashBitSize()];
+		} else {
+			Arrays.fill(rowColumnCounters, 0);
+		}
 
 		int recordCount = 0;
 		for (QueueRecord entry : values) {
@@ -131,10 +149,10 @@ public class StreamingColumnProcessor extends ProcessWindowFunction<QueueRecord,
 						value)));
 
 		if (log.isDebugEnabled()) {
-			log.debug("Encryped {} columns of window ending in '{}' with rowHash {}. This window contained {} elements.",
+			log.debug("Encryped {} columns of window with rowHash {} ending in '{}'. This window contained {} elements.",
 					columns.size(),
-					TimestampFormatter.format(window.maxTimestamp()),
 					rowHash,
+					TimestampFormatter.format(window.maxTimestamp()),
 					recordCount);
 		}
 		columns.clear();
@@ -181,10 +199,10 @@ public class StreamingColumnProcessor extends ProcessWindowFunction<QueueRecord,
 			List<Pair<Integer, byte[]>> dataCol = entry.getValue();
 			for (int i = 0; i < dataCol.size(); ++i) {
 				if (null != dataCol.get(i)) {
-					cec.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
+					columnProcessor.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
 				}
 			}
-			CipherText newValue = cec.compute();
+			CipherText newValue = columnProcessor.computeAndClear();
 			CipherText prevValue = columns.get(col);
 			if (prevValue != null) {
 				newValue = crypto.computeCipherAdd(//
