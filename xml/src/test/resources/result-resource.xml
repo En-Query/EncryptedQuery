@@ -6,10 +6,10 @@
 	<windowStart>2018-11-12T15:30:00.000-05:00</windowStart>
 	<windowEnd>2018-11-12T15:31:00.000-05:00</windowEnd>
 	<execution>
-		<id xmlns="http://enquery.net/encryptedquery/resource">5</id>
-		<selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/5/datasources/5/executions/5</selfUri>
-	</execution>
-	<payload>
+        <id xmlns="http://enquery.net/encryptedquery/resource">303</id>
+        <selfUri xmlns="http://enquery.net/encryptedquery/resource">/responder/api/rest/dataschemas/2/datasources/203/executions/303</selfUri>
+    </execution>
+	<payload schemaVersion="2.0">
 		<ns5:queryInfo xmlns:ns5="http://enquery.net/encryptedquery/response">
 			<ns2:queryId xmlns:ns2="http://enquery.net/encryptedquery/query">8d008ed7-92cd-4f7a-9ea5-f93db1753532</ns2:queryId>
 			<ns2:queryName xmlns:ns2="http://enquery.net/encryptedquery/query">test query</ns2:queryName>
@@ -21,46 +21,37 @@
 			<ns2:numBitsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numBitsPerDataElement>
 			<ns2:dataChunkSize xmlns:ns2="http://enquery.net/encryptedquery/query">1</ns2:dataChunkSize>
 			<ns2:numPartitionsPerDataElement xmlns:ns2="http://enquery.net/encryptedquery/query">0</ns2:numPartitionsPerDataElement>
-			<ns2:embedSelector xmlns:ns2="http://enquery.net/encryptedquery/query">true</ns2:embedSelector>
 			<ns3:querySchema xmlns:ns3="http://enquery.net/encryptedquery/queryschema">
 				<ns3:name>Books</ns3:name>
 				<ns3:selectorField>title</ns3:selectorField>
 				<ns3:field>
 					<ns3:name>price</ns3:name>
-					<ns3:lengthType>fixed</ns3:lengthType>
-					<ns3:size>0</ns3:size>
-					<ns3:maxArrayElements>1</ns3:maxArrayElements>
 				</ns3:field>
 				<ns4:dataSchema xmlns:ns4="http://enquery.net/encryptedquery/dataschema">
 					<ns4:name>Books</ns4:name>
 					<ns4:field>
 						<ns4:name>id</ns4:name>
 						<ns4:dataType>int</ns4:dataType>
-						<ns4:isArray>false</ns4:isArray>
 						<ns4:position>0</ns4:position>
 					</ns4:field>
 					<ns4:field>
 						<ns4:name>title</ns4:name>
 						<ns4:dataType>string</ns4:dataType>
-						<ns4:isArray>false</ns4:isArray>
 						<ns4:position>1</ns4:position>
 					</ns4:field>
 					<ns4:field>
 						<ns4:name>author</ns4:name>
 						<ns4:dataType>string</ns4:dataType>
-						<ns4:isArray>false</ns4:isArray>
 						<ns4:position>2</ns4:position>
 					</ns4:field>
 					<ns4:field>
 						<ns4:name>price</ns4:name>
 						<ns4:dataType>double</ns4:dataType>
-						<ns4:isArray>false</ns4:isArray>
 						<ns4:position>3</ns4:position>
 					</ns4:field>
 					<ns4:field>
 						<ns4:name>qty</ns4:name>
 						<ns4:dataType>int</ns4:dataType>
-						<ns4:isArray>false</ns4:isArray>
 						<ns4:position>4</ns4:position>
 					</ns4:field>
 				</ns4:dataSchema>

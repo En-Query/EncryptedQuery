@@ -1,42 +1,68 @@
-import React from "react";
+import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router";
-
-import LogoSection from "./logo-section.js";
-import CreateQuerySchema from "./CreateQuerySchema";
-import VerticalNavBar from "./NavigationBar.js";
-
-import "../css/CreateQuery.css";
+import {
+  Dropdown,
+  Form,
+  Button,
+  Input,
+  Segment,
+  Divider,
+  Loader,
+  Message,
+  TextArea,
+  List,
+  Container,
+  Popup,
+  Card
+} from "semantic-ui-react";
+import PageHeading from "./FixedMenu";
+import PageFooter from "./PageFooter";
 
 import axios from "axios";
 require("axios-debug")(axios);
 
-class CreateQuery extends React.Component {
+const embededOptions = [
+  { key: "true", text: "True", value: "true" },
+  { key: "false", text: "False", value: "false" }
+];
+
+class CreateQuery extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      dataSchemas: [],
-      querySchemas: [],
-      dataSources: [],
+      dataschemas: [],
+      queryName: "",
+      dataSchemaName: "",
+      queryschemas: [],
+      selectorField: "",
+      queriesUri: "",
       dataChunkSize: 3,
-      embedSelector: [],
-      selectorField: [],
       selectorValue: "",
-      selectorValues: []
+      selectorValues: [],
+      isLoading: true
     };
-
-    this.dataSchemaChange = this.dataSchemaChange.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   addSelectorValue = e => {
     e.stopPropagation();
     e.preventDefault();
-    this.setState(prevState => ({
-      selectorValues: [...prevState.selectorValues, prevState.selectorValue],
-      selectorValue: ""
-    }));
+    this.setState(
+      ({ selectorValues, selectorValue }) => ({
+        selectorValues: [
+          ...selectorValues,
+          ...selectorValue
+            .replace(/\r?\n|\r/g, "")
+            .split(",")
+            .map(str => str.trim().replace(/^"(.*)"$/, "$1"))
+        ],
+        selectorValue: ""
+      }),
+      () => {
+        console.log("selectorValues ---> ", this.state.selectorValues);
+      }
+    );
   };
 
   removeSelectorValue(index) {
@@ -50,111 +76,150 @@ class CreateQuery extends React.Component {
     this.setState({ selectorValue: value });
   };
 
-  componentDidMount() {
-    axios({
-      method: "get",
-      url: `/querier/api/rest/dataschemas`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({ dataSchemas: response.data.data });
-      })
-      .catch(error => console.log(error.response));
+  async componentDidMount() {
+    await this.getSchemas();
+    await this.handleSchemaChange();
+    await this.getQuerySchemas();
+    await this.handleQuerySchemaChange();
   }
 
-  dataSchemaChange = e => {
-    const dataSchema = this.state.dataSchemas.find(
-      dataSchema => dataSchema.name === e.target.value
-    );
-    if (dataSchema) {
-      axios({
+  getSchemas = async () => {
+    try {
+      const { data } = await axios({
         method: "get",
-        url: `${dataSchema.selfUri}/queryschemas/`,
+        url: "/querier/api/rest/dataschemas",
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
-      })
-        .then(response => {
-          console.log(response);
-          console.log(JSON.stringify(dataSchema.selfUri));
-          console.log(dataSchema.id);
-          this.setState(
-            {
-              querySchemaSelfUri: response.data.data[0].selfUri,
-              querySchemas: response.data.data
-            },
-            () => {
-              console.log(this.state.querySchemaSelfUri);
-              console.log(this.state.querySchemas);
-            }
-          );
-        })
-        .catch(error => console.log(error.response));
+      });
+      console.log(data);
+      const dataschemas = data.data;
+
+      this.setState({ dataschemas: dataschemas, isLoading: false });
+
+      console.log("This is the dataschema list:", dataschemas);
+    } catch (error) {
+      console.error(Error(`Error fetching results list: ${error.message}`));
     }
   };
 
-  querySchemaChange = e => {
-    const querySchema = this.state.querySchemas.find(
-      querySchema => querySchema.name === e.target.value
-    );
-    if (querySchema) {
-      const { id, name, selfUri } = querySchema;
-      this.setState(
-        {
-          querySchemaId: id,
-          querySchemaName: name,
-          querySchemaSelfUri: selfUri
-        },
-        () => {
-          console.log(this.state.querySchemaId);
-          console.log(this.state.querySchemaSelfUri);
-        }
-      );
-      axios({
+  handleSchemaChange = async (e, { value }) => {
+    this.setState({ dataSchemaName: value }, () => {
+      console.log("Chosen dataSchema ---> ", this.state.dataSchemaName);
+      //also send a request the selfUri of the selected dataSchema
+    });
+    const schema = this.state.dataschemas.find(schema => schema.name === value);
+    if (schema) {
+      try {
+        const { data } = await axios({
+          method: "get",
+          url: schema.selfUri,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+          }
+        });
+        console.log(data);
+        this.setState({ queryschemaUri: data.data.querySchemasUri });
+        console.log(
+          "queryschemaUri from dataschema change ---> ",
+          this.state.queryschemaUri
+        );
+      } catch (error) {
+        console.error(
+          Error(`Error fetching specific schema: ${error.message}`)
+        );
+      }
+    }
+    this.getQuerySchemas();
+  };
+
+  getQuerySchemas = async () => {
+    const { queryschemaUri } = this.state;
+    try {
+      const { data } = await axios({
         method: "get",
-        url: `${selfUri}`,
+        url: queryschemaUri,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
-      })
-        .then(response => {
-          console.log(response);
-          this.setState(
-            {
-              querySchemaName: response.data.data.name,
-              selectorField: response.data.data.selectorField,
-              queriesUri: response.data.data.queriesUri
-            },
-            () => {
-              console.log(this.state.querySchemaName);
-              console.log(this.state.selectorField);
-              console.log(this.state.queriesUri);
-            }
-          );
-          localStorage.setItem("queriesUri", this.state.queriesUri);
-        })
-        .catch(error => console.log(error.response));
+      });
+      console.log("Data from queryschemaUri fetch --> ", data);
+      const queryschemas = data.data;
+      this.setState({ queryschemas: queryschemas });
+    } catch (error) {
+      console.error(Error(`Error getting queryschemas: ${error.message}`));
     }
   };
 
-  onChange = e => {
-    this.setState({ [e.target.name]: e.target.value });
-    console.log([e.target.value]);
+  handleQuerySchemaChange = async (e, { value }) => {
+    //handle queryschema dropdown change
+    this.setState({ querySchemaName: value }, () => {
+      console.log("Chosen querySchema ---> ", this.state.querySchemaName);
+    });
+    const schema = this.state.queryschemas.find(
+      schema => schema.name === value
+    );
+    if (schema) {
+      const { id, name, selfUri } = schema;
+      this.setState({
+        querySchemaId: id,
+        querySchemaName: name,
+        querySchemaSelfUri: selfUri
+      });
+      try {
+        const { data } = await axios({
+          method: "get",
+          url: selfUri,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+          }
+        });
+        console.log(
+          "Specific querySchema data from selfUri request ---> ",
+          data
+        );
+        const queryschema = data.data;
+        this.setState(
+          {
+            queryschema: queryschema,
+            selectorField: queryschema.selectorField,
+            queriesUri: queryschema.queriesUri
+          },
+          () => {
+            console.log("queryschema ---> ", queryschema);
+            console.log("selectorField ---> ", this.state.selectorField);
+            console.log("queriesUri --->", this.state.queriesUri);
+          }
+        );
+        localStorage.setItem("queriesUri", this.state.queriesUri);
+      } catch (error) {
+        console.error(
+          Error(`Error getting specific querySchema: ${error.message}`)
+        );
+      }
+    }
   };
 
-  updateQueryName = e => {
-    this.setState({ queryName: e.target.value });
+  handleChange = (e, { value }) => {
+    this.setState({ dataChunkSize: value }, () => {
+      console.log("dataChunkSize ---> ", this.state.dataChunkSize);
+    });
   };
 
-  updateEmbedSelector = e => {
-    this.setState({ embedSelector: e.target.value });
+  handleQueryNameChange = (e, { value }) => {
+    this.setState({ queryName: value }, () => {
+      console.log("QueryName entered ---> ", this.state.queryName);
+    });
   };
 
-  handleSubmit(e) {
+  handleSubmit = e => {
     e.preventDefault();
+    const {
+      queryName,
+      dataChunkSize,
+      selectorValues
+    } = this.state;
+    console.log(this.state);
     const queriesUri = localStorage.getItem("queriesUri");
     axios({
       method: "post",
@@ -164,12 +229,11 @@ class CreateQuery extends React.Component {
         "Content-Type": "application/json"
       },
       data: JSON.stringify({
-        name: this.state.queryName,
+        name: queryName,
         parameters: {
-          dataChunkSize: this.state.dataChunkSize
+          dataChunkSize: dataChunkSize
         },
-        selectorValues: this.state.selectorValues,
-        embedSelector: this.state.embedSelector
+        selectorValues: selectorValues
       })
     })
       .then(response => {
@@ -177,173 +241,183 @@ class CreateQuery extends React.Component {
       })
       .catch(error => console.log(error.response));
     this.props.history.push("/querystatus");
-  }
+  };
 
   render() {
     const {
-      dataSchemas,
-      dataSchemaId,
-      dataSourceUri,
-      dataSource,
-      querySchemas,
-      querySchemaId,
-      querySchemaName,
-      querySchemaUri,
+      dataschemas,
+      queryschemas,
       queryName,
-      selectorValues,
+      dataSchemaName,
+      querySchemaName,
       selectorField,
-      bitSet,
-      certainty,
-      hashBitSize
+      value,
+      dataChunkSize,
+      selectorValues
     } = this.state;
 
     return (
-      <div>
-        <LogoSection />
-        <VerticalNavBar />
-        <form onSubmit={this.handleSubmit}>
-          <fieldset>
-            <legend>Query Information</legend>
-            <div className="CreateQuery-selectboxes">
-              <div>
-                <label> Query name (will be saved as): </label>
-                <input
-                  value={this.state.queryName}
-                  onChange={this.updateQueryName}
-                  placeholder="Name of Query (e.g. Phone Query)"
-                  required
-                />
-              </div>
-              <div>
-                <label>
-                  Pick a DataSchema to filter available QuerySchemas:
-                </label>{" "}
-                <select
-                  value={this.state.value}
-                  onChange={this.dataSchemaChange}
-                >
-                  <option value="">Choose DataSchema..</option>
-                  {dataSchemas &&
-                    dataSchemas.length > 0 &&
-                    dataSchemas.map(dataSchema => {
-                      return (
-                        <option value={dataSchema.name}>
-                          {dataSchema.name}
-                        </option>
-                      );
-                    })}
-                </select>
-              </div>
-              <div>
-                <label>Pick the QuerySchema to build the query:</label>{" "}
-                <select
-                  value={this.state.value}
-                  onChange={this.dataSchemaChange}
-                  onChange={this.querySchemaChange}
-                  required
-                >
-                  <option value="">Choose QuerySchema ... </option>
-                  {querySchemas &&
-                    querySchemas.map(querySchema => {
-                      return (
-                        <option value={querySchema.name}>
-                          {querySchema.name}
-                        </option>
-                      );
-                    })}
-                </select>
-              </div>
-              <div>
-                <label>SelectorField used to create querySchema:</label>
-                <input value={this.state.selectorField} />
-              </div>
+      <div
+        style={{ display: "flex", minHeight: "100vh", flexDirection: "column" }}
+      >
+        <PageHeading />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              flex: "1"
+            }}
+          >
+            <div style={{ width: "900px" }}>
+              <Form onSubmit={this.handleSubmit}>
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Divider horizontal>Query Creation Information</Divider>
+                  <Form.Field required>
+                    <label>Query Name: </label>
+                    <Input
+                      placeholder="Enter query Name"
+                      name="queryName"
+                      value={value}
+                      onChange={this.handleQueryNameChange}
+                      required
+                    />
+                  </Form.Field>
+                  <Form.Field required>
+                    <label>Select a Data Schema</label>
+                    <Dropdown
+                      placeholder="Select data schema"
+                      scrolling
+                      clearable
+                      fluid
+                      selection
+                      search
+                      noResultsMessage="Try a different Search"
+                      multiple={false}
+                      options={dataschemas.map(schema => {
+                        return {
+                          key: schema.id,
+                          text: schema.name,
+                          value: schema.name
+                        };
+                      })}
+                      header="PLEASE SELECT A DATASCHEMA"
+                      value={dataSchemaName}
+                      onChange={this.handleSchemaChange}
+                      required
+                    />
+                  </Form.Field>
+                  <Form.Field required>
+                    <label>Select a Query Schema</label>
+                    <Dropdown
+                      placeholder="Select query schema"
+                      scrolling
+                      clearable
+                      fluid
+                      selection
+                      search
+                      noResultsMessage="Try a different Search"
+                      multiple={false}
+                      options={queryschemas.map(schema => {
+                        return {
+                          key: schema.id,
+                          text: schema.name,
+                          value: schema.name
+                        };
+                      })}
+                      header="PLEASE SELECT A QUERYSCHEMA"
+                      value={querySchemaName}
+                      onChange={this.handleQuerySchemaChange}
+                      required
+                    />
+                  </Form.Field>
+                  <Form.Field>
+                    <label>SelectorField used to create the query schema</label>
+                    <Input
+                      fluid
+                      readOnly
+                      multiple={false}
+                      value={selectorField}
+                    />
+                  </Form.Field>
+                </Segment>
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Divider horizontal>RUN PARAMETERS</Divider>
+                  <Form.Field required>
+                    <label>Data Chunk Size:</label>
+
+                    <div style={{ display: "flex" }}>
+                      <Input
+                        value={dataChunkSize}
+                        onChange={this.handleChange}
+                        type="number"
+                        min="1"
+                        required
+                      />
+                      <Popup
+                        trigger={
+                          <Button
+                            icon="info"
+                            size="mini"
+                            circular
+                            style={{ margin: "5px" }}
+                          />
+                        }
+                        content="Description about what size does"
+                      />
+                    </div>
+                  </Form.Field>
+                  <Form.Field required>
+                    <label>Selector Values:</label>
+                    <TextArea
+                      type="text"
+                      placeholder="Enter selector values 1-by-1 or as a comma seperated list."
+                      value={this.state.selectorValue}
+                      onChange={this.handleSelectorValueChange}
+                      required={!this.state.selectorValues.length}
+                    />
+                    <Button color="blue" fluid onClick={this.addSelectorValue}>
+                      Add Selector Value(s)
+                    </Button>
+                    <ul>
+                      {this.state.selectorValues.map((value, index) => {
+                        return (
+                          <Card>
+                            <Card.Content>
+                              {value}
+                              <Button
+                                size="mini"
+                                compact
+                                floated="right"
+                                basic
+                                color="red"
+                                onClick={this.removeSelectorValue.bind(
+                                  this,
+                                  index
+                                )}
+                              >
+                                X
+                              </Button>
+                            </Card.Content>
+                          </Card>
+                        );
+                      })}
+                    </ul>
+                  </Form.Field>
+                  <Form.Button
+                    fluid
+                    positive
+                    content="Submit Query"
+                    style={{ marginTop: "80px" }}
+                  />
+                </Segment>
+              </Form>
             </div>
-          </fieldset>
-          <br />
-          <br />
-          <fieldset>
-            <legend>Run Parameters For Query Generation</legend>
-            <div className="CreateQuery-runParams">
-              <div>
-                <label>dataChunkSize:</label>
-                <input
-                  value={this.state.dataChunkSize}
-                  onChange={this.onChange}
-                  type="number"
-                  name="dataChunkSize"
-                  placeholder="1"
-                  min="1"
-                  step="1"
-                  max="50"
-                  required
-                />
-              </div>
-              <div>
-                <label>Embed Selector:</label>
-                <select
-                  value={this.state.embedSelector}
-                  onChange={this.updateEmbedSelector}
-                  required
-                >
-                  <option value="">True or False ...</option>
-                  <option value="true">True</option>
-                  <option value="false">False</option>
-                </select>
-              </div>
-              <div>
-                <label>Selector Values:</label>{" "}
-                <input
-                  type="text"
-                  value={this.state.selectorValue}
-                  placeholder="Enter selector value"
-                  onChange={this.handleSelectorValueChange}
-                  required={!this.state.selectorValues.length}
-                />
-                <button type="button" onClick={this.addSelectorValue}>
-                  Add
-                </button>
-              </div>
-              <ul>
-                {this.state.selectorValues.map((value, index) => {
-                  return (
-                    <li key={index}>
-                      {value}
-                      <button
-                        type="button"
-                        onClick={this.removeSelectorValue.bind(this, index)}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </fieldset>
-          <div className="btn-group">
-            <span className="input-group-btn">
-              <button
-                className="btnCreate"
-                handleSubmit={this.handleSubmit}
-                type="submit"
-              >
-                Create Query
-              </button>
-              <button
-                className="btnCancel"
-                handleCancel={this.handleCancel}
-                type="reset"
-                onClick={() => {
-                  alert(
-                    "Are you sure you want to cancel? Doing so will reset this page."
-                  );
-                }}
-              >
-                Cancel
-              </button>
-            </span>
           </div>
-        </form>
+        </div>
+        <PageFooter />
       </div>
     );
   }

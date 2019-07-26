@@ -1,4 +1,4 @@
-{ "name": "Alice", "age": "31", "children": [ "Zack", "Yvette" ] }
-{ "name": "Bob",   "age": "25", "children": [ "Xavier", "Wendy" ] }
-{ "name": "Chris", "age": "43", "children": [ "Donna" ] }
-{ "name": "Donna", "age": "19", "children": [ ] }
+{ "name": "Alice", "age": 31, "children": [ "Zack", "Yvette" ] }
+{ "name": "Bob",   "age": 25, "children": [ "Xavier", "Wendy" ] }
+{ "name": "Chris", "age": 43, "children": [ "Donna" ] }
+{ "name": "Donna", "age": 19, "children": [ ] }

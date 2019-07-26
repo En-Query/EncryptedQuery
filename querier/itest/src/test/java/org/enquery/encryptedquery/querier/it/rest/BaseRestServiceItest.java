@@ -49,6 +49,7 @@ import org.enquery.encryptedquery.querier.data.entity.json.DataSourceResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Decryption;
 import org.enquery.encryptedquery.querier.data.entity.json.DecryptionCollectionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.DecryptionResponse;
+import org.enquery.encryptedquery.querier.data.entity.json.OfflineExecutionExportRequest;
 import org.enquery.encryptedquery.querier.data.entity.json.Query;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryCollectionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryResponse;
@@ -67,11 +68,15 @@ import org.enquery.encryptedquery.querier.data.entity.json.ScheduleCollectionRes
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
 import org.enquery.encryptedquery.querier.it.AbstractQuerierItest;
 import org.enquery.encryptedquery.xml.schema.ClearTextResponse;
+import org.enquery.encryptedquery.xml.schema.Field;
+import org.enquery.encryptedquery.xml.schema.Hit;
+import org.enquery.encryptedquery.xml.schema.Hits;
+import org.enquery.encryptedquery.xml.schema.Selector;
 import org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter;
 
 public class BaseRestServiceItest extends AbstractQuerierItest {
 
-	private static final String DEFAULT_ACCEPT = "application/vnd.encryptedquery.enclave+json; version=1";
+	protected static final String DEFAULT_ACCEPT = "application/vnd.encryptedquery.enclave+json; version=1";
 
 	protected DefaultCamelContext itCamelContext;
 	protected ProducerTemplate testProducer;
@@ -82,7 +87,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 	protected MockEndpoint resourcesResultMock;
 
 	protected String dataSchemasUri;
-	// protected DataSchema bookCatalogDataSchema;
+	protected MockEndpoint resourcesMock;
 	protected DataSchema phoneRecordDataSchema;
 	private MockEndpoint querySchemaResultMock;
 	private MockEndpoint querySchemasResultMock;
@@ -91,6 +96,11 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 	private MockEndpoint queryResultMock;
 
 	protected int queryCount = 0;
+
+	private MockEndpoint uploadMock;
+
+	protected MockEndpoint executionExportMock;
+
 
 	public void init() throws Exception {
 		truncateTables();
@@ -101,15 +111,16 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 	}
 
 	protected void setupRoutes() throws Exception {
+		final JacksonDataFormat resourcesFormat = new JacksonDataFormat(ResourceCollectionResponse.class);
 		final JacksonDataFormat dataSourcesFormat = new JacksonDataFormat(DataSourceCollectionResponse.class);
 		final JacksonDataFormat dataSourceFormat = new JacksonDataFormat(DataSourceResponse.class);
 		final JacksonDataFormat dataSchemaFormat = new JacksonDataFormat(DataSchemaResponse.class);
 		final JacksonDataFormat dataSchemasFormat = new JacksonDataFormat(DataSchemaCollectionResponse.class);
-		final JacksonDataFormat resourcesFormat = new JacksonDataFormat(ResourceCollectionResponse.class);
 		final JacksonDataFormat querySchemaFormat = new JacksonDataFormat(QuerySchemaResponse.class);
 		final JacksonDataFormat querySchemasFormat = new JacksonDataFormat(QuerySchemaCollectionResponse.class);
 		final JacksonDataFormat queryFormat = new JacksonDataFormat(QueryResponse.class);
 		final JacksonDataFormat queriesFormat = new JacksonDataFormat(QueryCollectionResponse.class);
+		final JacksonDataFormat executionExportFormat = new JacksonDataFormat(OfflineExecutionExportRequest.class);
 
 		itCamelContext.addRoutes(new RouteBuilder() {
 			@Override
@@ -117,13 +128,12 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-resources")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
-						.filter(simple("${header.CamelHttpResponseCode} == 200"))
+						// .log("${body}")
 						.unmarshal(resourcesFormat)
-						.end()
 						.to("mock:resources-result");
 
 				from("direct:datasources")
+						.streamCaching()
 						.to("http4://localhost:8182/?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -132,6 +142,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:datasources-result");
 
 				from("direct:datasource")
+						.streamCaching()
 						.to("http4://localhost:8182/?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -140,6 +151,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:datasource-result");
 
 				from("direct:retrieve-dataschema")
+						.streamCaching()
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -148,6 +160,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:dataschema-result");
 
 				from("direct:retrieve-dataschemas")
+						.streamCaching()
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -157,7 +170,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-queryschema")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(querySchemaFormat)
 						.end()
@@ -165,23 +178,23 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:create-queryschema")
 						.marshal(querySchemaFormat)
-						.log("${body}")
+						// .log("${body}")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(querySchemaFormat)
 						.end()
 						.to("mock:queryschema-create-result");
 
 				from("direct:create-invalid-queryschema")
-						.log("${body}")
+						// .log("${body}")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.to("mock:queryschema-create-result");
 
 				from("direct:retrieve-queryschemas")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(querySchemasFormat)
 						.end()
@@ -189,7 +202,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-query")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(queryFormat)
 						.end()
@@ -197,7 +210,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-queries")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(queriesFormat)
 						.end()
@@ -206,13 +219,14 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 				from("direct:create-query")
 						.marshal(queryFormat)
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(queryFormat)
 						.end()
 						.to("mock:query-create-result");
 
 				from("direct:retrieve-schedules")
+						.streamCaching()
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -222,6 +236,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				JacksonDataFormat scheduleFormat = new JacksonDataFormat(ScheduleResponse.class);
 				from("direct:retrieve-schedule")
+						.streamCaching()
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
 						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
@@ -230,6 +245,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:schedule-result");
 
 				from("direct:create-schedule")
+						.streamCaching()
 						.marshal(scheduleFormat)
 						.log("${body}")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
@@ -241,7 +257,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-results")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(ResultCollectionResponse.class))
 						.end()
@@ -249,7 +265,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-result")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(ResultResponse.class))
 						.end()
@@ -257,7 +273,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-retrievals")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(RetrievalCollectionResponse.class))
 						.end()
@@ -265,7 +281,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-retrieval")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(RetrievalResponse.class))
 						.end()
@@ -274,7 +290,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 				from("direct:create-retrieval")
 						.setHeader(Exchange.HTTP_METHOD, constant("POST"))
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(new JacksonDataFormat(RetrievalResponse.class))
 						.end()
@@ -282,7 +298,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-decryptions")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(DecryptionCollectionResponse.class))
 						.end()
@@ -290,7 +306,7 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:retrieve-decryption")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 200"))
 						.unmarshal(new JacksonDataFormat(DecryptionResponse.class))
 						.end()
@@ -299,14 +315,29 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 				from("direct:create-decryption")
 						.setHeader(Exchange.HTTP_METHOD, constant("POST"))
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						.log("${body}")
+						// .log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(new JacksonDataFormat(DecryptionResponse.class))
 						.end()
 						.to("mock:create-decryption-result");
 
+				from("direct:upload")
+						.setHeader(Exchange.HTTP_METHOD, constant("PUT"))
+						.to("http4://localhost:8182?throwExceptionOnFailure=false")
+						.to("mock:upload");
+
+				from("direct:create-execution-export")
+						.streamCaching()
+						.setHeader(Exchange.HTTP_METHOD, constant("POST"))
+						.marshal(executionExportFormat)
+						.log("${body}")
+						.to("http4://localhost:8182?throwExceptionOnFailure=false")
+						// .log("${body}")
+						.to("mock:create-execution-export");
 			}
 		});
+
+		resourcesMock = itCamelContext.getEndpoint("mock:resources-result", MockEndpoint.class);
 		dataSourcesResultMock = itCamelContext.getEndpoint("mock:datasources-result", MockEndpoint.class);
 		dataSourceResultMock = itCamelContext.getEndpoint("mock:datasource-result", MockEndpoint.class);
 		dataSchemaResultMock = itCamelContext.getEndpoint("mock:dataschema-result", MockEndpoint.class);
@@ -315,16 +346,17 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 		querySchemaResultMock = itCamelContext.getEndpoint("mock:queryschema-result", MockEndpoint.class);
 		querySchemasResultMock = itCamelContext.getEndpoint("mock:queryschemas-result", MockEndpoint.class);
 		querySchemaCreateResultMock = itCamelContext.getEndpoint("mock:queryschema-create-result", MockEndpoint.class);
-
 		queriesResultMock = itCamelContext.getEndpoint("mock:queries-result", MockEndpoint.class);
 		queryResultMock = itCamelContext.getEndpoint("mock:query-result", MockEndpoint.class);
+		uploadMock = itCamelContext.getEndpoint("mock:upload", MockEndpoint.class);
+		executionExportMock = itCamelContext.getEndpoint("mock:create-execution-export", MockEndpoint.class);
 	}
 
 	protected void startCamelProducer() throws Exception {
 		itCamelContext = new DefaultCamelContext();
 		itCamelContext.addComponent("http4", new HttpComponent());
 		itCamelContext.setTracing(true);
-		itCamelContext.setStreamCaching(true);
+		itCamelContext.setStreamCaching(false);
 		itCamelContext.setName(this.getClass().getSimpleName());
 		itCamelContext.start();
 		testProducer = itCamelContext.createProducerTemplate();
@@ -403,6 +435,14 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 		return result;
 	}
 
+	protected void upload(String uri, Object payload) {
+		invoke(uri,
+				200,
+				null,
+				uploadMock,
+				"direct:upload", payload);
+	}
+
 	protected QueryResponse retrieveQuery(String uri) {
 		assertNotNull(uri);
 		return invoke(uri,
@@ -445,6 +485,19 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 		assertEquals(result.getData().getSelfUri(), location);
 		return result;
+	}
+
+	protected InputStream createExecutionExportRest(OfflineExecutionExportRequest request) {
+		Message message = invoke("/querier/api/rest/offline/executions",
+				200,
+				null,
+				executionExportMock,
+				"direct:create-execution-export", request)
+						.getReceivedExchanges()
+						.get(0)
+						.getMessage();
+
+		return message.getBody(InputStream.class);
 	}
 
 	protected QueryResponse postQuery(String uri, Query q) {
@@ -645,11 +698,11 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 				.getSelfUri();
 	}
 
-	private MockEndpoint invoke(String remoteUri, int expectedResponseCode, String acceptValue, MockEndpoint mock, String localUri) {
+	protected MockEndpoint invoke(String remoteUri, int expectedResponseCode, String acceptValue, MockEndpoint mock, String localUri) {
 		return invoke(remoteUri, expectedResponseCode, acceptValue, mock, localUri, null);
 	}
 
-	private MockEndpoint invoke(String remoteUri, int expectedResponseCode, String acceptValue, MockEndpoint mock, String localUri, Object payload) {
+	protected MockEndpoint invoke(String remoteUri, int expectedResponseCode, String acceptValue, MockEndpoint mock, String localUri, Object payload) {
 		Map<String, Object> headers = new HashMap<>();
 		headers.put(Exchange.HTTP_PATH, remoteUri);
 		if (acceptValue != null) {
@@ -972,19 +1025,34 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 		assertNotNull(response);
 		assertNotNull(response.getSelector());
 		assertTrue(response.getSelector().size() > 0);
-		assertTrue(response.getSelector()
+		// response.getSelector()
+		Selector selector = response.getSelector()
 				.stream()
 				.filter(s -> s.getSelectorName().equals(selectorName))
 				.findFirst()
-				.get()
+				.get();
+
+		Hits hit = selector
 				.getHits()
 				.stream()
 				.filter(h -> selectorValue.equals(h.getSelectorValue()))
-				.anyMatch(hits -> hits.getHit()
-						.stream()
-						.anyMatch(record -> record.getField()
-								.stream()
-								.anyMatch(field -> field.getName().equals(fieldName) &&
-										fieldValue.equals(field.getValue())))));
+				.findFirst()
+				.get();
+
+		boolean found = false;
+		for (Hit h : hit.getHit()) {
+			Field field = h.getField()
+					.stream().filter(f -> f.getName().equals(fieldName))
+					.findFirst()
+					.get();
+
+			log.info("'{}'='{}'", fieldName, field.getValue());
+			found = fieldValue.equals(field.getValue());
+		}
+		assertTrue("Field "
+				+ fieldName + " not found with value: "
+				+ fieldValue,
+				found);
+
 	}
 }

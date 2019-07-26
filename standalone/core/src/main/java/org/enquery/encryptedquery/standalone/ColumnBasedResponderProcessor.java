@@ -29,13 +29,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
-import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.responder.QueueRecord;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,11 +45,9 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 	private final DecimalFormat numFormat = new DecimalFormat("###,###,###,###,###,###");
 
 	private final Query query;
-	private final int dataChunkSize;
 	private long threadId;
 	private long recordCount;
 	private int computeThreshold;
-	private Partitioner partitioner;
 	private HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
 	// the column values for the encrypted query calculations
 	private TreeMap<Integer, CipherText> columns = null;
@@ -68,24 +64,20 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 			BlockingQueue<Response> responseQueue,
 			Query query,
 			CryptoScheme crypto,
-			Partitioner partitioner,
 			AtomicLong recordsProcessed,
 			int computeThreshold) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
 
 		Validate.notNull(queue);
 		Validate.notNull(query);
-		Validate.notNull(partitioner);
 		Validate.notNull(crypto);
 		Validate.notNull(recordsProcessed);
 
 		this.query = query;
 		this.inputQueue = queue;
 		this.responseQueue = responseQueue;
-		this.partitioner = partitioner;
 		this.crypto = crypto;
 		this.globalRecordCount = recordsProcessed;
 		this.computeThreshold = computeThreshold;
-		this.dataChunkSize = query.getQueryInfo().getDataChunkSize();
 	}
 
 
@@ -156,11 +148,10 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 	 */
 	public void addDataElement(QueueRecord qr) throws Exception {
 		// Convert from byte data into partitions of data partition size.
-		List<byte[]> hitValPartitions = partitioner.createPartitions(qr.getParts(), dataChunkSize);
+		// List<byte[]> hitValPartitions = partitioner.createPartitions(qr.getParts(),
+		// dataChunkSize);
 
-		// For Debugging Only
-		// listPartitions(qr.getRowIndex(), hitValPartitions);
-
+		final List<byte[]> hitValPartitions = qr.getHitValPartitions();
 		int rowIndex = qr.getRowIndex();
 		int rowCounter = rowColumnCounters[rowIndex];
 
@@ -202,12 +193,12 @@ public class ColumnBasedResponderProcessor implements Callable<Response> {
 					++loadSize;
 				}
 			}
-			final long started = System.currentTimeMillis();
+			final long started = System.nanoTime();
 			final CipherText newValue = columnProcessor.computeAndClear();
-			final long ended = System.currentTimeMillis();
+			final long ended = System.nanoTime();
 			if (debugging) {
 				long elapsed = ended - started;
-				log.debug("computeAndClear() completed in {} ms on a load of size {}", elapsed, loadSize);
+				log.debug("computeAndClear() completed column {} of weight {} in {} ns", col, loadSize, elapsed);
 			}
 
 			CipherText prevValue = columns.get(col);

@@ -6,25 +6,21 @@
     <field>
         <name>Duration</name>
         <dataType>string</dataType>
-        <isArray/>
         <position>0</position>
     </field>
     <field>
         <name>Date/Time</name>
         <dataType>string</dataType>
-        <isArray>false</isArray>
         <position>1</position>
     </field>
     <field>
         <name>Caller #</name>
         <dataType>string</dataType>
-        <isArray>false</isArray>
         <position>2</position>
     </field>
     <field>
         <name>Callee #</name>
         <dataType>string</dataType>
-        <isArray>false</isArray>
         <position>3</position>
     </field>
 </dataSchema>

@@ -25,17 +25,20 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.karaf.shell.api.console.SessionFactory;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.it.util.DerbyBookDatabase;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -67,13 +70,19 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 	private EncryptQuery querierFactory;
 	@Inject
 	private QueryTypeConverter queryConverter;
+	@Inject
+	protected SessionFactory sessionFactory;
 
 	private static final String DATA_SOURCE_NAME = "test-name";
+	private static final Integer DATA_CHUNK_SIZE = 1;
+	private static final Integer HASH_BIT_SIZE = 9;
+	private static final String SELECTOR = "A Cup of Java";
 
 	private DataSchemaResource booksDataSchema;
 	private DataSourceResource dataSourceResource;
 	private FlinkDriver flinkDriver = new FlinkDriver();
 	private DerbyBookDatabase derbyDatabase = new DerbyBookDatabase();
+	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
 	@Configuration
 	public Option[] configuration() {
@@ -120,8 +129,10 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		// Add an execution for current time
 		DatatypeFactory dtf = DatatypeFactory.newInstance();
 		Execution ex = new Execution();
+		ex.setSchemaVersion(Versions.EXECUTION_BI);
 		GregorianCalendar cal = new GregorianCalendar();
 		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
+		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
 		log.info("Schedule job: " + ex);
 
 		Querier querier = createQuerier();
@@ -164,7 +175,9 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 
 		// Now add an execution and test its retrieval
 		Execution ex = new Execution();
+		ex.setSchemaVersion(Versions.EXECUTION_BI);
 		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
+		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
 		ex.setQuery(xmlQuery);
 		ExecutionResource created = createExecution(dataSourceResource.getExecutionsUri(), ex);
 
@@ -177,11 +190,6 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 				null);
 	}
 
-	private static final Integer DATA_CHUNK_SIZE = 1;
-	private static final Integer HASH_BIT_SIZE = 9;
-	private static final String SELECTOR = "A Cup of Java";
-	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
-
 	private Querier createQuerier() throws Exception {
 		byte[] bytes = IOUtils.resourceToByteArray("/schemas/get-price-query-schema.xml",
 				this.getClass().getClassLoader());
@@ -189,6 +197,6 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(bytes);
 
-		return querierFactory.encrypt(querySchema, SELECTORS, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

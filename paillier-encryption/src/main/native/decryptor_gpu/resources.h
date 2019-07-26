@@ -28,9 +28,23 @@ typedef enum policy_t {
     RP_POLICY_WAIT,
     RP_POLICY_CALLER_RUNS,
     RP_POLICY_ABORT,
+    RP_POLICY_GPU_NOW,
     RP_NUM_POLICIES
 } policy_t;
 
+static inline policy_t busyPolicyFromString(std::string &policyStr, policy_t defaultPolicy) {
+    if (policyStr == "Wait") {
+	return RP_POLICY_WAIT;
+    } else if (policyStr == "CallerRuns") {
+	return RP_POLICY_CALLER_RUNS;
+    } else if (policyStr == "Abort") {
+	return RP_POLICY_ABORT;
+    } else if (policyStr == "GPUNow") {
+	return RP_POLICY_GPU_NOW;
+    } else {
+	return defaultPolicy;
+    }
+}
 
 template <typename T>
 struct resource_t {

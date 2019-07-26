@@ -130,8 +130,26 @@ public interface CryptoScheme extends AutoCloseable {
 	 */
 	Map<Integer, CipherText> generateQueryVector(KeyPair keyPair, QueryInfo queryInfo, Map<Integer, Integer> selectorQueryVecMapping);
 
+	/**
+	 * This function performs the homomorphic addition operation on two CipherText values and
+	 * returns the resulting new CipherText.
+	 * 
+	 * @param publicKey
+	 * @param left
+	 * @param right
+	 * @return
+	 */
 	CipherText computeCipherAdd(PublicKey publicKey, CipherText left, CipherText right);
 
+	/**
+	 * This function performs the homomorphic multiplication on one CipherText value and a plaintext
+	 * data chunk and returns the resulting CipherText.
+	 * 
+	 * @param publicKey
+	 * @param left
+	 * @param right
+	 * @return
+	 */
 	CipherText computeCipherPlainMultiply(PublicKey publicKey, CipherText left, byte[] right);
 
 	/**

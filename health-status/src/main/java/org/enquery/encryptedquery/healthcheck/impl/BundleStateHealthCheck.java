@@ -35,12 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-@Component(property = {
-		"ignore.bundle=org.apache.aries.blueprint.core.compatibility",
-		"ignore.bundle=org.apache.karaf.shell.console",
-		"ignore.bundle=org.apache.karaf.diagnostic.boot",
-		"ignore.bundle=org.apache.karaf.features.extension"
-})
+@Component
 public class BundleStateHealthCheck implements SubsystemHealthCheck {
 
 	private static Logger log = LoggerFactory.getLogger(BundleStateHealthCheck.class);

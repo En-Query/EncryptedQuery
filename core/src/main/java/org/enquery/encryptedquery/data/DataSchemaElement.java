@@ -18,15 +18,17 @@ package org.enquery.encryptedquery.data;
 
 import java.io.Serializable;
 
+import org.enquery.encryptedquery.core.FieldType;
+
 public class DataSchemaElement implements Serializable {
 
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1407148008718131270L;
+	private static final long serialVersionUID = -6505359668374641254L;
 	private String name;
-	private String dataType;
-	private Boolean isArray;
+	private FieldType dataType;
+	// private boolean isArray;
 	private int position;
 
 	public DataSchemaElement() {}
@@ -39,21 +41,22 @@ public class DataSchemaElement implements Serializable {
 		this.name = name;
 	}
 
-	public String getDataType() {
+	public FieldType getDataType() {
 		return dataType;
 	}
 
-	public void setDataType(String dataType) {
+	public void setDataType(FieldType dataType) {
 		this.dataType = dataType;
 	}
 
-	public Boolean getIsArray() {
+	/*--
+	public boolean getIsArray() {
 		return isArray;
 	}
-
-	public void setIsArray(Boolean isArray) {
+	
+	public void setIsArray(boolean isArray) {
 		this.isArray = isArray;
-	}
+	}*/
 
 	public int getPosition() {
 		return position;
@@ -69,7 +72,6 @@ public class DataSchemaElement implements Serializable {
 		output.append("\n  Name: " + name);
 		output.append("\n  Position: " + position);
 		output.append("\n  DataType: " + dataType);
-		output.append("\n  isArray: " + isArray);
 
 		return output.toString();
 	}

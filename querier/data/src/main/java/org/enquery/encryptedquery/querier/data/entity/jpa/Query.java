@@ -71,9 +71,6 @@ public class Query {
 	@Lob
 	private String selectorValues;
 
-	@Column(name = "embed_selector")
-	private Boolean embedSelector;
-
 	@Column(name = "query_url")
 	private String queryUrl;
 
@@ -133,20 +130,12 @@ public class Query {
 		this.parameters = parameters;
 	}
 
-	public Boolean getEmbedSelector() {
-		return embedSelector;
-	}
-
 	public void setSelectorValues(String selectorValues) {
 		this.selectorValues = selectorValues;
 	}
 
 	public String getSelectorValues() {
 		return selectorValues;
-	}
-
-	public void setEmbedSelector(Boolean embedSelector) {
-		this.embedSelector = embedSelector;
 	}
 
 	public String getErrorMessage() {

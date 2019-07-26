@@ -18,8 +18,6 @@ package org.enquery.encryptedquery.utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
-import java.math.BigInteger;
-import java.util.Arrays;
 
 public class ConversionUtils {
 
@@ -39,91 +37,14 @@ public class ConversionUtils {
 	 * @return byte[]
 	 */
 	public static byte[] objectToByteArray(Object obj) {
-		byte[] bytes = null;
-		ByteArrayOutputStream bos = null;
-		ObjectOutputStream oos = null;
-		try {
-			bos = new ByteArrayOutputStream();
-			oos = new ObjectOutputStream(bos);
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+				ObjectOutputStream oos = new ObjectOutputStream(bos);) {
 			oos.writeObject(obj);
 			oos.flush();
-			bytes = bos.toByteArray();
-			if (oos != null) {
-				oos.close();
-			}
-			if (bos != null) {
-				bos.close();
-			}
+			return bos.toByteArray();
 		} catch (Exception e) {
 			throw new RuntimeException("Error converting object to byte array.", e);
 		}
-		return bytes;
-	}
-
-	/**
-	 * Convert from a BigInteger to byte[]
-	 * 
-	 * @param bigInteger
-	 * @param byteArraySize
-	 * @return
-	 */
-	public static byte[] bigIntegerToByteArray(final BigInteger bigInteger, int byteArraySize) {
-
-		byte[] bytes = bigInteger.toByteArray();
-		byte[] tempBytes = null;
-		byte[] returnBytes = new byte[byteArraySize];
-
-		// bigInteger.toByteArray returns a two's compliment. We need an unsigned value
-		if (bytes[0] == 0) {
-			tempBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
-		} else {
-			tempBytes = bytes;
-		}
-		// If the Biginteger is zero, we still need to return a byte array of zeros!
-		int sizeDifference = byteArraySize - tempBytes.length;
-		if (sizeDifference > 0) {
-			System.arraycopy(tempBytes, 0, returnBytes, sizeDifference, tempBytes.length);
-
-		} else {
-			returnBytes = tempBytes;
-		}
-
-		return returnBytes;
-
-	}
-
-	private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
-
-	/**
-	 * Convert a byte[] into a Hex String
-	 * 
-	 * @param byte[]
-	 * @return String
-	 */
-	public static String byteArrayToHexString(byte[] bytes) {
-		char[] hexChars = new char[bytes.length * 2];
-		for (int j = 0; j < bytes.length; j++) {
-			int v = bytes[j] & 0xFF;
-			hexChars[j * 2] = hexArray[v >>> 4];
-			hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-		}
-		return new String(hexChars);
-	}
-
-	/**
-	 * Convert a String value into a byte array
-	 * 
-	 * @param s String
-	 * @return byte[]
-	 */
-	public static byte[] hexStringToByteArray(String s) {
-		int len = s.length();
-		byte[] data = new byte[len / 2];
-		for (int i = 0; i < len; i += 2) {
-			data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-					+ Character.digit(s.charAt(i + 1), 16));
-		}
-		return data;
 	}
 
 	public static byte[] intToBytes(int value) {

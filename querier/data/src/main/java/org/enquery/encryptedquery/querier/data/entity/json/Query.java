@@ -34,7 +34,6 @@ public class Query extends Resource {
 	private String schedulesUri;
 	private Map<String, String> parameters;
 	private List<String> selectorValues;
-	private Boolean embedSelector;
 
 	public Query() {
 		setType(TYPE);
@@ -80,14 +79,6 @@ public class Query extends Resource {
 		this.selectorValues = selectorValues;
 	}
 
-	public Boolean getEmbedSelector() {
-		return embedSelector;
-	}
-
-	public void setEmbedSelector(Boolean embedSelector) {
-		this.embedSelector = embedSelector;
-	}
-
 	public Resource getQuerySchema() {
 		return querySchema;
 	}
@@ -101,7 +92,7 @@ public class Query extends Resource {
 		final int maxLen = 10;
 		StringBuilder builder = new StringBuilder();
 		builder.append("Query [name=").append(name).append(", status=").append(status).append(", querySchema=").append(querySchema).append(", schedulesUri=").append(schedulesUri).append(", parameters=")
-				.append(parameters != null ? toString(parameters.entrySet(), maxLen) : null).append(", selectorValues=").append(selectorValues != null ? toString(selectorValues, maxLen) : null).append(", embedSelector=").append(embedSelector).append("]");
+				.append(parameters != null ? toString(parameters.entrySet(), maxLen) : null).append(", selectorValues=").append(selectorValues != null ? toString(selectorValues, maxLen) : null).append("]");
 		return builder.toString();
 	}
 

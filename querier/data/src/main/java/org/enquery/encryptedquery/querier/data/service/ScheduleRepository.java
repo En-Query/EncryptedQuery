@@ -2,6 +2,7 @@ package org.enquery.encryptedquery.querier.data.service;
 
 import java.util.Collection;
 
+import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
 
@@ -24,4 +25,10 @@ public interface ScheduleRepository {
 	void delete(Query query, int id);
 
 	void deleteAll();
+
+	Schedule findByUUID(String executionUUID);
+
+	Schedule addOrUpdate(Schedule schedule);
+
+	Collection<Schedule> list(DataSource dataSource, Query query);
 }

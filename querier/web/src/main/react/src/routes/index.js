@@ -6,7 +6,7 @@ import {
   BrowserHistory,
   HashRouter
 } from "react-router-dom";
-import HomePage from "./HomePage";
+import HomepageLayout from "../components/HomepageLayout.js";
 import CreateQuerySchema from "../components/CreateQuerySchema";
 import CreateQuery from "../components/CreateQuery";
 import QueryStatus from "../components/QueryStatus";
@@ -14,11 +14,13 @@ import ScheduleQuery from "../components/ScheduleQuery";
 import QueryResults from "../components/QueryResults";
 import QuerySchedulesStatus from "../components/QuerySchedulesStatus";
 import PageNotFound from "../components/PageNotFound";
+import Versions from "../components/Versions";
+import Overview from "../components/Overview";
 
 export default () => (
   <HashRouter>
     <Switch>
-      <Route path="/" component={HomePage} exact />
+      <Route path="/" component={HomepageLayout} exact />
       <Route path="/createqueryschema" component={CreateQuerySchema} exact />
       <Route path="/createquery" component={CreateQuery} exact />
       <Route path="/querystatus" component={QueryStatus} exact />
@@ -29,6 +31,8 @@ export default () => (
         exact
       />
       <Route path="/queryresults" component={QueryResults} exact />
+      <Route path="/versions" component={Versions} exact />
+      <Route path="/overview" component={Overview} />
       <Route component={PageNotFound} />
     </Switch>
   </HashRouter>

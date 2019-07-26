@@ -28,15 +28,13 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.stream.XMLStreamException;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
-import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +46,6 @@ public class ResponseWriter implements Callable<Integer> {
 	private final QueryInfo queryInfo;
 	private final BlockingQueue<Response> queue;
 	private final Path outputFileName;
-	private final QueryTypeConverter queryConverter;
 
 	/**
 	 * 
@@ -56,20 +53,17 @@ public class ResponseWriter implements Callable<Integer> {
 	public ResponseWriter(CryptoScheme crypto,
 			BlockingQueue<Response> queue,
 			QueryInfo queryInfo,
-			Path outputFileName,
-			QueryTypeConverter queryConverter) {
+			Path outputFileName) {
 
 		Validate.notNull(crypto);
 		Validate.notNull(queue);
 		Validate.notNull(queryInfo);
 		Validate.notNull(outputFileName);
-		Validate.notNull(queryConverter);
 
 		this.crypto = crypto;
 		this.queue = queue;
 		this.queryInfo = queryInfo;
 		this.outputFileName = outputFileName;
-		this.queryConverter = queryConverter;
 	}
 
 	/**
@@ -104,35 +98,33 @@ public class ResponseWriter implements Callable<Integer> {
 
 		try {
 			outputResponse(result);
-		} catch (IOException | JAXBException e) {
+		} catch (IOException | JAXBException | XMLStreamException e) {
 			throw new RuntimeException("Error saving response file.", e);
 		}
 
 		return count;
 	}
 
-
 	// Compile the results from all the threads into one response file.
-	private void outputResponse(Response outputResponse) throws FileNotFoundException, IOException, JAXBException {
+	private void outputResponse(Response outputResponse) throws FileNotFoundException, IOException, JAXBException, XMLStreamException {
 		log.info("Writing response to file: '{}'", outputFileName);
 
-		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
-			@Override
-			public CryptoScheme cryptoSchemeByName(String schemeId) {
-				if (schemeId == null) return null;
-				if (schemeId.equals(crypto.name())) return crypto;
-				return null;
+		try (OutputStream output = new FileOutputStream(outputFileName.toFile());
+				org.enquery.encryptedquery.xml.transformation.ResponseWriter rw = new org.enquery.encryptedquery.xml.transformation.ResponseWriter(output);) {
+			rw.writeBeginDocument();
+			rw.writeBeginResponse();
+			rw.write(queryInfo);
+			for (Map<Integer, CipherText> group : outputResponse.getResponseElements()) {
+				if (group.size() > 0) {
+					rw.writeBeginResultSet();
+					for (Map.Entry<Integer, CipherText> entry : group.entrySet()) {
+						rw.writeResponseItem(entry.getKey(), entry.getValue());
+					}
+					rw.writeEndResultSet();
+				}
 			}
-		};
-
-		ResponseTypeConverter converter = new ResponseTypeConverter();
-		converter.setQueryConverter(queryConverter);
-		converter.setSchemeRegistry(registry);
-		converter.initialize();
-
-		try (OutputStream output = new FileOutputStream(outputFileName.toFile())) {
-			org.enquery.encryptedquery.xml.schema.Response xml = converter.toXML(outputResponse);
-			converter.marshal(xml, output);
+			rw.writeEndResponse();
+			rw.writeEndDocument();
 		}
 	}
 

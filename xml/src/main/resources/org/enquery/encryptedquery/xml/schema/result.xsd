@@ -43,9 +43,9 @@
 							<xs:documentation>End time stamp of this result time window.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:element name="execution" type="res:resource">
+					<xs:element name="execution" type="res:resource" minOccurs="0">
 						<xs:annotation>
-							<xs:documentation>Reference to the parent Execution.</xs:documentation>
+							<xs:documentation>Reference to the parent Execution. Not present when in Execution Export.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
 					<xs:element name="payload" type="resp:Response" minOccurs="0">

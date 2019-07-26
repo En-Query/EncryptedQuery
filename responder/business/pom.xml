@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.1.3</version>
+		<version>2.1.4</version>
 	</parent>
 
 	<artifactId>encryptedquery-responder-business</artifactId>
@@ -34,6 +34,10 @@
 	<name>EncryptedQuery :: Responder :: Business</name>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.osgi</groupId>
 			<artifactId>osgi.cmpn</artifactId>
@@ -88,6 +92,13 @@
 			<artifactId>quartz</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		
+		
+		<!-- Test dependencies -->
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
@@ -97,6 +108,18 @@
 			<artifactId>slf4j-log4j12</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest-all</artifactId>
+			<version>1.3</version>
+			<scope>test</scope>
+		</dependency>
+		
 	</dependencies>
 
 </project>

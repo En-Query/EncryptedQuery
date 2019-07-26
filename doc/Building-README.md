@@ -4,37 +4,38 @@ Encrypted Query is a Java project with a Maven build system. The root pom.xml re
 
 The overall project structure is as:
 
-|Directory 				| Description |
-|---------------------- | ---------------------------------------------------------------------------------|
-| /   					| License information, read me files, disclaimers, etc.|
-| parent				| Root parent POM. |
-| core					| Core module, contains common code, referenced by most all other modules. |
-| examples				| Some examples|
-| flink 				| Parent POM for all Flink modules.|
-| flink/core			| Flink Core module, base classes, data source agnostic.| 
-| flink/jdbc			| Implementation of Flink query with JDBC data sources.| 
-| flink/jdbc-runner		| Runner for Flink-JDBC. 							| 
-| flink/kafka			| Implementation of Flink query with Kafka data sources. | 
-| flink/kafka-runner	| Runner for Flink-Kafka. | 
-| health-status			| System health monitoring for both Responder and Querier servers.|
-| jpa					| General purpose JPA related classes. |
-| json					| General purpose JSON related classes. |
-| pig					| Pig query execution. |
-| paillier-encryption   | Paillier Encryption Module |
-| null-encryption       | Null Encryption Module |
-| querier				| Querier server parent POM.  |
-| querier/business  	| Querier server business logic. |
-| querier/data      	| Querier server data access and transformation. |
-| querier/data-derby    | Querier server Derby DB support. |
-| querier/data-mariadb  | Querier server Maria DB support. |
-| querier/dist			| Querier server distribution archive. 	|
-| querier/feature		| Querier server Karaf feature. 	|
-| querier/integration	| Querier server integration module. 	|
-| querier/itest			| Querier server integration tests.|
-| querier/web			| Querier server web user interface.|
-| responder				| Responder server parent POM.|
-| responder/business	| Responder server business logic.|
-| responder/data		| Responder server data access and transformation.|
+|Directory 					| Description |
+|-------------------------- | ---------------------------------------------------------------------------------|
+| /   						| License information, read me files, disclaimers, etc.|
+| parent					| Root parent POM. |
+| doc						| Documentation. |
+| core						| Core module, contains common code, referenced by most all other modules. |
+| examples					| Some examples|
+| flink 					| Parent POM for all Flink modules.|
+| flink/core				| Flink Core module, base classes, data source agnostic.| 
+| flink/jdbc				| Implementation of Flink query with JDBC data sources.| 
+| flink/jdbc-runner			| Runner for Flink-JDBC. 							| 
+| flink/kafka				| Implementation of Flink query with Kafka data sources. | 
+| flink/kafka-runner		| Runner for Flink-Kafka. | 
+| health-status				| System health monitoring for both Responder and Querier servers.|
+| jpa						| General purpose JPA related classes. |
+| json						| General purpose JSON related classes. |
+| pig						| Pig query execution. |
+| paillier-encryption   	| Paillier Encryption Module |
+| null-encryption       	| Null Encryption Module |
+| querier					| Querier server parent POM.  |
+| querier/business  		| Querier server business logic. |
+| querier/data      		| Querier server data access and transformation. |
+| querier/data-derby    	| Querier server Derby DB support. |
+| querier/data-mariadb  	| Querier server Maria DB support. |
+| querier/dist				| Querier server distribution archive. 	|
+| querier/feature			| Querier server Karaf feature. 	|
+| querier/integration		| Querier server integration module. 	|
+| querier/itest				| Querier server integration tests.|
+| querier/web				| Querier server web user interface.|
+| responder					| Responder server parent POM.|
+| responder/business		| Responder server business logic.|
+| responder/data			| Responder server data access and transformation.|
 | responder/data-derby		| Responder server data Derby DB support.|
 | responder/data-mariadb	| Responder server data Maria DB support.|
 | responder/dist			| Responder server distribution archive.|
@@ -60,9 +61,7 @@ Reference to [Nvidia CUDA Installation] (https://docs.nvidia.com/cuda/cuda-insta
 
 [Download] the application from GitHub
 
-Encrypted Query includes native C libraries that can be used for improved performance. To build with native libraries you should build on the the same platform you are planning to deploy and run Encrypted Query:
-
-The application must be built using the Native libraries or using previously compiled native libraries.  The 1st build must include the native libraries.
+Encrypted Query includes native C libraries that can be used (optionally) for improved performance. To build with native libraries you should build on the the same platform you are planning to deploy and run Encrypted Query. Either build using previously compiled native libraries, or build the native libraries (gcc required).  The 1st build must include the native libraries.
 
 To build with native libraries:
 

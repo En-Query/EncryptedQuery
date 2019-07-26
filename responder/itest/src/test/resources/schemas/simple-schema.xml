@@ -4,8 +4,7 @@
 	<name>simple-schema</name>
 	<field>
 		<name>FieldName</name>
-		<dataType>Integer</dataType>
-		<isArray>false</isArray>
+		<dataType>int</dataType>
 		<position>0</position>
 	</field>
 </dataSchema>

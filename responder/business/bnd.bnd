@@ -12,3 +12,4 @@ Import-Package: \
 	*
 
 	
+Karaf-Commands: *

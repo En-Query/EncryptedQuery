@@ -22,6 +22,7 @@ import java.util.Collection;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
@@ -64,8 +65,8 @@ public class DataSchemaRegistryIT extends AbstractResponderItest {
 			DataSchemaField dsf = new DataSchemaField();
 			dsf.setPosition(i);
 			dsf.setFieldName("field" + i);
-			dsf.setIsArray((i % max == 0) ? true : false);
-			dsf.setDataType((i % max == 0) ? "int" : "string");
+			// dsf.setIsArray((i % max == 0) ? true : false);
+			dsf.setDataType((i % max == 0) ? FieldType.INT_LIST : FieldType.STRING);
 			dsf.setDataSchema(ds);
 			ds.getFields().add(dsf);
 		}
@@ -84,8 +85,8 @@ public class DataSchemaRegistryIT extends AbstractResponderItest {
 		for (int i = 0; i < max; ++i) {
 			DataSchemaField dsf = retrievedDataSchema.getFields().get(i);
 			Assert.assertEquals("field" + i, dsf.getFieldName());
-			Assert.assertEquals((i % max == 0) ? true : false, dsf.getIsArray());
-			Assert.assertEquals((i % max == 0) ? "int" : "string", dsf.getDataType());
+			// Assert.assertEquals((i % max == 0) ? true : false, dsf.getIsArray());
+			Assert.assertEquals((i % max == 0) ? FieldType.INT_LIST : FieldType.STRING, dsf.getDataType());
 		}
 	}
 

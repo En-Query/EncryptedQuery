@@ -56,7 +56,6 @@ jdk_includes=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(os)
 
 cxx=g++
 cxxflags=-std=c++11 -O0 -g -fPIC
-#cxxflags=-std=c++11 -O3 -fPIC
 cppflags = -I$(gmp_incdir) -I$(xmp_incdir) -I$(cuda_incdir) -I$(responder_incdir)
 ldflags = -L$(gmp_libdir) -L$(xmp_libdir) -L$(cuda_libdir) -L$(responder_libdir)
 

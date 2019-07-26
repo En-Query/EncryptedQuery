@@ -28,7 +28,7 @@ public interface DataSourceRegistry {
 
 	DataSource find(String name);
 
-	DataSource findForDataSchema(String dataSchemaName);
+	DataSource findForDataSchema(DataSchema dataSchema, String dataSourceName);
 
 	Collection<DataSource> listForDataSchema(DataSchema dataSchema);
 

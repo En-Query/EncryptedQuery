@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.FieldType;
 
 public class QuerySchema implements Serializable {
 
@@ -37,19 +38,20 @@ public class QuerySchema implements Serializable {
 	private DataSchema dataSchema;
 	private String selectorField;
 	private Map<String, QuerySchemaElement> elements = new LinkedHashMap<>();
-	private List<QuerySchemaElement> elementList = new ArrayList<QuerySchemaElement>();
+	private List<QuerySchemaElement> elementList = new ArrayList<>();
 
 	public QuerySchema() {}
 
 	public void validate() {
 		Validate.notNull(elements);
 		Validate.notNull(elementList);
-		Validate.isTrue(elementList.size() > 0);
+		Validate.isTrue(elementList.size() > 0, "At least 1 data field must be selected in the query schema.");
 		Validate.noNullElements(elementList);
 		Validate.notBlank(name);
 		Validate.notNull(dataSchema);
 		Validate.notBlank(selectorField);
-		Validate.notNull(this.getElement(selectorField));
+		Validate.notNull(this.getElement(selectorField), "Selector field '%s' not in list of query schema fields.", selectorField);
+		validateElementSizes(this);
 	}
 
 	public String getName() {
@@ -96,8 +98,9 @@ public class QuerySchema implements Serializable {
 	 * @return QuerySchemaElement
 	 */
 	public QuerySchemaElement getElement(String elementName) {
+		Validate.notNull(elementName);
 		for (QuerySchemaElement schemaElement : elementList) {
-			if (schemaElement.getName().equals(elementName)) {
+			if (elementName.equals(schemaElement.getName())) {
 				return schemaElement;
 			}
 		}
@@ -111,7 +114,7 @@ public class QuerySchema implements Serializable {
 
 	public List<String> getElementNames() {
 
-		List<String> elementNames = new ArrayList<String>();
+		List<String> elementNames = new ArrayList<>();
 		for (QuerySchemaElement qse : elementList) {
 			elementNames.add(qse.getName());
 		}
@@ -173,5 +176,33 @@ public class QuerySchema implements Serializable {
 			return false;
 		}
 		return true;
+	}
+
+	private void validateElementSizes(QuerySchema qs) {
+		for (QuerySchemaElement qse : qs.getElementList()) {
+
+			String elementName = qse.getName();
+			Validate.notNull(elementName);
+
+			FieldType dataType = qs.getDataSchema().elementByName(elementName).getDataType();
+			if (dataType == FieldType.STRING || dataType == FieldType.BYTEARRAY) {
+				if (qse.getSize() != null && qse.getSize() < 1) {
+					throw new RuntimeException(
+							"QuerySchemaElement '" + elementName + "' size (" + qse.getSize() + ") must be > 0");
+				}
+				// } else {
+				// int elementSize = FieldTypeUtils.getSizeByType(dataType);
+				// if (!qse.getLengthType().equalsIgnoreCase("fixed")) {
+				// throw new RuntimeException("QuerySchemaElement " + qse.getName() + " of data type
+				// (" + dataType
+				// + ") must be 'Fixed' length Type");
+				// }
+				// if (qse.getSize() != elementSize) {
+				// throw new RuntimeException("QuerySchemaElement " + qse.getName() + " size (" +
+				// qse.getSize()
+				// + ") does not match data type size (" + elementSize + ")");
+				// }
+			}
+		}
 	}
 }

@@ -1,15 +1,23 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router";
-import { Dropdown } from "semantic-ui-react";
-import "semantic-ui-css/semantic.min.css";
+import {
+  Dropdown,
+  Segment,
+  Header,
+  Divider,
+  Container,
+  Form,
+  Input,
+  Radio,
+  Popup,
+  Button
+} from "semantic-ui-react";
+import "../css/ScheduleQuery.css";
 import Datetime from "react-datetime";
 
-import LogoSection from "./logo-section.js";
-import VerticalNavBar from "./NavigationBar.js";
-import CreateQuery from "./CreateQuery";
-import QueryStatus from "./QueryStatus";
-import "../css/ScheduleQuery.css";
+import PageHeading from "./FixedMenu";
+import PageFooter from "./PageFooter.js";
 
 import axios from "axios";
 import moment from "moment";
@@ -57,7 +65,6 @@ class StreamingParams extends React.Component {
             placeholder="10000"
             min="1"
             step="1"
-            required
           />
         </div>
         <div>
@@ -149,17 +156,20 @@ class ScheduleQuery extends React.Component {
     super(props);
 
     this.state = {
-      dataSchemas: [],
-      querySchemas: [],
-      queries: [],
       query: [],
-      dataSources: [],
-      date: new Date(),
-      dataProcessingMode: "",
+      queryName: "",
+      querySchemaName: "",
+      datasources: [],
+      dataSourceName: "",
+      dataSourcesUri: "",
+      processingMode: "",
+      description: "",
+      kafkaOffset: "",
       maxHitsPerSelector: 10000,
       windowLengthSeconds: 1,
       runTimeSeconds: 1,
-      kafkaOffset: "",
+      submissionValue: "",
+      date: new Date(),
       checked: false
     };
 
@@ -169,107 +179,131 @@ class ScheduleQuery extends React.Component {
     );
   }
 
-  componentDidMount() {
-    var querySelfUri = localStorage.getItem("querySelfUri");
-    console.log(querySelfUri);
-    axios({
-      method: "get",
-      url: `${querySelfUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
+  async componentDidMount() {
+    await this.getQueryData();
+    await this.getDataSources();
+    await this.dataSourceChange();
+  }
 
-        const dataSourceInfo = response.data.included.filter(
-          element => element.type === "DataSchema"
-        );
-        const dataSourcesUri = dataSourceInfo.map(function(included) {
-          return included["dataSourcesUri"];
-        });
-        const dataSchemaInfo = response.data.included.filter(
-          element => element.type === "DataSchema"
-        );
-        const dataSchemaName = dataSchemaInfo.map(function(included) {
-          return included["name"];
-        });
-        const querySchemaInfo = response.data.included.filter(
-          element => element.type === "QuerySchema"
-        );
-        const querySchemaName = querySchemaInfo.map(function(included) {
-          return included["name"];
-        });
-        this.setState(
-          {
-            query: response.data.data,
-            queryName: response.data.data.name,
-            dataSourcesUri: dataSourcesUri,
-            schedulesUri: response.data.data.schedulesUri,
-            dataSchemaName: dataSchemaName,
-            querySchemaName: querySchemaName
-          },
-          () => {
-            console.log(this.state.query);
-            console.log(this.state.queryName);
-            console.log(this.state.dataSchemaName);
-            console.log(this.state.querySchemaName);
-            console.log(this.state.dataSourcesUri);
-            console.log(this.state.schedulesUri);
-          }
-        );
-        localStorage.setItem("schedulesUri", this.state.schedulesUri);
-        localStorage.setItem("dataSourcesUri", this.state.dataSourcesUri);
-        const dataSourceUri = localStorage.getItem("dataSourcesUri");
-        return axios({
+  getQueryData = async () => {
+    var querySelfUri = localStorage.getItem("querySelfUri");
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: querySelfUri,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      console.log("Data from first call --->", data);
+      const query = data.data;
+      const includedData = data;
+
+      const dataSourceInfo = includedData.included.filter(
+        element => element.type === "DataSchema"
+      );
+
+      const dataSourcesUri = dataSourceInfo.map(function(included) {
+        return included["dataSourcesUri"];
+      });
+
+      const dataSchemaName = dataSourceInfo.map(function(included) {
+        return included["name"];
+      });
+
+      const querySchemaInfo = includedData.included.filter(
+        element => element.type === "QuerySchema"
+      );
+
+      const querySchemaName = querySchemaInfo.map(function(included) {
+        return included["name"];
+      });
+
+      this.setState(
+        {
+          query: query,
+          queryName: query.name,
+          dataSourcesUri: dataSourcesUri,
+          dataSchemaName: dataSchemaName,
+          querySchemaName: querySchemaName,
+          schedulesUri: query.schedulesUri
+        },
+        () => {
+          console.log("Query name ---> ", this.state.queryName);
+          console.log("Datasources Uri ---> ", this.state.dataSourceUri);
+          console.log("Dataschema name ---> ", this.state.dataSchemaName);
+          console.log("Queryschema name --->", this.state.querySchemaName);
+          console.log("SchedulesUri ---> ", this.state.schedulesUri);
+        }
+      );
+    } catch (error) {
+      console.error(Error(`Error getting query data: ${error.message}`));
+    }
+  };
+
+  getDataSources = async () => {
+    const { dataSourcesUri } = this.state;
+    console.log("DataSourcesUri for next request ---> ", dataSourcesUri);
+    //get data sources
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: dataSourcesUri[0],
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      const datasources = data.data;
+      this.setState({
+        datasources: datasources
+      });
+      console.log("datasources --->", datasources);
+    } catch (error) {
+      console.error(Error(`Error get data sources: ${error.message}`));
+    }
+  };
+
+  handleChange = e => {
+    this.setState({ [e.target.name]: e.target.value });
+    console.log([e.target.name]);
+  };
+
+  dataSourceChange = async (e, { value }) => {
+    this.setState({ dataSourceName: value }, () => {
+      console.log("Chosen data source name ---> ", this.state.dataSourceName);
+    });
+    const source = this.state.datasources.find(source => source.name === value);
+    if (source) {
+      const { id, name, selfUri } = source;
+      this.setState({
+        dataSourceId: id,
+        dataSourceName: name,
+        dataSourceSelfUri: selfUri
+      });
+      console.log("Requested datasource selfUri =", selfUri);
+      try {
+        const { data } = await axios({
           method: "get",
-          url: `${dataSourceUri}`,
+          url: selfUri,
           headers: {
             Accept: "application/vnd.encryptedquery.enclave+json; version=1"
           }
         });
-      })
-      .then(response => {
-        console.log(response);
+        console.log("Specific datasource data --->", data);
+        const datasource = data.data;
         this.setState({
-          dataSources: response.data.data
+          datasource: datasource,
+          processingMode: datasource.processingMode,
+          description: datasource.description
         });
-      })
-      .catch(error => console.log(error));
-  }
-
-  dataSourceChange = e => {
-    const dataSourceName = this.state.dataSources.find(
-      dataSourceName => dataSourceName.name === e.target.value
-    );
-    if (dataSourceName) {
-      const { selfUri, name, id } = dataSourceName;
-      this.setState({
-        dataSoureName: name,
-        dataSourceSelfUri: selfUri,
-        dataSourceId: id
-      });
-      axios({
-        method: "get",
-        url: `${selfUri}`,
-        headers: {
-          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-        }
-      }).then(response => {
-        console.log(response);
-        this.setState(
-          {
-            dataSourceDescription: response.data.data.description,
-            dataSourceProcessingMode: response.data.data.processingMode,
-            dataSourceId: response.data.data.id
-          },
-          () => {
-            console.log(this.state.dataSourceDescription);
-            console.log(this.state.dataSourceProcessingMode);
-            console.log(this.state.dataSourceId);
-          }
+        console.log("datasource --->", datasource);
+        console.log("processingMode ---> ", this.state.processingMode);
+        console.log("description ---->", this.state.description);
+      } catch (error) {
+        console.error(
+          Error(`Error getting data source data: ${error.message}`)
         );
-      });
+      }
     }
   };
 
@@ -287,24 +321,44 @@ class ScheduleQuery extends React.Component {
     });
   };
 
+  handleSubmissionValue = (e, { value }) => {
+    this.setState({ submissionValue: value }, () => {
+      console.log("Submission value ---> ", this.state.submissionValue);
+    });
+  };
+
   handleSubmit = () => {
-    const schedulesUri = localStorage.getItem("schedulesUri");
-    if (this.state.dataSourceProcessingMode === "Batch") {
+    const {
+      processingMode,
+      date,
+      maxHitsPerSelector,
+      dataSourceId,
+      dataSourceSelfUri,
+      windowLengthSeconds,
+      kafkaOffset,
+      checked,
+      runTimeSeconds,
+      schedulesUri
+    } = this.state;
+    if (processingMode === "Batch") {
+      console.log("---------------------------------------------");
+      console.log("Schedule posting to --->", schedulesUri);
+      console.log("---------------------------------------------");
       axios({
         method: "post",
-        url: `${schedulesUri}`,
+        url: schedulesUri,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1",
           "Content-Type": "application/json"
         },
         data: JSON.stringify({
-          startTime: this.state.date,
+          startTime: date,
           parameters: {
-            maxHitsPerSelector: this.state.maxHitsPerSelector
+            maxHitsPerSelector: maxHitsPerSelector
           },
           dataSource: {
-            id: this.state.dataSourceId,
-            selfUri: this.state.dataSourceSelfUri
+            id: dataSourceId,
+            selfUri: dataSourceSelfUri
           }
         })
       })
@@ -315,26 +369,27 @@ class ScheduleQuery extends React.Component {
       this.props.history.push(`/querystatus`);
     } else {
       {
+        console.log("--------------------------------------------------------");
+        console.log("Schedule posted to --->", schedulesUri);
+        console.log("--------------------------------------------------------");
         axios({
           method: "post",
-          url: `${schedulesUri}`,
+          url: schedulesUri,
           headers: {
             Accept: "application/vnd.encryptedquery.enclave+json; version=1",
             "Content-Type": "application/json"
           },
           data: JSON.stringify({
-            startTime: this.state.date,
+            startTime: date,
             parameters: {
-              maxHitsPerSelector: this.state.maxHitsPerSelector,
-              "stream.window.length.seconds": this.state.windowLengthSeconds,
-              "kafka.start.offset": this.state.kafkaOffset,
-              "stream.runtime.seconds": !this.state.checked
-                ? this.state.runTimeSeconds
-                : undefined
+              maxHitsPerSelector: maxHitsPerSelector,
+              "stream.window.length.seconds": windowLengthSeconds,
+              "kafka.start.offset": kafkaOffset,
+              "stream.runtime.seconds": !checked ? runTimeSeconds : undefined
             },
             dataSource: {
-              id: this.state.dataSourceId,
-              selfUri: this.state.dataSourceSelfUri
+              id: dataSourceId,
+              selfUri: dataSourceSelfUri
             }
           })
         })
@@ -349,19 +404,16 @@ class ScheduleQuery extends React.Component {
 
   render() {
     const {
-      dataSchemas,
-      querySchemas,
       queryName,
       dataSchemaName,
-      dataSources,
       dataSourceDescription,
-      dataSourceId,
       dataSourceName,
-      dataSourceType,
-      queries,
-      queryStatus,
-      dataSourceProcessingMode,
-      kafkaOffset
+      processingMode,
+      querySchemaName,
+      datasources,
+      kafkaOffset,
+      submissionValue,
+      submissionRadioValue
     } = this.state;
     const { match, location, histoy } = this.props;
     var yesterday = Datetime.moment().subtract(1, "day");
@@ -370,79 +422,79 @@ class ScheduleQuery extends React.Component {
     };
 
     return (
-      <div>
-        <LogoSection />
-        <VerticalNavBar />
-        <form onSubmit={this.handleSubmit}>
-          <div>
-            <fieldset>
-              <legend>Query Schedule Creation</legend>
-              <div className="schedule-select-boxes">
-                <div>
-                  <label>
-                    This query being used to create the following schedule:
-                  </label>{" "}
-                  <input value={this.state.queryName} />
-                </div>
+      <div
+        style={{ display: "flex", minHeight: "100vh", flexDirection: "column" }}
+      >
+        <PageHeading />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              flex: "1"
+            }}
+          >
+            <div style={{ width: "900px" }}>
+              <Form onSubmit={this.handleSubmit}>
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Divider horizontal>Query Schedule Creation</Divider>
+                  <Form.Field>
+                    <label>Query being used to create this schedule</label>
+                    <Input fluid readOnly multiple={false} value={queryName} />
+                  </Form.Field>
+                  <Form.Field>
+                    <label>
+                      {" "}
+                      The query was created using this dataSchema:{" "}
+                    </label>
+                    <Input fluid readOnly value={dataSchemaName} />
+                  </Form.Field>
+                  <Form.Field>
+                    <label> Name of Query Schema: </label>
+                    <Input fluid readOnly value={querySchemaName} />
+                  </Form.Field>
 
-                <div>
-                  <label>
-                    This query was created using this DataSchema:
-                  </label>{" "}
-                  <input value={this.state.dataSchemaName} />
-                </div>
-
-                <div>
-                  <label>
-                    This query was created using this QuerySchema:
-                  </label>{" "}
-                  <input value={this.state.querySchemaName} />
-                </div>
-
-                <div>
-                  <label>
-                    Pick a Data Source that pertains to the DataSchema:
-                  </label>{" "}
-                  <select
-                    value={this.state.value}
-                    onChange={this.dataSourceChange}
-                  >
-                    <option value="">Choose a DataSource ...</option>
-                    {dataSources &&
-                      dataSources.map(dataSource => {
-                        return (
-                          <option value={dataSource.name}>
-                            {dataSource.name}
-                          </option>
-                        );
+                  <Form.Field required>
+                    <label>Choose a datasource:</label>
+                    <Dropdown
+                      placeholder="Choose a datasource"
+                      scrolling
+                      clearable
+                      fluid
+                      selection
+                      search
+                      noResultsMessage="Search again"
+                      multiple={false}
+                      options={datasources.map(source => {
+                        return {
+                          key: source.id,
+                          text: source.name,
+                          value: source.name
+                        };
                       })}
-                  </select>
-                </div>
-                {dataSources && (
-                  <div>
-                    <label>Description of DataSource:</label>
-                    <input value={this.state.dataSourceDescription} />
-                  </div>
-                )}
-                {dataSources && (
-                  <div>
-                    <label>DataSourceProcessingMode type:</label>
-                    <input value={this.state.dataSourceProcessingMode} />
-                  </div>
-                )}
-              </div>
-            </fieldset>
+                      header="SELECT A DATASOURCE"
+                      value={dataSourceName}
+                      onChange={this.dataSourceChange}
+                    />
+                  </Form.Field>
+                  <Form.Field>
+                    <label> ProcessingMode of Data Source: </label>
+                    <Input
+                      value={processingMode}
+                      onChange={this.handleChange}
+                      readOnly
+                    />
+                  </Form.Field>
+                </Segment>
 
-            {dataSourceProcessingMode && (
-              <div className="params-boxes">
-                <fieldset>
-                  <legend>Parameters</legend>
-                  <div>
-                    {dataSourceProcessingMode &&
-                    dataSourceProcessingMode === "Batch" ? (
+                {processingMode && (
+                  <Segment style={{ padding: "5em 1em" }} vertical>
+                    <Divider horizontal>Parameters</Divider>
+                    {processingMode && processingMode === "Batch" ? (
                       <BatchParams handleChange={this.handleChange} />
-                    ) : dataSourceProcessingMode &&
-                    dataSourceProcessingMode === "Streaming" ? (
+                    ) : processingMode && processingMode === "Streaming" ? (
                       <StreamingParams
                         onKafkaOffsetSelectionChange={
                           this.handleKafkaOffsetSelectionChange
@@ -451,55 +503,44 @@ class ScheduleQuery extends React.Component {
                         checked={this.state.checked}
                         handleChange={this.handleChange}
                         handleCheckboxChange={newCheckState =>
-                          this.setState({ checked: newCheckState })}
+                          this.setState({ checked: newCheckState })
+                        }
                       />
                     ) : null}
-                  </div>
-                </fieldset>
-              </div>
-            )}
+                  </Segment>
+                )}
 
-            <div>
-              <label>Choose a start date/time:</label>
-              <Datetime
-                onChange={this.dateChange}
-                value={this.state.date}
-                input={false}
-                isValidDate={validDate}
-                open={true}
-                utc={false}
-                onClickDay={value => alert("day" + value + "clicked")}
-              />
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Divider horizontal>Choose a Date </Divider>
+                  <Container style={{ width: "255px" }}>
+                    <div>
+                      <Datetime
+                        onChange={this.dateChange}
+                        value={this.state.date}
+                        input={false}
+                        isValidDate={validDate}
+                        open={true}
+                        utc={false}
+                        onClickDay={value => alert("day" + value + "clicked")}
+                      />
+                    </div>
+                  </Container>
+                </Segment>
+
+                <Form.Button
+                  positive
+                  fluid
+                  content="Submit Schedule"
+                  style={{ marginTop: "50px" }}
+                />
+              </Form>
             </div>
           </div>
-
-          <div className="btn-group">
-            <span className="input-group-btn">
-              <button
-                className="btnSubmit"
-                handleSubmit={this.handleSubmit}
-                type="submit"
-              >
-                Submit Schedule
-              </button>
-              <button
-                className="btnReset"
-                handleCancel={this.handleCancel}
-                type="reset"
-                onClick={() => {
-                  alert(
-                    "Are you sure you want to cancel? Doing so will reset this page."
-                  );
-                }}
-              >
-                Cancel
-              </button>
-            </span>
-          </div>
-        </form>
+        </div>
+        <PageFooter />
       </div>
     );
   }
 }
 
-export default withRouter(ScheduleQuery);
+export default ScheduleQuery;

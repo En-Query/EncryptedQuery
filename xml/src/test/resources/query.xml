@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<query schemaVersion="2.0" xmlns="http://enquery.net/encryptedquery/query" xmlns:qsch="http://enquery.net/encryptedquery/queryschema"
+	xmlns:dsch="http://enquery.net/encryptedquery/dataschema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+	<queryInfo>
+		<!-- this comment should be ignored -->
+		<queryId>ad547ad7-cf18-4a94-8d02-09ce95ba86d7</queryId>
+		<queryName>Books</queryName>
+		<cryptoSchemeId>Paillier</cryptoSchemeId>
+		<publicKey>eyJu</publicKey>
+		<numSelectors>1</numSelectors>
+		<hashBitSize>9</hashBitSize>
+		<hashKey>f47dae006b08cf4ebd0c</hashKey>
+		<numBitsPerDataElement>0</numBitsPerDataElement>
+		<dataChunkSize>1</dataChunkSize>
+		<numPartitionsPerDataElement>0</numPartitionsPerDataElement>
+		<qsch:querySchema>
+			<qsch:name>Books</qsch:name>
+			<qsch:selectorField>title</qsch:selectorField>
+			<qsch:field>
+				<qsch:name>price</qsch:name>
+			</qsch:field>
+			<qsch:field>
+				<qsch:name>title</qsch:name>
+				<qsch:size>12</qsch:size>
+				<qsch:maxArrayElements>2</qsch:maxArrayElements>
+			</qsch:field>
+			<dsch:dataSchema>
+				<dsch:name>Books</dsch:name>
+				<dsch:field>
+					<dsch:name>id</dsch:name>
+					<dsch:dataType>int</dsch:dataType>
+					<dsch:position>0</dsch:position>
+				</dsch:field>
+				<dsch:field>
+					<dsch:name>title</dsch:name>
+					<dsch:dataType>string</dsch:dataType>
+					<dsch:position>1</dsch:position>
+				</dsch:field>
+				<dsch:field>
+					<dsch:name>author</dsch:name>
+					<dsch:dataType>string</dsch:dataType>
+					<dsch:position>2</dsch:position>
+				</dsch:field>
+				<dsch:field>
+					<dsch:name>price</dsch:name>
+					<dsch:dataType>double</dsch:dataType>
+					<dsch:position>3</dsch:position>
+				</dsch:field>
+				<dsch:field>
+					<dsch:name>qty</dsch:name>
+					<dsch:dataType>int</dsch:dataType>
+					<dsch:position>4</dsch:position>
+				</dsch:field>
+			</dsch:dataSchema>
+		</qsch:querySchema>
+	</queryInfo>
+	<queryElements>
+		<entry key="0" value="IhYrmWcyE6gTk0mGC2Ij2C7qecLPuKLlSEUz6Bsml7NpFiJamkT86V+ZPqpJcwsww5Gzc5RmmtcyvSs78fTkA12C7vroAOmlM74x1Yf4do8UpHr3HgcqoxM4eZIcMLQv" />
+		<entry key="1" value="NksA0+I+RhXcWJdPFK/ZMSLwPVRs+p9XC3ON5hPZ3gQqbszbJCYSglYkS9pBP5MLPR0GVWtzZrzb1KvGPRPMV7T7muFtrUPuyXdiApreA2RpZrI+3G5hezhmPUi1Vu2v" />
+	</queryElements>
+</query>

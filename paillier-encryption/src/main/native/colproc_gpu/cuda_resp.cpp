@@ -510,19 +510,21 @@ void device_t::batch_modmul(query_t &query, uint32_t *oo, uint32_t *xx, uint32_t
 
 ////////////////////////////////////////////////////////////
 
-yao_t::yao_t(query_t &query, size_t batch_size) : query(query), batch_size(batch_size) {
+yao_t::yao_t(query_t &query, size_t batch_size) : query(query), batch_size(batch_size), weight(0) {
 }
 
 void yao_t::insert_chunk(size_t row, binnum_t chunk) {
-  if (chunk != 0) {
-    bins.insert_val_ptr(chunk, query.qelts.data()+row*query.w2, row);
-  }
+    if (chunk != 0) {
+	bins.insert_val_ptr(chunk, query.qelts.data()+row*query.w2, row);
+    }
+    weight++;
 }
 
 void yao_t::insert_chunk_bi(uint32_t *v, binnum_t chunk) {
-  if (chunk != 0) {
-    bins.insert_val_ptr(chunk, v, 0);//dummy row number
-  }
+    if (chunk != 0) {
+	bins.insert_val_ptr(chunk, v, 0);//dummy row number
+    }
+    weight++;
 }
 
 void yao_t::compute(device_t &dev, mpz_t result, int depth=0) {
@@ -542,6 +544,7 @@ void yao_t::compute(device_t &dev, mpz_t result, int depth=0) {
 
 void yao_t::clear() {
   this->bins.clear();
+  this->weight = 0;
 }
 
 void yao_t::dump() {

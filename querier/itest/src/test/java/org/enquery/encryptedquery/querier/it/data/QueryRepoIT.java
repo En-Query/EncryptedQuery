@@ -25,6 +25,7 @@ import java.util.Collection;
 import javax.inject.Inject;
 
 import org.apache.sshd.common.util.io.IoUtils;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
@@ -76,10 +77,9 @@ public class QueryRepoIT extends AbstractQuerierItest {
 		DataSchema ds = new DataSchema();
 		DataSchemaField dsf = new DataSchemaField();
 		dsf.setDataSchema(ds);
-		dsf.setDataType("int");
+		dsf.setDataType(FieldType.INT);
 		dsf.setFieldName("field1");
 		dsf.setPosition(0);
-		dsf.setIsArray(false);
 		ds.getFields().add(dsf);
 		ds.setName("Test Data Schema 1");
 		dataSchemaRepo.add(ds);
@@ -92,7 +92,6 @@ public class QueryRepoIT extends AbstractQuerierItest {
 		QuerySchemaField qsf = new QuerySchemaField();
 		qsf.setQuerySchema(qs);
 		qsf.setName("field1");
-		qsf.setLengthType("len type");
 		qsf.setMaxSize(88);
 		qsf.setMaxArrayElements(221);
 		qs.getFields().add(qsf);

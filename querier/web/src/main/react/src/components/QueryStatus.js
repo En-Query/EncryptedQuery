@@ -2,13 +2,21 @@ import React from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router-dom";
 import createHistory from "history/createBrowserHistory";
+import PageHeading from "./FixedMenu";
+import PageFooter from "./PageFooter";
+import _ from "lodash";
 
-import LogoSection from "./logo-section.js";
-import CreateQuerySchema from "./CreateQuerySchema";
-import CreateQuery from "./CreateQuery";
-import VerticalNavBar from "./NavigationBar.js";
-
-import "../css/QueryStatus.css";
+import {
+  Divider,
+  Segment,
+  Container,
+  Header,
+  Table,
+  Form,
+  Dropdown,
+  Loader,
+  Button
+} from "semantic-ui-react";
 
 import axios from "axios";
 
@@ -17,168 +25,233 @@ class QueryStatus extends React.Component {
     super(props);
 
     this.state = {
-      dataSchemas: [],
-      dataSchemaId: [],
-      dataSchemaUri: [],
-      dataSchemaName: [],
-      querySchemas: [],
-      querySchemaUri: [],
-      querySchemaId: [],
-      querySchemaName: [],
-      queryNames: [],
-      queryStatus: [],
+      dataschemas: [],
+      queryName: "",
+      queryschemas: [],
+      dataSchemaName: "",
+      queriesUri: "",
       queries: [],
-      querySelfUri: []
+      column: null,
+      direction: null,
+      querySelfUri: ""
     };
-
-    this.dataSchemaChange = this.dataSchemaChange.bind(this);
-    this.scheduleQuery = this.scheduleQuery.bind(this);
-    this.viewSchedules = this.viewSchedules.bind(this);
-    this.scheduleAgain = this.scheduleAgain.bind(this);
   }
 
   //invoke data fetch function inside interval timeout as well as outside of it
+  // async componentDidMount() {
+  //   await this.getSchemas();
+  //   await this.handleSchemaChange();
+  //   await this.getQuerySchemas();
+  //   await this.handleQuerySchemaChange();
+  //   await this.getQueryData();
+  //   this.interval = setInterval(() => this.getQueryData(), 7000);
+  // }
+
   componentDidMount() {
-    axios({
-      method: "get",
-      url: `/querier/api/rest/dataschemas`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({ dataSchemas: response.data.data });
-      })
-      .catch(error => console.log(error.response));
+    this.getData();
+  }
+
+  async getData() {
+    await this.getSchemas();
+    await this.handleSchemaChange();
+    await this.getQuerySchemas();
+    await this.handleQuerySchemaChange();
+    await this.getQueryData();
+    this.interval = setInterval(() => this.getQueryData(), 5000);
   }
 
   //prevent memory leak
   componentWillUnmount() {
-    clearTimeout(this.timeout);
+    clearInterval(this.interval);
   }
 
-  dataSchemaChange = e => {
-    const dataSchema = this.state.dataSchemas.find(
-      dataSchema => dataSchema.name === e.target.value
-    );
-    if (dataSchema) {
-      axios({
+  getSchemas = async () => {
+    try {
+      const { data } = await axios({
         method: "get",
-        url: `${dataSchema.selfUri}/queryschemas`,
+        url: "/querier/api/rest/dataschemas",
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
-      })
-        .then(response => {
-          console.log(response);
-          console.log(JSON.stringify(dataSchema.selfUri));
-          console.log(dataSchema.id);
-          this.setState(
-            {
-              querySchemas: response.data.data,
-              querySchemaSelfUri: response.data.data[0].selfUri,
-              selectedId: dataSchema.id
-            },
-            () => {
-              console.log(this.state.querySchemas);
-              console.log(this.state.querySchemaSelfUri);
-              console.log(this.state.selectedId);
-            }
-          );
-        })
-        .catch(error => console.log(error.response));
+      });
+      console.log(data);
+      const dataschemas = data.data;
+
+      this.setState({ dataschemas: dataschemas, isLoading: false });
+
+      console.log("This is the dataschema list:", dataschemas);
+    } catch (error) {
+      console.error(Error(`Error fetching results list: ${error.message}`));
     }
   };
 
-  querySchemaChange = e => {
-    const querySchema = this.state.querySchemas.find(
-      querySchema => querySchema.name === e.target.value
-    );
-    if (querySchema) {
-      const { id, name, selfUri } = querySchema;
-      this.setState(
-        {
-          querySchemaId: id,
-          querySchemaName: name,
-          querySchemaSelfUri: selfUri
-        },
-        () => {
-          console.log(this.state.querySchemaId);
-          this.getQueryData();
-        }
-      );
-    }
-  };
-
-  getQueryData = () => {
-    axios({
-      method: "get",
-      url: `${this.state.querySchemaSelfUri}/queries`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        // check if status is ENCRYPTED/SCHEDULED, will stop polling for updated status
-        if (response.data.data[0].status !== "Scheduled") {
-          this.timeout = setTimeout(() => this.getQueryData(), 10000);
-        }
-        console.log(response);
-        this.setState(
-          {
-            queries: response.data.data,
-            queryId: response.data.data[0].id,
-            queryName: response.data.data[0].name,
-            queryStatus: response.data.data[0].status,
-            querySelfUri: response.data.data[0].selfUri
-          },
-          () => {
-            console.log(this.state.queries);
-            console.log(this.state.queryId);
-            console.log(this.state.queryName);
-            console.log(this.state.queryStatus);
-            console.log(this.state.querySelfUri);
+  handleSchemaChange = async (e, { value }) => {
+    this.setState({ dataSchemaName: value }, () => {
+      console.log("Chosen dataSchema ---> ", this.state.dataSchemaName);
+      //also send a request the selfUri of the selected dataSchema
+    });
+    const schema = this.state.dataschemas.find(schema => schema.name === value);
+    if (schema) {
+      try {
+        const { data } = await axios({
+          method: "get",
+          url: schema.selfUri,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
           }
+        });
+        console.log(data);
+        this.setState({ queryschemaUri: data.data.querySchemasUri });
+        console.log(
+          "queryschemaUri from dataschema change ---> ",
+          this.state.queryschemaUri
         );
-      })
-      .catch(error => console.log(error.response));
+      } catch (error) {
+        console.error(
+          Error(`Error fetching specific schema: ${error.message}`)
+        );
+      }
+    }
+    this.getQuerySchemas();
+  };
+
+  getQuerySchemas = async () => {
+    const { queryschemaUri } = this.state;
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: queryschemaUri,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      console.log("Data from queryschemaUri fetch --> ", data);
+      const queryschemas = data.data;
+      this.setState({ queryschemas: queryschemas });
+    } catch (error) {
+      console.error(Error(`Error getting queryschemas: ${error.message}`));
+    }
+  };
+
+  handleQuerySchemaChange = async (e, { value }) => {
+    //handle queryschema dropdown change
+    this.setState({ querySchemaName: value }, () => {
+      console.log("Chosen querySchema ---> ", this.state.querySchemaName);
+    });
+    const schema = this.state.queryschemas.find(
+      schema => schema.name === value
+    );
+    if (schema) {
+      const { id, name, selfUri } = schema;
+      this.setState({
+        querySchemaId: id,
+        querySchemaName: name,
+        querySchemaSelfUri: selfUri
+      });
+      try {
+        const { data } = await axios({
+          method: "get",
+          url: selfUri,
+          headers: {
+            Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+          }
+        });
+        console.log(
+          "Specific querySchema data from selfUri request ---> ",
+          data
+        );
+        const queryschema = data.data;
+        this.setState({
+          queryschema: queryschema,
+          queriesUri: queryschema.queriesUri
+        });
+        console.log("queryschema ---> ", queryschema);
+        console.log("queriesUri --->", this.state.queriesUri);
+        localStorage.setItem("queriesUri", this.state.queriesUri);
+      } catch (error) {
+        console.error(
+          Error(`Error getting specific querySchema: ${error.message}`)
+        );
+      }
+    }
+    this.getQueryData();
+  };
+
+  getQueryData = async () => {
+    //get query data using queriesUri from above
+    const { queriesUri } = this.state;
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: queriesUri,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      console.log("queriesUri data --> ", data.data);
+      const queries = data.data;
+      this.setState({
+        queries: queries,
+        querySelfUri: data.data[0].selfUri
+      });
+      console.log(this.state.querySelfUri);
+    } catch (error) {
+      console.error(Error(`Error getting queriesUri data: ${error.message}`));
+    }
+  };
+
+  handleSort = clickedColumn => () => {
+    const { column, queries, direction } = this.state;
+
+    if (column !== clickedColumn) {
+      this.setState({
+        column: clickedColumn,
+        data: _.sortBy(queries, [clickedColumn]),
+        direction: "ascending"
+      });
+      return;
+    }
+
+    this.setState({
+      data: queries.reverse(),
+      direction: direction === "ascending" ? "descending" : "ascending"
+    });
   };
 
   handleButtonView = (status, querySelfUri) => {
     switch (status) {
       case `Created`:
-        return <button className="btnNoAction"> NO ACTION </button>;
+        return <Button className="btnNoAction"> NO ACTION </Button>;
       case `Encrypting`:
-        return <button> ENCRYPTING ... </button>;
+        return <Button> ENCRYPTING ... </Button>;
       case `Encrypted`:
         return (
-          <button
+          <Button
             onClick={e => this.scheduleQuery(e, querySelfUri)}
             type="button"
           >
             SCHEDULE
-          </button>
+          </Button>
         );
       case `Scheduled`:
         return (
           <React.Fragment>
-            <button
+            <Button
               onClick={e => this.viewSchedules(e, querySelfUri)}
               type="button"
             >
               VIEW SCHEDULES{" "}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={e => this.scheduleAgain(e, querySelfUri)}
               type="button"
             >
               SCHEDULE AGAIN{" "}
-            </button>
+            </Button>
           </React.Fragment>
         );
       case `Failed`:
-        return <button className="btnFailed"> Failed </button>;
+        return <Button color="red"> Failed </Button>;
       default:
         return null;
     }
@@ -224,100 +297,138 @@ class QueryStatus extends React.Component {
 
   render() {
     const {
-      dataSchemas,
-      dataSchemaId,
-      querySchemas,
+      dataschemas,
+      queryschemas,
+      dataSchemaName,
       querySchemaName,
-      querySchema,
-      queryNames,
-      queryStatus,
       queries,
-      query,
-      status
+      column,
+      direction
     } = this.state;
-    const {
-      match: {
-        params: { querySelfUri }
-      }
-    } = this.props;
+    const { match: { params: { querySelfUri } } } = this.props;
 
     return (
-      <div>
-        <LogoSection />
-        <VerticalNavBar />
-        <form onSubmit={this.handleSubmit}>
-          <fieldset>
-            <legend>Query Status</legend>
-            <div className="status-selectboxes">
-              <div>
-                <label>
-                  Pick a DataSchema to filter down available QuerySchemas:
-                </label>{" "}
-                <select
-                  value={this.state.value}
-                  onChange={this.dataSchemaChange}
-                >
-                  <option value="">Choose DataSchema ...</option>
-                  {dataSchemas &&
-                    dataSchemas.length > 0 &&
-                    dataSchemas.map(dataSchema => {
-                      return (
-                        <option value={dataSchema.name}>
-                          {dataSchema.name}
-                        </option>
-                      );
-                    })}
-                </select>
-              </div>
+      <div
+        style={{ display: "flex", minHeight: "100vh", flexDirection: "column" }}
+      >
+        <PageHeading />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              flex: "1"
+            }}
+          >
+            <div style={{ width: "1100px" }}>
+          <Form onSubmit={this.handleSubmit}>
+            <Segment style={{ padding: "5em 1em" }} vertical>
+              <Divider horizontal>Query Status</Divider>
+              <Form.Field required>
+                <label>Select a Data Schema</label>
+                <Dropdown
+                  placeholder="Select data schema"
+                  scrolling
+                  clearable
+                  fluid
+                  selection
+                  search
+                  noResultsMessage="Try a different Search"
+                  multiple={false}
+                  options={dataschemas.map(schema => {
+                    return {
+                      key: schema.id,
+                      text: schema.name,
+                      value: schema.name
+                    };
+                  })}
+                  header="PLEASE SELECT A DATASCHEMA"
+                  value={dataSchemaName}
+                  onChange={this.handleSchemaChange}
+                  required
+                />
+              </Form.Field>
+              <Form.Field required>
+                <label>Select a Query Schema</label>
+                <Dropdown
+                  placeholder="Select query schema"
+                  scrolling
+                  clearable
+                  fluid
+                  selection
+                  search
+                  noResultsMessage="Try a different Search"
+                  multiple={false}
+                  options={queryschemas.map(schema => {
+                    return {
+                      key: schema.id,
+                      text: schema.name,
+                      value: schema.name
+                    };
+                  })}
+                  header="PLEASE SELECT A QUERYSCHEMA"
+                  value={querySchemaName}
+                  onChange={this.handleQuerySchemaChange}
+                  required
+                />
+              </Form.Field>
+            </Segment>
+          </Form>
 
-              <div>
-                <label>
-                  Pick a QuerySchema to view its corresponding queries status:
-                </label>{" "}
-                <select
-                  value={this.state.querySchemaName}
-                  onChange={this.handleChange}
-                  onChange={this.querySchemaChange}
+          <Divider horizontal>QUERIES TABLE</Divider>
+          <Table sortable compact celled>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell
+                  sorted={column === "name" ? direction : null}
+                  onClick={this.handleSort("name")}
                 >
-                  <option value="">Choose QuerySchema ...</option>
-                  {querySchemas &&
-                    querySchemas.map(querySchema => {
-                      return (
-                        <option value={querySchema.name}>
-                          {querySchema.name}
-                        </option>
-                      );
-                    })}
-                </select>
-              </div>
-            </div>
-          </fieldset>
-        </form>
+                  Query Name
+                </Table.HeaderCell>
+                <Table.HeaderCell
+                  sorted={column === "id" ? direction : null}
+                  onClick={this.handleSort("id")}
+                >
+                  Query Id
+                </Table.HeaderCell>
+                <Table.HeaderCell
+                  sorted={column === "selfUri" ? direction : null}
+                  onClick={this.handleSort("selfUri")}
+                >
+                  SelfUri
+                </Table.HeaderCell>
+                <Table.HeaderCell
+                  sorted={column === "status" ? direction : null}
+                  onClick={this.handleSort("status")}
+                >
+                  Status
+                </Table.HeaderCell>
+                <Table.HeaderCell>Action</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
 
-        <table id="queries">
-          <caption> Queries </caption>
-          <tr>
-            <th>Query Name</th>
-            <th>Status</th>
-            <th>SelffUri</th>
-            <th>Action</th>
-          </tr>
-          <React.Fragment>
-            {this.state.queries.map(query => {
-              return (
-                <tr>
-                  <td key={query.name}>{query.name}</td>
-                  <td key={query.status}>{query.status}</td>
-                  <td key={query.selfUri}>{query.selfUri}</td>
-                  <td>
-                    {" "}
-                    {this.handleButtonView(query.status, query.selfUri)}{" "}
-                  </td>
-                </tr>
-              );
-            })}
-          </React.Fragment>
-        </table>
+            <Table.Body>
+              {Object.values(queries).map(({ name, selfUri, status, id }) => {
+                return (
+                  <Table.Row>
+                    <Table.Cell>{name}</Table.Cell>
+                    <Table.Cell>{id}</Table.Cell>
+                    <Table.Cell>{selfUri}</Table.Cell>
+                    <Table.Cell>{status}</Table.Cell>
+                    <Table.Cell>
+                      {this.handleButtonView(status, selfUri)}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        </div>
+        </div>
+        </div>
+          <PageFooter />
       </div>
     );
   }

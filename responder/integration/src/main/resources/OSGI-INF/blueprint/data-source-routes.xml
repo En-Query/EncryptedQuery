@@ -30,7 +30,7 @@
 			<from uri="direct:/datasources"/>
 			
 			<to uri="bean:dataSourceRegistry?method=list" />
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.DataSourceResources"/>
+			<bean ref="dataSourceConverter" method="toXMLDataSources"/>
 			<to uri="direct:success"/>
 		</route>
 
@@ -60,8 +60,8 @@
 				<stop/>
 			</filter>
 			
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.DataSourceResource"/>
-			
+			<bean ref="dataSourceConverter" method="toXMLDataSource"/>
+
 			<to uri="direct:success"/>
 		</route>
 
@@ -80,7 +80,8 @@
 			</filter>
 			
 			<bean ref="dataSourceRegistry" method="listForDataSchema(${body})"/>
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.DataSourceResources"/>
+			<bean ref="dataSourceConverter" method="toXMLDataSources"/>
+
 			<to uri="direct:success"/>
 		</route>
 	</routeContext>

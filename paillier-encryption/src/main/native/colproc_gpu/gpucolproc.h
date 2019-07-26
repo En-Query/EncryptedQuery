@@ -25,6 +25,8 @@
 #include "resources.h"
 
 #include <cstdint>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -32,6 +34,9 @@
 
 const std::size_t BATCH_SIZE = 8192;
 const std::size_t DEVICE_W = 96; 
+
+extern bool logging;
+extern std::string log_file_prefix;
 
 extern std::mutex cm;
 #define COUT_BEGIN { std::lock_guard<std::mutex> cguard(cm);
@@ -47,6 +52,9 @@ typedef struct colproc_t {
     query_t *query;
     derooij_ctx_t derooij_ctx;
     std::shared_ptr<device_t> device;
+    bool use_logging;
+    std::string log_file_path;
+    std::ofstream logfile;
     colproc_t(query_t *query, size_t batch_size);
     ~colproc_t();
     bool insert_chunk(size_t row, uint32_t chunk);

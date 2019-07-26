@@ -18,6 +18,9 @@ package org.enquery.encryptedquery.responder.business.execution;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
@@ -40,5 +43,33 @@ public interface ExecutionUpdater {
 	 * @throws JobExecutionException
 	 */
 	Execution create(DataSchema dataSchema, DataSource dataSource, InputStream inputStream) throws IOException, JobExecutionException;
+
+
+	/**
+	 * Creates new persistent JPA Execution along with its query from the Execution XML stream. Also
+	 * schedules the execution with the Scheduler.
+	 * 
+	 * @param dataSchema Parent data schema. Not null.
+	 * @param dataSource Parent data source. Not null.
+	 * @param reader XML reader.
+	 * @return Newly created Execution JPA entity. Not null.
+	 * 
+	 * @throws IOException Something failed.
+	 * @throws JobExecutionException
+	 */
+	// Execution createFromXMLReader(DataSchema dataSchema, DataSource dataSource, XMLEventReader
+	// reader) throws IOException, JobExecutionException;
+
+	/**
+	 * Stores/Schedules multiple executions with the Scheduler at once.
+	 * 
+	 * @param inputStream Execution Import XML input stream.
+	 * @return List of newly created Execution JPA entities. Not null.
+	 * 
+	 * @throws IOException Something failed.
+	 * @throws JobExecutionException
+	 * @throws XMLStreamException
+	 */
+	List<Execution> createFromImportXML(InputStream inputStream) throws IOException, JobExecutionException, XMLStreamException;
 
 }

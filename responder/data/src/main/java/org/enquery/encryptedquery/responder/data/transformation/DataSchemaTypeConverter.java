@@ -16,32 +16,33 @@
  */
 package org.enquery.encryptedquery.responder.data.transformation;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.camel.Converter;
-import org.apache.camel.Exchange;
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
-import org.enquery.encryptedquery.responder.data.service.RestServiceRegistry;
+import org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResources;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Converter
-public class DataSchemaTypeConverter {
+@Component(service = DataSchemaTypeConverter.class)
+public class DataSchemaTypeConverter extends org.enquery.encryptedquery.xml.transformation.DataSchemaTypeConverter {
 
 	private static final Logger log = LoggerFactory.getLogger(DataSchemaTypeConverter.class);
 
-	@Converter
-	public static DataSchema toDataSchemaJPAEntity(org.enquery.encryptedquery.xml.schema.DataSchema xmlDSchema) {
+	@Reference(target = "(type=rest)")
+	private ResourceUriRegistry registry;
+
+	public DataSchema toDataSchemaJPAEntity(org.enquery.encryptedquery.xml.schema.DataSchema xmlDSchema) {
 		Validate.notNull(xmlDSchema);
 		Validate.notNull(xmlDSchema.getField());
 
@@ -54,9 +55,9 @@ public class DataSchemaTypeConverter {
 
 			DataSchemaField dsf = new DataSchemaField();
 			dsf.setDataSchema(result);
-			dsf.setDataType(element.getDataType());
+			dsf.setDataType(FieldType.fromExternalName(element.getDataType()));
 			dsf.setFieldName(element.getName());
-			dsf.setIsArray(element.isIsArray());
+			// dsf.setIsArray(element.isIsArray());
 			dsf.setPosition(element.getPosition());
 			result.getFields().add(dsf);
 		}
@@ -67,15 +68,14 @@ public class DataSchemaTypeConverter {
 		return result;
 	}
 
-	@Converter
-	public static org.enquery.encryptedquery.xml.schema.DataSchema toXMLDataSchema(DataSchema ds) {
+	public org.enquery.encryptedquery.xml.schema.DataSchema toXMLDataSchema(DataSchema ds) {
 		org.enquery.encryptedquery.xml.schema.DataSchema result = new org.enquery.encryptedquery.xml.schema.DataSchema();
 		result.setName(ds.getName());
 		for (DataSchemaField f : ds.getFields()) {
 			org.enquery.encryptedquery.xml.schema.DataSchema.Field e = new org.enquery.encryptedquery.xml.schema.DataSchema.Field();
-			e.setIsArray(f.getIsArray());
+			// e.setIsArray(f.getIsArray());
 			e.setName(f.getFieldName());
-			e.setDataType(f.getDataType());
+			e.setDataType(f.getDataType().getExternalName());
 			e.setPosition(f.getPosition());
 			result.getField().add(e);
 		}
@@ -86,39 +86,36 @@ public class DataSchemaTypeConverter {
 		return result;
 	}
 
-	@Converter
-	public static DataSchemaResources toXMLDataSchemas(Collection<DataSchema> list,
-			Exchange exchange) throws UnsupportedEncodingException, URISyntaxException {
+	public DataSchemaResource jpaToResource(DataSchema dataSchema) {
+
+		org.enquery.encryptedquery.xml.schema.DataSchema xmlSchema = toXMLDataSchema(dataSchema);
+
+		DataSchemaResource resource = new DataSchemaResource();
+		resource.setId(dataSchema.getId());
+		resource.setDataSchema(xmlSchema);
+		resource.setSelfUri(registry.dataSchemaUri(dataSchema.getId()));
+		resource.setDataSourcesUri(registry.dataSourceUri(dataSchema.getId()));
+
+		return resource;
+	}
+
+	public DataSchemaResources toXMLDataSchemas(Collection<DataSchema> list) {
 		Validate.notNull(list);
-
-		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
-
 		DataSchemaResources result = new DataSchemaResources();
 		for (DataSchema dataSchema : list) {
-			org.enquery.encryptedquery.xml.schema.DataSchema xmlSchema = new org.enquery.encryptedquery.xml.schema.DataSchema();
-			xmlSchema.setName(dataSchema.getName());
-			xmlSchema.getField()
-					.addAll(toXMLDataSchemaElements(dataSchema.getFields()));
-
-			DataSchemaResource resource = new DataSchemaResource();
-			resource.setId(dataSchema.getId());
-			resource.setDataSchema(xmlSchema);
-			resource.setSelfUri(registry.dataSchemaUri(dataSchema.getId()));
-			resource.setDataSourcesUri(registry.dataSourceUri(dataSchema.getId()));
-
+			DataSchemaResource resource = jpaToResource(dataSchema);
 			result.getDataSchemaResource().add(resource);
 		}
 		return result;
 	}
 
-	@Converter
-	public static Collection<org.enquery.encryptedquery.xml.schema.DataSchema.Field> toXMLDataSchemaElements(Collection<DataSchemaField> fields) {
+	public Collection<org.enquery.encryptedquery.xml.schema.DataSchema.Field> toXMLDataSchemaElements(Collection<DataSchemaField> fields) {
 		List<org.enquery.encryptedquery.xml.schema.DataSchema.Field> result = new ArrayList<>();
 		for (DataSchemaField field : fields) {
 			org.enquery.encryptedquery.xml.schema.DataSchema.Field xmlField = new org.enquery.encryptedquery.xml.schema.DataSchema.Field();
 			xmlField.setName(field.getFieldName());
-			xmlField.setDataType(field.getDataType());
-			xmlField.setIsArray(field.getIsArray());
+			xmlField.setDataType(field.getDataType().getExternalName());
+			// xmlField.setIsArray(field.getIsArray());
 			xmlField.setPosition(field.getPosition());
 			result.add(xmlField);
 		}

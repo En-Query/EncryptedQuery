@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.querier.it.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -28,6 +29,7 @@ import java.util.Collection;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.entity.json.DataSchemaCollectionResponse;
@@ -85,7 +87,14 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		sampleData.createDataSource(phoneDataSchema);
 
 		// emulate scenario where a field is added to our data schema in Responder
-		DataSchemaField subjectField = phoneDataSchema.getFields().remove(0);
+		// we delete it from the local DB
+		DataSchemaField durationField = phoneDataSchema
+				.getFields()
+				.stream()
+				.filter(f -> f.getFieldName().equals("duration"))
+				.findFirst()
+				.get();
+		phoneDataSchema.getFields().remove(durationField);
 		dataSchemaRepo.update(phoneDataSchema);
 
 		// validate that the field was actually deleted
@@ -95,7 +104,7 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		assertEquals(originalFieldCount - 1, phoneDataSchema.getFields().size());
 		DataSchemaField field = phoneDataSchema.getFields().stream().filter(
 				ds -> ds.getFieldName()
-						.equals(subjectField.getFieldName()))
+						.equals(durationField.getFieldName()))
 				.findFirst().orElse(null);
 		assertNull(field);
 
@@ -110,14 +119,16 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 
 		field = phoneDataSchema.getFields().stream().filter(
 				ds -> ds.getFieldName()
-						.equals(subjectField.getFieldName()))
+						.equals(durationField.getFieldName()))
 				.findFirst().orElse(null);
 
 		assertNotNull(field);
 
 		// now emulate update to field data type is changed
-		String originalFieldType = field.getDataType();
-		field.setDataType("bad");
+		FieldType originalFieldType = field.getDataType();
+		field.setDataType(FieldType.INT);
+		assertNotEquals(originalFieldType, FieldType.INT);
+
 		dataSchemaRepo.update(phoneDataSchema);
 		phoneDataSchema = dataSchemaRepo.findByName("Phone Record");
 		assertEquals(originalFieldCount, phoneDataSchema.getFields().size());
@@ -125,11 +136,11 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		log.info("After field type update: " + phoneDataSchema);
 		field = phoneDataSchema.getFields().stream().filter(
 				ds -> ds.getFieldName()
-						.equals(subjectField.getFieldName()))
+						.equals(durationField.getFieldName()))
 				.findFirst().orElse(null);
 
 		assertNotNull(field);
-		assertEquals("bad", field.getDataType());
+		assertEquals(FieldType.INT, field.getDataType());
 
 		// A new fetch from Responder should recreate the deleted field
 		validateDataSchemas(retrieveDataSchemas());
@@ -138,7 +149,7 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		log.info("After field type restored: " + phoneDataSchema);
 		field = phoneDataSchema.getFields().stream().filter(
 				ds -> ds.getFieldName()
-						.equals(subjectField.getFieldName()))
+						.equals(durationField.getFieldName()))
 				.findFirst().orElse(null);
 		assertNotNull(field);
 		assertEquals(originalFieldType, field.getDataType());
@@ -147,9 +158,9 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		// Emulate a field was removed in Responder
 		// We add a field in Querier DB, which will be deleted during next fetch
 		DataSchemaField tobeRemovedField = new DataSchemaField();
-		tobeRemovedField.setDataType("float");
+		tobeRemovedField.setDataType(FieldType.FLOAT);
 		tobeRemovedField.setFieldName("ToBeRemoved");
-		tobeRemovedField.setIsArray(false);
+		// tobeRemovedField.setIsArray(false);
 		tobeRemovedField.setPosition(199);
 		tobeRemovedField.setDataSchema(phoneDataSchema);
 		phoneDataSchema.getFields().add(tobeRemovedField);
@@ -200,11 +211,11 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		// it should return the data schemas from the database
 		// responderClt.stop();
 		int oldPort = responderPort();
-		configuteResponderPort(oldPort + 10);
+		configureResponderPort(oldPort + 10);
 		try {
 			validateDataSchemas(retrieveDataSchemas());
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 
 		// emulate Responder http error (404 in this case)
@@ -212,11 +223,11 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		// service URI is not found (404)
 		// it should return the data schemas from the database
 		// responderClt.stop();
-		configuteResponderPort(8182);
+		configureResponderPort(8182);
 		try {
 			validateDataSchemas(retrieveDataSchemas());
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 	}
 
@@ -263,8 +274,8 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		assertNotNull(expectedField);
 		assertNotNull(actualField);
 		assertEquals(expectedField.getFieldName(), actualField.getName());
-		assertEquals(expectedField.getDataType(), actualField.getDataType());
-		assertEquals(expectedField.getIsArray(), actualField.getIsArray());
+		assertEquals(expectedField.getDataType().getExternalName(), actualField.getDataType());
+		// assertEquals(expectedField.getIsArray(), actualField.getIsArray());
 		assertEquals(expectedField.getPosition(), actualField.getPosition());
 	}
 

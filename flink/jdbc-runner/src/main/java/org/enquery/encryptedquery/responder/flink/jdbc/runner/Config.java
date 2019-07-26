@@ -46,20 +46,15 @@ public @interface Config {
 			description = "Name of the DataSchema describing the fields and partitioners.")
 	String data_schema_name();
 
-	@AttributeDefinition(name = ".computer.threshold",
+	@AttributeDefinition(name = ".column.buffer.memory.mb",
 			required = false,
-			description = "Amount of data to process before consolidation.   Larger numbers require more memory per task. Defaults to 30000")
-	String _compute_threshold();
+			description = "Amount of memory in MB to be allocated for Column processing.")
+	String _column_buffer_memory_mb();
 
 	@AttributeDefinition(name = ".flink.parallelism",
 			required = false,
 			description = "Number of Flink concurrent tasks assigned to execute this query.  Defaults to Flinks configured default.")
 	String _flink_parallelism();
-
-	@AttributeDefinition(name = ".column.encryption.partition.count",
-			required = false,
-			description = "How many partitions to create for column encryption. Defaults to 1.")
-	String _column_encryption_partition_count();
 
 	@AttributeDefinition(name = "jdbc.driver",
 			required = true,
@@ -86,11 +81,11 @@ public @interface Config {
 			description = "Additional arguments to be passed to Flink 'run' command when executing the query.")
 	String _additional_flink_arguments();
 
-	@AttributeDefinition(name = ".jar.file.path",
+	@AttributeDefinition(name = "Application jar file",
 			required = true,
-			description = "Path to the flink-jdbc jar file.  This is the jar file implementing the query execution.")
-	String _jar_file_path();
-
+			description = "Fully Qualified application jar file name.")
+	String _application_jar_path();
+	
 	@AttributeDefinition(name = "Run Directory",
 			required = true,
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."

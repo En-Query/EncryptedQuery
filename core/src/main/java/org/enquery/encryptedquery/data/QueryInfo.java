@@ -18,8 +18,10 @@ package org.enquery.encryptedquery.data;
 
 import java.io.Serializable;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +64,7 @@ public class QueryInfo implements Serializable {
 	// results in a very low
 	// false positive rate for variable length selectors and a zero false positive rate
 	// for selectors of fixed size < 32 bits
-	private boolean embedSelector;
+	// private boolean embedSelector;
 
 	private QuerySchema querySchema;
 
@@ -102,9 +104,9 @@ public class QueryInfo implements Serializable {
 		return dataChunkSize;
 	}
 
-	public boolean getEmbedSelector() {
-		return embedSelector;
-	}
+	// public boolean getEmbedSelector() {
+	// return embedSelector;
+	// }
 
 	public Map<String, Object> toMap() {
 		Map<String, Object> queryInfo = new HashMap<>();
@@ -116,7 +118,7 @@ public class QueryInfo implements Serializable {
 		queryInfo.put("numBitsPerDataElement", numBitsPerDataElement);
 		queryInfo.put("numPartitionsPerDataElement", numPartitionsPerDataElement);
 		queryInfo.put("dataChunkSize", dataChunkSize);
-		queryInfo.put("embedSelector", embedSelector);
+		// queryInfo.put("embedSelector", embedSelector);
 		return queryInfo;
 	}
 
@@ -139,7 +141,7 @@ public class QueryInfo implements Serializable {
 		builder.append("\n      hashKey (" + hashKey + ")");
 		builder.append("\n      dataChunkSize (" + dataChunkSize + ")");
 		builder.append("\n      Query Name (" + queryName + ")");
-		builder.append("\n      embedSelector (" + embedSelector + ")");
+		// builder.append("\n embedSelector (" + embedSelector + ")");
 		logger.info(builder.toString());
 	}
 
@@ -193,16 +195,16 @@ public class QueryInfo implements Serializable {
 	 * 
 	 * @return the embedSelector
 	 */
-	public boolean isEmbedSelector() {
-		return embedSelector;
-	}
-
-	/**
-	 * @param embedSelector the embedSelector to set
-	 */
-	public void setEmbedSelector(boolean embedSelector) {
-		this.embedSelector = embedSelector;
-	}
+	// public boolean isEmbedSelector() {
+	// return embedSelector;
+	// }
+	//
+	// /**
+	// * @param embedSelector the embedSelector to set
+	// */
+	// public void setEmbedSelector(boolean embedSelector) {
+	// this.embedSelector = embedSelector;
+	// }
 
 	public String getCryptoSchemeId() {
 		return cryptoSchemeId;
@@ -219,4 +221,117 @@ public class QueryInfo implements Serializable {
 	public void setPublicKey(PublicKey publicKey) {
 		this.publicKey = publicKey;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((cryptoSchemeId == null) ? 0 : cryptoSchemeId.hashCode());
+		result = prime * result + dataChunkSize;
+		// result = prime * result + (embedSelector ? 1231 : 1237);
+		result = prime * result + hashBitSize;
+		result = prime * result + ((hashKey == null) ? 0 : hashKey.hashCode());
+		result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
+		result = prime * result + numBitsPerDataElement;
+		result = prime * result + numPartitionsPerDataElement;
+		result = prime * result + numSelectors;
+		result = prime * result + ((queryName == null) ? 0 : queryName.hashCode());
+		result = prime * result + ((querySchema == null) ? 0 : querySchema.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		QueryInfo other = (QueryInfo) obj;
+		if (cryptoSchemeId == null) {
+			if (other.cryptoSchemeId != null) {
+				return false;
+			}
+		} else if (!cryptoSchemeId.equals(other.cryptoSchemeId)) {
+			return false;
+		}
+		if (dataChunkSize != other.dataChunkSize) {
+			return false;
+		}
+		// if (embedSelector != other.embedSelector) {
+		// return false;
+		// }
+		if (hashBitSize != other.hashBitSize) {
+			return false;
+		}
+		if (hashKey == null) {
+			if (other.hashKey != null) {
+				return false;
+			}
+		} else if (!hashKey.equals(other.hashKey)) {
+			return false;
+		}
+		if (identifier == null) {
+			if (other.identifier != null) {
+				return false;
+			}
+		} else if (!identifier.equals(other.identifier)) {
+			return false;
+		}
+		if (numBitsPerDataElement != other.numBitsPerDataElement) {
+			return false;
+		}
+		if (numPartitionsPerDataElement != other.numPartitionsPerDataElement) {
+			return false;
+		}
+		if (numSelectors != other.numSelectors) {
+			return false;
+		}
+		if (queryName == null) {
+			if (other.queryName != null) {
+				return false;
+			}
+		} else if (!queryName.equals(other.queryName)) {
+			return false;
+		}
+		if (querySchema == null) {
+			if (other.querySchema != null) {
+				return false;
+			}
+		} else if (!querySchema.equals(other.querySchema)) {
+			return false;
+		}
+		if (!publicKeysEquals(publicKey, other.publicKey)) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * @param publicKey2
+	 * @param publicKey3
+	 * @return
+	 */
+	private boolean publicKeysEquals(PublicKey pk1, PublicKey pk2) {
+		if (pk1 == null) {
+			if (pk2 != null) {
+				return false;
+			}
+		}
+		if (pk2 == null) {
+			if (pk1 != null) {
+				return false;
+			}
+		}
+
+		return Arrays.equals(pk1.getEncoded(), pk2.getEncoded()) &&
+				Objects.equals(pk1.getAlgorithm(), pk2.getAlgorithm()) &&
+				Objects.equals(pk1.getFormat(), pk2.getFormat());
+	}
+
+
 }

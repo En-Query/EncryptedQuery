@@ -39,6 +39,9 @@ public class Execution {
 	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
+	@Column(name = "uuid", nullable = false)
+	private String uuid;
+
 	@Column(nullable = false, name = "received_ts")
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date receivedTime;
@@ -79,12 +82,23 @@ public class Execution {
 	@Column(name = "error_msg")
 	private String errorMsg;
 
+	@Column(name = "canceled")
+	private Boolean canceled;
+
 	public Integer getId() {
 		return id;
 	}
 
 	public void setId(Integer id) {
 		this.id = id;
+	}
+
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
 	}
 
 	public Date getStartTime() {
@@ -210,6 +224,14 @@ public class Execution {
 
 	public void setErrorMsg(String errorMsg) {
 		this.errorMsg = errorMsg;
+	}
+
+	public Boolean isCanceled() {
+		return canceled;
+	}
+
+	public void setCanceled(Boolean canceled) {
+		this.canceled = canceled;
 	}
 
 	@Override

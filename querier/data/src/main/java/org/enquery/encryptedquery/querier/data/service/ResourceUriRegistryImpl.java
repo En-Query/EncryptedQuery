@@ -45,8 +45,8 @@ public class ResourceUriRegistryImpl implements ResourceUriRegistry {
 	 */
 	public void setBaseUri(String baseUri) {
 		this.baseUri = baseUri;
-		Resource r = make(DATASCHEMA, "dataschemas");
-		add(r);
+		Resource dataSchemasRes = make(DATASCHEMA, "dataschemas");
+		add(dataSchemasRes);
 	}
 
 	private Resource make(String name, String relativeUri) {

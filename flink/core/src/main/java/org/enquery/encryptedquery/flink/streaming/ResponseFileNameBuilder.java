@@ -27,30 +27,30 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Builds response file names (final and inProgress), including parent directory. In progress
  * variation, used to mark that the window was started but not finished yet.
  */
 public class ResponseFileNameBuilder {
 
+	private static final Logger log = LoggerFactory.getLogger(ResponseFileNameBuilder.class);
+
 	private static final String DEFAULT_FORMAT_STRING = "HHmmss";
 	private static final ZoneId zoneId = ZoneId.of("UTC");
 	private static final DateTimeFormatter fileNameDateTimeFormatter = DateTimeFormatter.ofPattern(DEFAULT_FORMAT_STRING).withZone(zoneId);
-	public static final String IN_PROGRESS_SUFFIX = "inProgress";
+	public static final String IN_PROGRESS_SUFFIX = "xml.inProgress";
+	public static final String WINDOW_COMPLETE_SUFFIX = "xml.windowComplete";
+	public static final String FINAL_SUFFIX = "xml";
 
 	public static Path makeFinalFileName(String responseFilePath, long start, long end) throws IOException {
 		return makeFinalFileName(Paths.get(responseFilePath), start, end);
 	}
 
 	public static Path makeFinalFileName(Path responseFilePath, long start, long end) throws IOException {
-		OffsetDateTime startTime = Instant.ofEpochMilli(start).atOffset(ZoneOffset.UTC);
-		OffsetDateTime endTime = Instant.ofEpochMilli(end).atOffset(ZoneOffset.UTC);
-
-		String fname = String.format("%s-%s.xml",
-				fileNameDateTimeFormatter.format(startTime),
-				fileNameDateTimeFormatter.format(endTime));
-
-		return makeParentDir(responseFilePath, endTime).resolve(fname);
+		return makeFileName(responseFilePath, start, end, FINAL_SUFFIX);
 	}
 
 	public static Path makeInProgressFileName(String responseFilePath, long start, long end) throws IOException {
@@ -58,16 +58,39 @@ public class ResponseFileNameBuilder {
 	}
 
 	public static Path makeInProgressFileName(Path responseFilePath, long start, long end) throws IOException {
-		OffsetDateTime startTime = Instant.ofEpochMilli(start).atOffset(ZoneOffset.UTC);
-		OffsetDateTime endTime = Instant.ofEpochMilli(end).atOffset(ZoneOffset.UTC);
+		return makeFileName(responseFilePath, start, end, IN_PROGRESS_SUFFIX);
+	}
 
-		String fname = String.format("%s-%s.xml.%s",
+	public static boolean createEmptyInProgressFile(String responseFilePath, long start, long end) throws IOException {
+		return createFile(makeInProgressFileName(responseFilePath, start, end));
+	}
+
+	private static boolean createFile(Path file) throws IOException {
+		boolean result = true;
+		try {
+			Files.createFile(file);
+		} catch (FileAlreadyExistsException ignore) {
+			// ok to ignore, file was previously created
+			result = false;
+		}
+
+		if (log.isDebugEnabled() && result) {
+			log.debug("Created file: {}", file);
+		}
+		return result;
+	}
+
+
+	private static Path makeFileName(Path responseFilePath, long start, long end, String suffix) throws IOException {
+		final OffsetDateTime startTime = Instant.ofEpochMilli(start).atOffset(ZoneOffset.UTC);
+		final OffsetDateTime endTime = Instant.ofEpochMilli(end).atOffset(ZoneOffset.UTC);
+
+		final String fname = String.format("%s-%s.%s",
 				fileNameDateTimeFormatter.format(startTime),
 				fileNameDateTimeFormatter.format(endTime),
-				IN_PROGRESS_SUFFIX);
+				suffix);
 
-		Path filePath = makeParentDir(responseFilePath, endTime);
-		return filePath.resolve(fname);
+		return makeParentDir(responseFilePath, endTime).resolve(fname);
 	}
 
 	private static Path makeParentDir(Path path, OffsetDateTime endTime) throws IOException {
@@ -78,18 +101,36 @@ public class ResponseFileNameBuilder {
 		return filePath;
 	}
 
-	public static boolean createEmptyInProgressFile(String responseFilePath, long start, long end) throws IOException {
-		Path path = ResponseFileNameBuilder
-				.makeInProgressFileName(responseFilePath, start, end);
+	/**
+	 * @param responseFilePath
+	 * @param start
+	 * @param maxTimestamp
+	 * @return
+	 * @throws IOException
+	 */
+	// public static boolean createWindowCompleteFile(Path responseFilePath, long start, long end)
+	// throws IOException {
+	// return createFile(makeWindowCompleteFileName(responseFilePath, start, end));
+	// }
 
-		boolean result = true;
-		Files.createDirectories(path.getParent());
-		try {
-			Files.createFile(path);
-		} catch (FileAlreadyExistsException ignore) {
-			// ok to ignore, file was previously created
-			result = false;
-		}
-		return result;
+	/**
+	 * @param responseFilePath
+	 * @param start
+	 * @param end
+	 * @return
+	 * @throws IOException
+	 */
+	// public static Path makeWindowCompleteFileName(Path responseFilePath, long start, long end)
+	// throws IOException {
+	// return makeFileName(responseFilePath, start, end, WINDOW_COMPLETE_SUFFIX);
+	// }
+
+	public static String makeBaseFileName(long start, long end) {
+		final OffsetDateTime startTime = Instant.ofEpochMilli(start).atOffset(ZoneOffset.UTC);
+		final OffsetDateTime endTime = Instant.ofEpochMilli(end).atOffset(ZoneOffset.UTC);
+
+		return String.format("%s-%s",
+				fileNameDateTimeFormatter.format(startTime),
+				fileNameDateTimeFormatter.format(endTime));
 	}
 }

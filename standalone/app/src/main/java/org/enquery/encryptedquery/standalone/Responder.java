@@ -21,7 +21,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -46,7 +45,6 @@ import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.responder.QueueRecord;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +60,7 @@ public class Responder implements AutoCloseable {
 
 	// conservative default queue size, in case the records are very large
 	private int maxQueueSize = 100;
-	private int maxHitsPerSelector = 1000;
+	private Integer maxHitsPerSelector;
 
 	private List<BlockingQueue<QueueRecord>> newRecordQueues = new ArrayList<>();
 	private LinkedBlockingQueue<Response> responseQueue = new LinkedBlockingQueue<>();
@@ -71,7 +69,6 @@ public class Responder implements AutoCloseable {
 	private Path outputFileName;
 	private Path queryFileName;
 
-	private Map<String, String> runParameters = new HashMap<>();
 	private Partitioner partitioner = new Partitioner();
 	private ExecutorService executionService;
 	private CompletionService completionService;
@@ -85,10 +82,9 @@ public class Responder implements AutoCloseable {
 
 	private void initialize(Map<String, String> config) throws Exception {
 		Validate.notNull(config);
-		runParameters.putAll(config);
 
-		if (runParameters.containsKey(StandaloneConfigurationProperties.PROCESSING_THREADS)) {
-			numberOfProcessorThreads = Integer.valueOf(runParameters.get(StandaloneConfigurationProperties.PROCESSING_THREADS));
+		if (config.containsKey(StandaloneConfigurationProperties.PROCESSING_THREADS)) {
+			numberOfProcessorThreads = Integer.valueOf(config.get(StandaloneConfigurationProperties.PROCESSING_THREADS));
 		}
 
 		// if no queue size is given, use the compute threshold if given, otherwise keep it low
@@ -96,8 +92,8 @@ public class Responder implements AutoCloseable {
 		Validate.notNull(ct, StandaloneConfigurationProperties.COMPUTE_THRESHOLD + " property missing.");
 		computeThreshold = Integer.parseInt(ct);
 
-		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_QUEUE_SIZE)) {
-			String mqs = runParameters.get(StandaloneConfigurationProperties.MAX_QUEUE_SIZE).toString();
+		if (config.containsKey(StandaloneConfigurationProperties.MAX_QUEUE_SIZE)) {
+			String mqs = config.get(StandaloneConfigurationProperties.MAX_QUEUE_SIZE).toString();
 			maxQueueSize = Integer.parseInt(mqs);
 		} else {
 			// if no queue size is given, use the compute threshold
@@ -108,8 +104,8 @@ public class Responder implements AutoCloseable {
 			maxQueueSize = computeThreshold;
 		}
 
-		if (runParameters.containsKey(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
-			maxHitsPerSelector = Integer.parseInt(runParameters.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR));
+		if (config.containsKey(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR)) {
+			maxHitsPerSelector = Integer.parseInt(config.get(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR));
 		}
 
 		if (executionService == null) {
@@ -118,7 +114,7 @@ public class Responder implements AutoCloseable {
 		}
 
 		if (crypto == null) {
-			crypto = CryptoSchemeFactory.make(runParameters, executionService);
+			crypto = CryptoSchemeFactory.make(config, executionService);
 		}
 
 		final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
@@ -145,7 +141,7 @@ public class Responder implements AutoCloseable {
 		}
 
 		log.info("Standalone Query Configuration:");
-		for (Map.Entry<String, String> entry : runParameters.entrySet()) {
+		for (Map.Entry<String, String> entry : config.entrySet()) {
 			log.info("  {} = {}", entry.getKey(), entry.getValue());
 		}
 	}
@@ -216,7 +212,6 @@ public class Responder implements AutoCloseable {
 					responseQueue,
 					query,
 					crypto,
-					partitioner,
 					globalRecordsProcessed,
 					computeThreshold));
 		}
@@ -227,8 +222,7 @@ public class Responder implements AutoCloseable {
 				new ResponseWriter(crypto,
 						this.responseQueue,
 						query.getQueryInfo(),
-						outputFileName,
-						queryConverter));
+						outputFileName));
 
 		log.info("Running Standalone Query '{}' on file '{}'.", query.getQueryInfo().getQueryName(), inputDataFile);
 	}

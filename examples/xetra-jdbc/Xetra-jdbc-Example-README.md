@@ -64,7 +64,7 @@ The above query takes care of presenting Trade date in a ISO-8601 format so it c
 This will activate an additional Data Source that can be used in Querier UI to schedule Queries against the XETRA data set.
 
 ### Run the example using the UI.
-Connect to the Querier through a browser (Tested with Chrome)  URL: http://<querier IP>:8182/querier/
+Connect to the Querier through a browser (Tested with Chrome)  URL: http://querier_IP:8182/querier/
 Select `Create Query Schema` menu option.
 Enter a name for the Query Schema. (`QS-Xetra`) Names must be unique!
 Select the `XETRA` data schema to use from the drop down list.   If there are no entries in the list there are no data schemas defined yet.  Make sure the data schemas have been injested into the responder.
@@ -73,41 +73,57 @@ Check on each field you would like to be returned in the result set.
 After you enable each field you need to select the length type ('variable' or 'fixed'), set the max size of the field in bytes and if the field is an array element how many array elements are to be returned.
 Since the `Mnemonic` field is the selector it has to be one of the fields selected.
 Fields checked for demo:
-```
-Name, length Type, Size, Max Array Elements
-Mnemonic,    variable,    20,      1
-currency,    variable,    16,      1
-MaxPrice, fixed, 4, 1
-MinPrice, fixed, 4, 1
-TradingDate, variable, 20, 1
-SecurityType, variable, 30, 1
-SecurityDesc, variable, 1000, 1
-```
+
+|Name|Size|Max Array Elements|
+|-------------|-------|-------|
+|Mnemonic|null|null|
+|currency|null|null|
+|MaxPrice|null|null|
+|MinPrice|null|null|
+|TradingDate|null|null|
+|SecurityType|null|null|
+|SecurityDesc|null|null|
+
+null means you do not need to enter a value.
+
+
 Click on the `Submit` button to create the query schema.  
 The UI will now take you directly to the Query Encryption page to create a Query.
+```
 Enter a name for they Query.  Names must be unique!
 Select `XERTA` for the Data Schema
 Select `QS-Xerta` for the Query Schema.  Or whatever name was used above
 Select the data Chunk size.   Use `3` for this example
-Select `True` to embed the selector
 Enter `LETC` for a selector value and click the `Add` button
 Enter `NESR` for a selector value and click the `Add` button
 (Note: case and length matter for matching selector values.)
 Click the `Create Query` button to encrypt the query.
+```
 The UI will automatically change to the Query Status page.
+```
 Select the `XERTA` data schema and `QS-Xerta` query schema.
 The query that was just created will show up in the list.  When it has been fully Encrypted the `Action` will show `Schedule`.
 Click on the `Schedule` button to schedule the query.
 Select the `Flink-JDBC-MariaDB-XERTA` datasource from the drop down list.  If no data sources are available then they have not been configured on the responder yet.
 Set the `maxHitsPerSelector` parameter to `1000`
+```
 You can schedule this query to run in the future by setting the data/time or just click on 'Submit Query' to schedule the job now.
-The UI will change to the `Query Status` page.   You can monitor the job from the Flink Web DashBoard http://<Flink server IP>:8081 
+
+The UI will change to the `Query Status` page.   You can monitor the job from the Flink Web DashBoard http://Flink_server_IP:8081 
 The query may take up to 5 minutes to run depending on the resources available to Flink to execute on.
+```
 Select the `XERTA` data Schema and `QS-Xerta` Query schema.
 Select `View Schedules` under Action column for the query.
+```
 The Query Schedule Status page appears.  If the Query has finished on the responder the Action should say `Get Details`
+```
 Click on `Get Details`.  It will then switch you to the Retrievals and Results page.
-Click on `Download` to download the results from the responder to the querier.   After ~20 seconds you should see the action change from `Download` to `Decrypt`.   Click on `Decrypt` to decrypt the response.
+Click on `Download` to download the results from the responder to the querier.
+```
+After ~20 seconds you should see the action change from `Download` to `Decrypt`.
+```
+Click on `Decrypt` to decrypt the response.
+```
 You can now review the results on the querier server in the `clear-response.xml` file.
 
 

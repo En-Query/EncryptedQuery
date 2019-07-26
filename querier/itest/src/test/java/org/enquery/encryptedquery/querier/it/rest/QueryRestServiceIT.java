@@ -145,7 +145,6 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		selectorValues.add("432-567-3945");
 		selectorValues.add("534-776-3672");
 		q.setSelectorValues(selectorValues);
-		q.setEmbedSelector(true);
 		return q;
 	}
 

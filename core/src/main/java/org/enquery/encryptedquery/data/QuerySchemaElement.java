@@ -25,9 +25,9 @@ public class QuerySchemaElement implements Serializable {
 	 */
 	private static final long serialVersionUID = 335781552136099700L;
 	private String name;
-	private String lengthType = "fixed";
-	private int size;
-	private int maxArrayElements = 1;
+	// private String lengthType = "fixed";
+	private Integer size;
+	private Integer maxArrayElements;
 
 
 	public QuerySchemaElement() {}
@@ -40,27 +40,27 @@ public class QuerySchemaElement implements Serializable {
 		this.name = name;
 	}
 
-	public String getLengthType() {
-		return lengthType;
-	}
+	// public String getLengthType() {
+	// return lengthType;
+	// }
+	//
+	// public void setLengthType(String lengthType) {
+	// this.lengthType = lengthType;
+	// }
 
-	public void setLengthType(String lengthType) {
-		this.lengthType = lengthType;
-	}
-
-	public int getSize() {
+	public Integer getSize() {
 		return size;
 	}
 
-	public void setSize(int size) {
+	public void setSize(Integer size) {
 		this.size = size;
 	}
 
-	public int getMaxArrayElements() {
+	public Integer getMaxArrayElements() {
 		return maxArrayElements;
 	}
 
-	public void setMaxArrayElements(int maxArrayElements) {
+	public void setMaxArrayElements(Integer maxArrayElements) {
 		this.maxArrayElements = maxArrayElements;
 	}
 
@@ -68,7 +68,7 @@ public class QuerySchemaElement implements Serializable {
 	public String toString() {
 		StringBuilder output = new StringBuilder();
 		output.append("\n  Name: " + name + "\n");
-		output.append("  lengthType: " + lengthType + "\n");
+		// output.append(" lengthType: " + lengthType + "\n");
 		output.append("  size: " + size + "\n");
 		output.append("  maxArrayElements: " + maxArrayElements);
 

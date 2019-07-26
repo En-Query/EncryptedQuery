@@ -19,6 +19,7 @@ package org.encryptedquery.querier.business;
 import java.util.Collection;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.querier.data.entity.jpa.Decryption;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Result;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.ResultCollectionResponse;
@@ -46,6 +47,47 @@ public class ResultStatusResolver {
 		resolve(json.getData());
 		return json;
 	}
+
+
+	ResultRepository getResultRepo() {
+		return resultRepo;
+	}
+
+
+	void setResultRepo(ResultRepository resultRepo) {
+		this.resultRepo = resultRepo;
+	}
+
+
+	RetrievalRepository getRetrievalRepo() {
+		return retrievalRepo;
+	}
+
+
+	void setRetrievalRepo(RetrievalRepository retrievalRepo) {
+		this.retrievalRepo = retrievalRepo;
+	}
+
+
+	ResponseDecipher getResponseDecipher() {
+		return responseDecipher;
+	}
+
+
+	void setResponseDecipher(ResponseDecipher responseDecipher) {
+		this.responseDecipher = responseDecipher;
+	}
+
+
+	DecryptionRepository getDecryptionRepo() {
+		return decryptionRepo;
+	}
+
+
+	void setDecryptionRepo(DecryptionRepository decryptionRepo) {
+		this.decryptionRepo = decryptionRepo;
+	}
+
 
 	public ResultCollectionResponse resolve(ResultCollectionResponse json) {
 		Validate.notNull(json);
@@ -91,7 +133,14 @@ public class ResultStatusResolver {
 
 		boolean decrypted = retrievals
 				.stream()
-				.anyMatch(r -> !decryptionRepo.listForRetrieval(r).isEmpty());
+				.anyMatch(r -> {
+					Collection<Decryption> decryptions = decryptionRepo.listForRetrieval(r);
+					if (decryptions.isEmpty()) return false;
+
+					return decryptions
+							.stream()
+							.allMatch(dec -> dec.getErrorMessage() == null && dec.getPayloadUri() != null);
+				});
 
 		if (decrypted) {
 			jsonResult.setStatus(ResultStatus.Decrypted);

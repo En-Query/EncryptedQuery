@@ -21,10 +21,13 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.concurrent.TimedSemaphore;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -33,6 +36,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,10 +44,10 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
+public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 
 	private static final long serialVersionUID = -1098744497121999913L;
-	private static final Logger log = LoggerFactory.getLogger(TimedKafkaConsumer.class);
+	public static final Logger log = LoggerFactory.getLogger(TimedKafkaConsumer.class);
 
 	public static enum StartOffset {
 		fromEarliest, fromLatest, fromLatestCommit
@@ -53,10 +57,14 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 	private final String groupId;
 	private final String topic;
 	private final StartOffset startOffset;
-	private int recordCount = 0;
-
+	private final Integer emissionRatePerSecond;
 	private Properties properties;
 	private Consumer<Long, String> consumer;
+
+
+	// The semaphore for limiting database load.
+	private transient TimedSemaphore emissionSemaphore;
+	private transient int recordCount = 0;
 
 
 	public TimedKafkaConsumer(String topic,
@@ -64,21 +72,25 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 			String groupId,
 			StartOffset startOffset,
 			Long maxTimestamp,
-			Path outputPath) {
+			Path outputPath,
+			Integer emissionRatePerSecond,
+			Time windowSize) {
 
-		super(maxTimestamp, outputPath);
+		super(maxTimestamp, outputPath, windowSize);
 
 		this.bootstrap_servers = bootstrapServers;
 		this.groupId = groupId;
 		this.topic = topic;
 		this.startOffset = startOffset;
+		this.emissionRatePerSecond = emissionRatePerSecond;
 
-		log.info("Created TimedKafkaConsumer with maxTimestamp={}, topic={}, groupId={}, startOffset={}, bootstrap_servers={}",
+		log.info("Created TimedKafkaConsumer with maxTimestamp={}, topic={}, groupId={}, startOffset={}, bootstrap_servers={}, emissionRatePerSecond={}",
 				maxTimestamp,
 				topic,
 				groupId,
 				startOffset,
-				bootstrap_servers);
+				bootstrap_servers,
+				emissionRatePerSecond);
 	}
 
 	private Properties makeProperties() {
@@ -126,6 +138,10 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 		} else if (startOffset == StartOffset.fromLatest) {
 			consumer.seekToEnd(partitions);
 		}
+
+		if (emissionRatePerSecond != null) {
+			emissionSemaphore = new TimedSemaphore(1, TimeUnit.SECONDS, emissionRatePerSecond);
+		}
 	}
 
 	@Override
@@ -134,14 +150,19 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 			consumer.close();
 			consumer = null;
 		}
+		if (emissionSemaphore != null) {
+			emissionSemaphore.shutdown();
+			emissionSemaphore = null;
+		}
 	}
 
 
 	@Override
-	public void run(SourceContext<String> ctx) throws Exception {
+	public void run(SourceContext<InputRecord> ctx) throws Exception {
 		beginRun();
 		try {
 			while (canRun()) {
+				ctx.markAsTemporarilyIdle();
 				final ConsumerRecords<Long, String> consumerRecords = consumer.poll(Duration.ofMillis(1000));
 
 				if (!canRun()) {
@@ -149,30 +170,34 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 				}
 
 				ingestRecords(ctx, consumerRecords);
-				consumer.commitAsync();
-				log.info("Ingested {} records.", consumerRecords.count());
+				// consumer.commitAsync();
+
+				if (log.isDebugEnabled() && consumerRecords.count() > 0) {
+					log.debug("Emitted {} records.", consumerRecords.count());
+				}
 			}
 
-
-			log.info("Read a total of {} records from Kafka", recordCount);
+			log.info("Emitted a total of {} records.", recordCount);
 		} catch (Exception e) {
 			log.error("Unexpected error encountered", e);
 			setAsFailed();
 		} finally {
-			endRun();
+			endRun(ctx);
 		}
 	}
 
 
-	private void ingestRecords(SourceContext<String> ctx, ConsumerRecords<Long, String> consumerRecords) throws Exception {
+	private void ingestRecords(SourceContext<InputRecord> ctx, ConsumerRecords<Long, String> consumerRecords) throws Exception {
 		Iterator<ConsumerRecord<Long, String>> iterator = consumerRecords.iterator();
 		while (canRun() && iterator.hasNext()) {
 			ConsumerRecord<Long, String> record = iterator.next();
 			try {
-				// this synchronized block ensures that state checkpointing,
-				// internal state updates and emission of elements are an atomic operation
+				if (emissionSemaphore != null) emissionSemaphore.acquire();
+
+				// final long timestamp = calcEventTimestamp();
 				synchronized (ctx.getCheckpointLock()) {
-					ctx.collect(record.value());
+					collect(ctx, record.value(), System.currentTimeMillis());
+					consumer.commitSync();
 				}
 				recordCount++;
 			} catch (Exception e) {
@@ -193,4 +218,5 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer<String> {
 			}
 		}
 	}
+
 }

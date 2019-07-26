@@ -1,7 +1,7 @@
 
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.3
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.4
 
 ## Overview
 
@@ -10,6 +10,11 @@ Encrypted Query is designed to allow a user to query a remote database without r
 Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
+
+2.1.4
+ - Updated Algorithm for Standalone and Flink JDBC processing methods.   This change improved performance by ~40%.  
+ - Updated FieldTypes and UI to simplify creating encrypting queries.
+ - New Look and feel for UI to be more intuitive.
  
 2.1.3
  - Added GPU processing support for Paillier Crypto scheme.   Use of a GPU for processing on the Responder and also Decryption on the Querier has been added if a GPU is available on the server.

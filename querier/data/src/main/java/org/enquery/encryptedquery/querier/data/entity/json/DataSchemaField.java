@@ -19,7 +19,6 @@ package org.enquery.encryptedquery.querier.data.entity.json;
 public class DataSchemaField {
 	private String name;
 	private String dataType;
-	private Boolean isArray;
 	private Integer position;
 
 	public DataSchemaField() {}
@@ -40,14 +39,6 @@ public class DataSchemaField {
 		this.dataType = dataType;
 	}
 
-	public Boolean getIsArray() {
-		return isArray;
-	}
-
-	public void setIsArray(Boolean isArray) {
-		this.isArray = isArray;
-	}
-
 	public Integer getPosition() {
 		return position;
 	}
@@ -59,7 +50,7 @@ public class DataSchemaField {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("DataSchemaField [name=").append(name).append(", dataType=").append(dataType).append(", isArray=").append(isArray).append(", position=").append(position).append("]");
+		builder.append("DataSchemaField [name=").append(name).append(", dataType=").append(dataType).append(", position=").append(position).append("]");
 		return builder.toString();
 	}
 }

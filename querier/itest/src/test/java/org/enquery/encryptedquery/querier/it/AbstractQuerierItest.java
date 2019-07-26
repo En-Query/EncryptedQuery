@@ -313,7 +313,7 @@ public abstract class AbstractQuerierItest {
 		}
 	}
 
-	protected void configuteResponderPort(int port) throws IOException, InterruptedException {
+	protected void configureResponderPort(int port) throws IOException, InterruptedException {
 		waitForHealthyStatus();
 		org.osgi.service.cm.Configuration configuration = configurationAdmin.getConfiguration(REST_CONFIG_PID, null);
 
@@ -340,5 +340,18 @@ public abstract class AbstractQuerierItest {
 		// configuration.update(properties);
 	}
 
+
+	protected void configureOfflineMode(boolean offline) throws IOException, InterruptedException {
+		waitForHealthyStatus();
+		org.osgi.service.cm.Configuration configuration = configurationAdmin.getConfiguration(REST_CONFIG_PID, null);
+
+		Dictionary<String, Object> properties = configuration.getProperties();
+		if (properties == null) {
+			properties = new Hashtable<>();
+		}
+		properties.put("responder.offline", offline);
+		configuration.update(properties);
+		waitForHealthyStatus();
+	}
 
 }

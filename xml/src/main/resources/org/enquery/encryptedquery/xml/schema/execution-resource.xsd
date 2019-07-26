@@ -22,6 +22,7 @@
 	xmlns:ex="http://enquery.net/encryptedquery/execution"
 	xmlns:res="http://enquery.net/encryptedquery/resource"
 	xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	version="2.0"
 	elementFormDefault="qualified">
 
 	<xs:include schemaLocation="execution.xsd"/>
@@ -35,10 +36,18 @@
 		<xs:complexContent>
 			<xs:extension base="res:resource">
 				<xs:sequence>
-					<xs:element ref="execution"/>
 					<xs:element name="dataSourceUri" type="xs:anyURI"/>
 					<xs:element name="resultsUri" type="xs:anyURI"/>
+					<xs:element ref="execution"/>
 				</xs:sequence>
+				<xs:attribute name="schemaVersion" use="required">
+					<xs:simpleType>
+						<xs:restriction base="xs:decimal">
+							<xs:minInclusive value="2.0"/>
+							<xs:maxInclusive value="2.0"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:attribute>
 			</xs:extension>
 		</xs:complexContent>
 	</xs:complexType>

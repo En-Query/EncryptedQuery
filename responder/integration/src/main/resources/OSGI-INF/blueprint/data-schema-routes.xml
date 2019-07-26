@@ -29,7 +29,7 @@
 		<route id="dataschema-list">
 			<from uri="direct:/dataschemas"/>
 			<to uri="bean:dataSchemaRegistry?method=list" />
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.DataSchemaResources"/>
+			<bean ref="dataSchemaConverter" method="toXMLDataSchemas"/>
 			<to uri="direct:success"/>
 		</route>
 

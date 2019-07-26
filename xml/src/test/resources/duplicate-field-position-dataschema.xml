@@ -8,14 +8,12 @@
 	<field>
 		<name>name1</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<position>0</position>
 	</field>
 	
 	<field>
 		<name>name2</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<!-- position duplicate -->
 		<position>0</position>
 	</field>

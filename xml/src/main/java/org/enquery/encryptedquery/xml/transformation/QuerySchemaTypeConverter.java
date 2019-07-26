@@ -17,7 +17,7 @@ public class QuerySchemaTypeConverter {
 			org.enquery.encryptedquery.xml.schema.QuerySchema.Field field = new org.enquery.encryptedquery.xml.schema.QuerySchema.Field();
 
 			field.setName(el.getName());
-			field.setLengthType(el.getLengthType());
+			// field.setLengthType(el.getLengthType());
 			field.setMaxArrayElements(el.getMaxArrayElements());
 			field.setSize(el.getSize());
 			result.getField().add(field);
@@ -34,7 +34,7 @@ public class QuerySchemaTypeConverter {
 				.stream()
 				.forEach(f -> {
 					QuerySchemaElement e = new QuerySchemaElement();
-					e.setLengthType(f.getLengthType());
+					// e.setLengthType(f.getLengthType());
 					e.setMaxArrayElements(f.getMaxArrayElements());
 					e.setName(f.getName());
 					e.setSize(f.getSize());

@@ -28,6 +28,7 @@
 		placeholder-prefix="#{" placeholder-suffix="}">
 		
 		<cm:default-properties>
+			<cm:property name="responder.offline" value="false"/>
 	        <cm:property name="responder.host" value="localhost"/>
 	        <cm:property name="responder.port" value="8181"/>
 	        <cm:property name="responder.api.media.type" value="application/vnd.encryptedquery.responder+xml"/>
@@ -93,9 +94,9 @@
 	<reference id="retrievalConverter" interface="org.enquery.encryptedquery.querier.data.transformation.RetrievalTypeConverter"  ext:proxy-method="classes"/>
 	<reference id="decryptionConverter" interface="org.enquery.encryptedquery.querier.data.transformation.DecryptionTypeConverter"  ext:proxy-method="classes"/>
 	<reference id="clearTextResponseConverter" interface="org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter"  ext:proxy-method="classes"/>
-	<reference id="executionConverter" interface="org.enquery.encryptedquery.querier.data.transformation.ExecutionConverter" ext:proxy-method="classes"/>
+	<reference id="executionExporter" interface="org.enquery.encryptedquery.querier.data.transformation.ExecutionExporter" ext:proxy-method="classes"/>
 	<reference id="retrievalUpdater" interface="org.encryptedquery.querier.business.RetrievalUpdater" ext:proxy-method="classes"/>
-
+	
 	<bean
 		class="org.apache.camel.component.servlet.osgi.OsgiServletRegisterer"
 		init-method="register" 
@@ -131,5 +132,6 @@
         <property name="showHeaders" value="#{camel.trace.showHeaders}"/>
     </bean>
     
+    <!-- <bean id="jacksonDF" class="org.enquery.encryptedquery.querier.data.transformation.JacksonDFWithDynamicViews"/> -->
     
 </blueprint>

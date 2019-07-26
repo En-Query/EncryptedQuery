@@ -74,6 +74,7 @@ public abstract class AbstractResponderItest {
 	public static final Logger log = LoggerFactory.getLogger(AbstractResponderItest.class);
 
 	protected static final String INBOX_DIR = "inbox";
+	protected static final String DATASCHEMAS_INBOX_DIR = INBOX_DIR;
 
 	protected static final String BOOKS_DATA_SCHEMA_NAME = "Books";
 
@@ -137,7 +138,8 @@ public abstract class AbstractResponderItest {
 								+ "\"org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl\","
 								+ "\"" + FlinkJdbcQueryRunner.class.getName() + "\","
 								+ "\"" + StandaloneQueryRunner.class.getName() + "\","
-								+ "\"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner\""
+								+ "\"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner\","
+								+ "\"org.enquery.encryptedquery.responder.hadoop.mapreduce.runner.HadoopMapReduceRunner\""
 								+ "]"),
 
 				editConfigurationFilePut("etc/encrypted.query.responder.integration.cfg", "inbox.dir", INBOX_DIR),
@@ -293,19 +295,30 @@ public abstract class AbstractResponderItest {
 
 	protected void installDataSchema(final String fileName) throws IOException, FileNotFoundException, Exception {
 		byte[] bytes = IOUtils.resourceToByteArray("/schemas/" + fileName, this.getClass().getClassLoader());
-		File inbox = new File(INBOX_DIR);
+		File inbox = new File(DATASCHEMAS_INBOX_DIR);
 		File file = saveToFile(bytes, inbox, fileName);
 		waitForFileConsumed(file);
 		Thread.sleep(500);
-		assertTrue(!Files.exists(Paths.get(INBOX_DIR, ".failed", fileName)));
-		assertTrue(Files.exists(Paths.get(INBOX_DIR, ".processed", fileName)));
+		assertTrue(!Files.exists(Paths.get(DATASCHEMAS_INBOX_DIR, ".failed", fileName)));
+		assertTrue(Files.exists(Paths.get(DATASCHEMAS_INBOX_DIR, ".processed", fileName)));
+		//
+		// DataSchema lastInserted = dataSchemaService
+		// .list()
+		// .stream()
+		// .max((a, b) -> a.getId() - b.getId())
+		// .get();
+		//
+		// Path dataSourceDir = Paths.get(DATASCHEMAS_INBOX_DIR, lastInserted.getId().toString());
+		// assertTrue(Files.exists(dataSourceDir) && Files.isDirectory(dataSourceDir));
+		// Path body = Paths.get(dataSourceDir.toString(), "body.xml");
+		// assertTrue(Files.exists(body) && Files.isRegularFile(body));
 	}
 
 	private static final String DATA_SOURCE_DESCRIPTION = "test-desc";
 
 
 	protected void waitUntilQueryRunnerRegistered(String runnerName) throws Exception {
-		tryUntilTrue(120,
+		tryUntilTrue(10,
 				2000,
 				"QueryRunner not registered in time",
 				name -> dataSourceRegistry.find(name) != null,

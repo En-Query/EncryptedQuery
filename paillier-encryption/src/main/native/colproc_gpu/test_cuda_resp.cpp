@@ -159,43 +159,19 @@ void do_test(size_t w, size_t num_qelts, size_t batch_size, size_t max_chunk, si
     yao.insert_chunk(data_rows[i], data_chunks[i]);
   }
   mpz_t result;
-  //uint32_t *result = new uint32_t[w2];
+  mpz_init(result);
   yao.compute(dev, result, 0);
   cout << "done." << endl;
 
   cout << "computing answer using basic" << endl;
-  //uint32_t *result2 = new uint32_t[w2];
   mpz_t result2;
+  mpz_init(result2);
   basic(query, result2, data_rows, data_chunks, num_chunks);
   cout << "done." << endl;
 
   cout << "checking whether results are the same" << endl;
-  //assert (!memcmp(result, result2, w2*sizeof(uint32_t)));
   assert (!mpz_cmp(result, result2));
   cout << "results are equal" << endl;
-
-#if 0
-  cout << "clearing Yao and computing a second time" << endl;
-  yao.clear();
-  for (size_t i = 0; i < num_chunks; i++) {
-    yao.insert_chunk(data_rows[i], data_chunks[i]);
-  }
-  //mpz_t result;
-  //uint32_t *result = new uint32_t[w2];
-  yao.compute(dev, result, 0);
-  cout << "done." << endl;
-
-  cout << "computing answer using basic" << endl;
-  //uint32_t *result2 = new uint32_t[w2];
-  //mpz_t result2;
-  basic(query, result2, data_rows, data_chunks, num_chunks);
-  cout << "done." << endl;
-
-  cout << "checking whether results are the same" << endl;
-  //assert (!memcmp(result, result2, w2*sizeof(uint32_t)));
-  assert (!mpz_cmp(result, result2));
-  cout << "results are equal" << endl;
-#endif
 
   delete[] data_rows;
   delete[] data_chunks;

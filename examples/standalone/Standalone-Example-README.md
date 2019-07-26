@@ -4,7 +4,7 @@ The standalone query example searches through a list of phone records searching 
 
 ### Prerequisites
 * Encrypted Query querier and responder installed and running.
-* [Postman App](https://www.getpostman.com/apps)
+* [Postman App](https://www.getpostman.com/apps)  or Browser to run from the User Interface (UI)
 
 This example uses direct REST calls to the querier to show examples of how those messages are defined.
 
@@ -18,10 +18,10 @@ Step 1) Select the `GET DataSchemas` request and SEND.  This is a GET request wh
 ```
 http://enquery.querier.com:8182/querier/api/rest/dataschemas
 ```
-```
+```json
 {
     "data": [
-            {
+        {
             "id": "2147483599",
             "selfUri": "/querier/api/rest/dataschemas/2147483599",
             "type": "DataSchema",
@@ -52,7 +52,7 @@ Step 2) Select the `GET Data Schema Detail`.  Update the URL and add the `datasc
 ```
 http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602
 ```
-```
+```json
 {
     "data": {
         "id": "2147483602",
@@ -62,44 +62,44 @@ http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602
         "dataSourcesUri": "/querier/api/rest/dataschemas/2147483602/datasources",
         "querySchemasUri": "/querier/api/rest/dataschemas/2147483602/queryschemas",
         "fields": [
-            {
-                "name": "Callee #",
-                "dataType": "string",
-                "isArray": false,
-                "position": 3
-            },
-            {
-                "name": "Caller #",
-                "dataType": "string",
-                "isArray": false,
-                "position": 2
-            },
-            {
-                "name": "Date/Time",
-                "dataType": "string",
-                "isArray": false,
-                "position": 1
-            },
-            {
-                "name": "Duration",
-                "dataType": "string",
-                "isArray": false,
-                "position": 0
-            }
+       			{
+                    "name": "Duration",
+                    "dataType": "string"
+                    "position": 0
+                },
+                {
+                    "name": "Date/Time",
+                    "dataType": "string"
+                    "position": 1
+                },
+				{
+                    "name": "Caller #",
+                    "dataType": "string"
+                    "position": 2
+                },
+                {
+                    "name": "Callee #",
+                    "dataType": "string"
+                    "position": 3
+                }
         ]
     }
 }
 ```
-Step 3) Create a Query Schema.  Select the `POST Create QuerySchema` call.  Update the id after `/dataschemas` with the data schema id to be used.  With this post request the Body defines which field will be the selector field and which fields to be returned from the query.  
- * Enter the name for the Query Schema. (Names must be unique)
- * Enter the Selector Field.  This must match the name of a field in the Data Schema.
- * The lengthType field for `string` or `bytearray` fields can be either ("fixed" or "variable").  If set to "variable" the size will be the maximum number of characters/bytes returned for that field.
- * The size field determines the number of bytes that will be returned for that field.
- *  The maxArrayElements sets the number of array elements to be returned if the field is an array.
+   
+Step 3) Create a Query Schema.  Select the `POST Create QuerySchema` call.  
+Update the id after `/dataschemas` with the data schema id to be used.  
+With this post request the Body defines which field will be the selector field and which fields to be returned from the query.  
+  
+* Enter the name for the Query Schema. (Names must be unique)
+* Enter the Selector Field.  This must match the name of a field in the Data Schema.
+* The size field, for `string` or `bytearray` fields, determines the number of characters/bytes returned for that field.
+* The maxArrayElements sets the number of array elements to be returned if the field is one of the list data types.
+    
 ```
 POST http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483602/queryschemas
 ```
-```
+```json
 "data": {
         "id": "2147483602",
         "selfUri": "/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602",
@@ -109,27 +109,17 @@ POST http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483602/querysch
         "fields": [
             {
                 "name": "Caller #",
-                "lengthType": "variable",
-                "size": 20,
-                "maxArrayElements": 1
+                "size": 20
             },
             {
                 "name": "Callee #",
-                "lengthType": "variable",
-                "size": 16,
-                "maxArrayElements": 1
+                "size": 16
             },
             {
-                "name": "Duration",
-                "lengthType": "variable",
-                "size": 10,
-                "maxArrayElements": 1
+                "name": "Duration"
             },
             {
-                "name": "Date/Time",
-                "lengthType": "variable",
-                "size": 30,
-                "maxArrayElements": 1
+                "name": "Date/Time"
             }
         ],
         "dataSchema": {
@@ -148,30 +138,26 @@ POST http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483602/querysch
             "dataSourcesUri": "/querier/api/rest/dataschemas/2147483602/datasources",
             "querySchemasUri": "/querier/api/rest/dataschemas/2147483602/queryschemas",
             "fields": [
-                {
-                    "name": "Callee #",
-                    "dataType": "string",
-                    "isArray": false,
-                    "position": 3
-                },
-                {
-                    "name": "Caller #",
-                    "dataType": "string",
-                    "isArray": false,
-                    "position": 2
+                 {
+                    "name": "Duration",
+                    "dataType": "string"
+                    "position": 0
                 },
                 {
                     "name": "Date/Time",
-                    "dataType": "string",
-                    "isArray": false,
+                    "dataType": "string"
                     "position": 1
                 },
+				{
+                    "name": "Caller #",
+                    "dataType": "string"
+                    "position": 2
+                },
                 {
-                    "name": "Duration",
-                    "dataType": "string",
-                    "isArray": false,
-                    "position": 0
-                }
+                    "name": "Callee #",
+                    "dataType": "string"
+                    "position": 3
+                }              
             ]
         }
     ]
@@ -181,16 +167,16 @@ Step 4) (Optional) Show the details of a Query Schema.  Select `GET QuerySchema 
 ```
 GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602
 ```
-Step 5) Encrypte the Query.  Select `Encrypt Query` and update the URL with the data and query schema id's.  With this Post request the Body to defines the parameters used to encrypt the query.
- * Query name.  (This must be unique)
- * dataChunkSize  This determines how many bytes to join together for each partition element.  dataChunkSize defaults to 1
- * Add the values this query is to search for.
- * embedSelector.  Set to true.
- ```
+Step 5) Encrypt the Query.  Select `Encrypt Query` and update the URL with the data and query schema id's.  With this Post request the Body to defines the parameters used to encrypt the query.
+  
+* Query name.  (This must be unique)
+* dataChunkSize  This determines how many bytes to join together for each partition element.  dataChunkSize defaults to 1
+* Add the values this query is to search for.
+  
+```
  POST http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries
- ```
- Response:
- ```
+```
+```json
  {
     "data": {
         "id": "2147483604",
@@ -217,12 +203,12 @@ Step 5) Encrypte the Query.  Select `Encrypt Query` and update the URL with the 
             "610-968-2867",
             "445-709-2345",
             "410-409-9985"
-        ],
-        "embedSelector": true
+        ]
     },
     "included": [
   ...
 ```
+  
 Note: Not all of the post response is shown above.
 
 Step 6) (Optional) Get Query Status.  Select `GET Query Status` and update the URL with the data and query schema id's as well as the query id.
@@ -231,12 +217,11 @@ GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/quer
 ```
 In the response the status field will show `Encrypted` when the query has been encrypted and is ready to schedule.
 
-
 Step 7) List the Data Sources available for the data schema.  Select `Get DataSources for DataSchema` and update the URL with the data schema id.
 ```
 GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/datasources
 ```
-```
+```json
 {
     "data": [
         {
@@ -251,13 +236,15 @@ GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/data
 
 Step 8) Schedule the Query.  Select the `Schedule Query` request and update the URL with the appropriate id's.  
 Update the body with the following:
- * Date/time to start the query. (Note:  Use UTC time !!) 
- * maxHitsPerSelector  Limit the number of hits any one selector value can have.  The larger the value the more data that will be processed.  Recommended value 1000.
- * data source id.   Enter the Data Source Id you want to query against.
- ```
+   
+* Date/time to start the query. (Note:  Use UTC time !!) 
+* maxHitsPerSelector  Limit the number of hits any one selector value can have.  The larger the value the more data that will be processed.  Recommended value 1000.
+* Data source id. Enter the Data Source Id you want to query against.
+
+```
  POST http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules
- ```
- ```
+```
+```json
  {
     "data": {
         "id": "2147483605",
@@ -283,13 +270,14 @@ Update the body with the following:
     "included": [
   ...
 ```
+  
 Note: Not all of the post response is shown above.
 
 Step 9) Get the Status of the Query.  Select `GET Query Status` from the requests and update the URL with the appropriate id's
 ```
 GET http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results
 ```
-```
+```json
 {
     "data": [
         {
@@ -306,7 +294,7 @@ Step 10) Retrieve the Results from the Responder to the Querier.  Select `POST R
 POST http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results/2147483606/retrievals
 ```
 Note: There is no Body associated with this post request.
-```
+```json
 {
     "data": {
         "id": "2147483607",
@@ -329,7 +317,7 @@ Step 11) Decrypt the Query Results.  Select the `POST Decrypt Query Results` req
 ```
 POST http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results/2147483606/retrievals/2147483607/decryptions
 ```
-```
+```json
 {
     "data": {
         "id": "2147483608",
@@ -352,8 +340,10 @@ Step 12 ) Review the Results.  The results will be in the `clear-response.xml` f
 /opt/enquery/querier/data/blob-storage/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results/2147483606/retrievals/2147483607/decryptions/2147483608
 ```
 Note: You will have to update the directory path above with he appropriate id's.
-Sample clear-response.xml file
-```
+   
+Sample clear-response.xml file:
+   
+```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <ns5:clearTextResponse xmlns="http://enquery.net/encryptedquery/querykey" xmlns:ns2="http://enquery.net/encryptedquery/queryschema" xmlns:ns3="http://enquery.net/encryptedquery/dataschema" xmlns:ns4="http://enquery.net/encryptedquery/query" xmlns:ns5="http://enquery.net/encryptedquery/clear-response" xmlns:ns6="http://enquery.net/encryptedquery/resource" xmlns:ns7="http://enquery.net/encryptedquery/datasource" xmlns:ns8="http://enquery.net/encryptedquery/execution" xmlns:ns9="http://enquery.net/encryptedquery/result" xmlns:ns10="http://enquery.net/encryptedquery/response" xmlns:ns11="http://enquery.net/encryptedquery/pagination">
     <ns5:queryName>QS-Phone-Data</ns5:queryName>

@@ -18,11 +18,11 @@ package org.enquery.encryptedquery.flink;
 
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.enquery.encryptedquery.core.FieldTypes;
+import org.enquery.encryptedquery.core.FieldType;
 
-public interface FlinkTypes extends FieldTypes {
+public interface FlinkTypes {
 
-	default TypeInformation<?> pirTypeToFlinkType(String type) {
+	default TypeInformation<?> pirTypeToFlinkType(FieldType type) {
 		TypeInformation<?> result = null;
 		switch (type) {
 			case BYTE:

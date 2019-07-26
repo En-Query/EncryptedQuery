@@ -17,17 +17,16 @@
 package org.enquery.encryptedquery.flink.kafka;
 
 import java.io.IOException;
-import java.nio.file.Files;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.streaming.api.TimeCharacteristic;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.types.Row;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.enquery.encryptedquery.flink.BaseQueryExecutor;
 import org.enquery.encryptedquery.flink.kafka.TimedKafkaConsumer.StartOffset;
+import org.enquery.encryptedquery.flink.streaming.InputRecord;
+import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +37,19 @@ public class Responder extends BaseQueryExecutor {
 	private String brokers;
 	private String topic;
 	private StartOffset startOffset;
+	private Integer emissionRatePerSecond;
+
+	public int getEmissionRatePerSecond() {
+		return emissionRatePerSecond;
+	}
+
+	public void setEmissionRatePerSecond(int emissionRatePerSecond) {
+		this.emissionRatePerSecond = emissionRatePerSecond;
+	}
+
+	void setBufferSize(int bufferSize) {
+		this.bufferSize = bufferSize;
+	}
 
 	public String getBrokers() {
 		return brokers;
@@ -75,49 +87,40 @@ public class Responder extends BaseQueryExecutor {
 		// Because it is a GUID, it also protects from multiple clients picking
 		// the same group id, and accidentally missing records if 'fromLatestCommit' option
 		// is selected
-		TimedKafkaConsumer consumer = new TimedKafkaConsumer(topic,
+		TimeBoundStoppableConsumer consumer = new TimedKafkaConsumer(topic,
 				brokers,
 				query.getQueryInfo().getIdentifier(),
 				startOffset,
 				maxTimestamp,
-				outputFileName);
+				outputFileName,
+				emissionRatePerSecond,
+				Time.seconds(windowSizeInSeconds));
 
 
 		runWithSource(consumer);
 	}
 
-	public void runWithSource(SourceFunction<String> consumer) throws Exception, IOException {
+	public void runWithSource(TimeBoundStoppableConsumer consumer) throws Exception, IOException {
 		runWithSourceAndEnvironment(consumer, StreamExecutionEnvironment.getExecutionEnvironment());
 	}
 
-	public void runWithSourceAndEnvironment(SourceFunction<String> consumer, final StreamExecutionEnvironment env) throws Exception, IOException {
+	public void runWithSourceAndEnvironment(TimeBoundStoppableConsumer consumer, final StreamExecutionEnvironment env) throws Exception, IOException {
 		Validate.notNull(consumer);
 		Validate.notNull(env);
-
-		final boolean debugging = log.isDebugEnabled();
 
 		initializeCommon();
 		initializeStreaming();
 
 		// For streaming, output file name is just a directory containing each window results,
 		// create it early
-		Files.createDirectories(outputFileName);
+		// Files.createDirectories(outputFileName);
 
 		// ingestion time is the source of time
-		env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
-		final DataStreamSource<String> source = env.addSource(consumer);
+		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime); // TimeCharacteristic.IngestionTime);
+		DataStreamSource<InputRecord> source = env.addSource(consumer);
 
-		final int index = selectorFieldIndex;
-
-		DataStream<Row> stream = source
-				.map(new ParseJson(rowTypeInfo))
-				.filter(row -> {
-					if (debugging) log.debug("Filtering row: {}", row);
-					boolean present = row.getField(index) != null;
-					if (debugging) log.debug("Selector field index {} present: {}", index, present);
-					return present;
-				});
-
-		run(env, stream);
+		run(env, source
+				.name("Kafka source with time limit").map(new ParseJson(dataSchema)).name("ParseJson"));
 	}
+
 }

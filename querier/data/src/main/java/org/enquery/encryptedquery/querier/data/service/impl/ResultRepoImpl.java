@@ -125,4 +125,37 @@ public class ResultRepoImpl implements ResultRepository {
 						.findFirst()
 						.orElse(null));
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.querier.data.service.ResultRepository#AddOrUpdate(org.enquery.
+	 * encryptedquery.querier.data.entity.jpa.Result)
+	 */
+	@Override
+	public Result addOrUpdate(Result result) {
+		Validate.notNull(result);
+		return txControl
+				.build()
+				.required(() -> {
+					if (result.getId() != null) return update(result);
+
+					Result prev = null;
+					if (prev == null && result.getResponderId() != null) {
+						prev = findByResponderId(result.getResponderId());
+					}
+
+					if (prev != null) {
+						prev.setResponderId(result.getResponderId());
+						prev.setResponderUri(result.getResponderUri());
+						prev.setWindowStartTime(result.getWindowStartTime());
+						prev.setWindowEndTime(result.getWindowEndTime());
+						return update(prev);
+					} else {
+						em.persist(result);
+						return result;
+					}
+				});
+	}
 }

@@ -1,7 +1,20 @@
-# Encrypted Query v2.1.3 - Release Notes
+# Encrypted Query v2.1.4 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
 
+#### Changes in release 2.1.4
+* Updated Algorithm used for processing a query on the responder.   The new algorithm changes the processing of data in chunks (Compute Threshold) to procssing individual columns.   This improved performance on standalone processing by ~40%.  
+  * Data Source configuration files can be updated to configure for the new algorithm.
+  * .column.buffer.memory.mb=xxx  is used to configure how large the column array is allowed to grow to.   The higher the number the more memory required.
+  * .algorithm.version=v2  is a new parameter in standalone configuration files.  The default is `v2` if the parameter is not given.
+
+* Updated Field Types to more intuitivly handle arrays.   New field types are ( string, byte, byteArray, char, short, int, long, double, float, ip4, ip6, ISO8601Date )  If a field is an array of one of the prior field types just append `_list` to the end of the data type.
+* When creating a Query Schema the Size is only applicable for String and ByteArray field types.  This parameter is optional but if a value is given that will be the max size for each element of that field to be processed. (i.e. if the Size is set to 20 only the first 20 characters of the field value are processed.  If no size is given then the full field value is processed.
+* When creating a Query Schema the MaxArrayElement field is optional and only available for Array Field Types (those with a "_list" suffix).  If a value is not given then all array elements are processed.  If a value is given then only up to that number of array elements are processed.
+* Null values are now properly handled in json records
+* Selector values are always embedded in the response and therfore the reference in the UI has been removed.   In prior versions embedding the selector was optional.  
+* When processing in a Flink environment (JDBC or Kafka Streaming) the .flink.parallelism parameter is how many parallel tasks will be used to run the job.  
+* When processing using the GPU column processor in the Flink environment all Flink nodes must have an Nvidia GPU installed. 
 
 #### Changes in release 2.1.3
 * Added GPU processing support for Paillier encryption scheme.  Support is only available for Nvidia GPU's.   To enable GPU support will require an Nvidia video card, Nvidia drivers, and Nvidia CUDA 10.1+ installed on the server.  The software will need to be built on a platform that includes an Nvidia Card, Nvidia drivers, and Nvidia CUDA 10.1+ development tools.  Refer to the Build documentation  [Building-README.md][PlDb] to build with GPU support.

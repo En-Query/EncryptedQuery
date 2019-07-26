@@ -155,7 +155,7 @@ public class DataSchemaRepositoryImpl implements DataSchemaRepository {
 				.readOnly()
 				.supports(() -> {
 					Iterator<DataSchema> iter = em
-							.createQuery("Select ds From DataSchema ds Where ds.name = :name)")
+							.createQuery("Select ds From DataSchema ds Where ds.name = :name")
 							.setParameter("name", name)
 							.getResultList().iterator();
 					return (iter.hasNext()) ? iter.next() : null;

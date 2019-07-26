@@ -31,7 +31,7 @@ public class Schedule extends Resource {
 	private ScheduleStatus status;
 	private Map<String, String> parameters;
 	private String resultsUri;
-
+	private String uuid;
 	private Resource query;
 	private Resource dataSource;
 	private String errorMsg;
@@ -107,5 +107,13 @@ public class Schedule extends Resource {
 
 	public void setErrorMsg(String errorMsg) {
 		this.errorMsg = errorMsg;
+	}
+
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
 	}
 }

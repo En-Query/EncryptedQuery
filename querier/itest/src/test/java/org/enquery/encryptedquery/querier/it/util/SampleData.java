@@ -21,7 +21,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.querier.data.entity.DataSourceType;
 import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
@@ -69,10 +71,9 @@ public class SampleData {
 		DataSchema dataSchema = new DataSchema();
 		DataSchemaField dsf = new DataSchemaField();
 		dsf.setDataSchema(dataSchema);
-		dsf.setDataType("int");
+		dsf.setDataType(FieldType.INT);
 		dsf.setFieldName("field1");
 		dsf.setPosition(0);
-		dsf.setIsArray(false);
 		List<DataSchemaField> fields = new ArrayList<>();
 		fields.add(dsf);
 		dataSchema.setFields(fields);
@@ -94,7 +95,6 @@ public class SampleData {
 		result.setDataSchema(dsr);
 
 		QuerySchemaField field = new QuerySchemaField();
-		field.setLengthType("fixed");
 		field.setName("field1");
 		field.setSize(10);
 		field.setMaxArrayElements(1);
@@ -115,7 +115,6 @@ public class SampleData {
 					org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField qsf = new org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField();
 					qsf.setQuerySchema(qs);
 					qsf.setName(dsf.getFieldName());
-					qsf.setLengthType("Fixed");
 					qsf.setMaxSize(88);
 					qsf.setMaxArrayElements(221);
 					qs.getFields().add(qsf);
@@ -134,6 +133,7 @@ public class SampleData {
 
 	public Schedule createSchedule(Query query, DataSource dataSource) throws JsonProcessingException {
 		Schedule result = new Schedule();
+		result.setUuid(UUID.randomUUID().toString().replace("-", ""));
 		result.setStartTime(new Date());
 		result.setQuery(query);
 		result.setDataSource(dataSource);

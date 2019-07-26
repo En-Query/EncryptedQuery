@@ -16,33 +16,91 @@
  */
 package org.enquery.encryptedquery.responder.data.transformation;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import org.apache.camel.Converter;
-import org.apache.camel.Exchange;
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.FactoryConfigurationError;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
+import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
-import org.enquery.encryptedquery.responder.data.service.RestServiceRegistry;
+import org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
+import org.enquery.encryptedquery.xml.schema.ObjectFactory;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
-@Converter
+@Component(service = DataSourceTypeConverter.class)
 public class DataSourceTypeConverter {
 
 	private static final Logger log = LoggerFactory.getLogger(DataSourceTypeConverter.class);
 
-	@Converter
-	public static DataSourceResources toXMLDataSources(Collection<DataSource> javaDataSources,
-			Exchange exchange) {
+	private static final String XSD_PATH = "/org/enquery/encryptedquery/xml/schema/data-source-resources.xsd";
 
+	private Schema xmlSchema;
+	private JAXBContext jaxbContext;
+	private ObjectFactory objectFactory;
+
+	@Reference(target = "(type=rest)")
+	private ResourceUriRegistry registry;
+
+	public DataSourceTypeConverter() {
+		SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+
+		URL resource = getClass().getResource(XSD_PATH);
+		Validate.notNull(resource);
+		try {
+			xmlSchema = factory.newSchema(resource);
+			jaxbContext = JAXBContext.newInstance(ObjectFactory.class);
+		} catch (SAXException | JAXBException e) {
+			throw new RuntimeException("Error initializing XSD schema.", e);
+		}
+		objectFactory = new ObjectFactory();
+	}
+
+
+	public void marshal(org.enquery.encryptedquery.xml.schema.DataSourceResources dataSchemas, OutputStream os) throws JAXBException, UnsupportedEncodingException, IOException, XMLStreamException, FactoryConfigurationError {
+		Marshaller marshaller = jaxbContext.createMarshaller();
+		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+		marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
+		marshaller.setSchema(xmlSchema);
+		marshaller.marshal(objectFactory.createDataSourceResources(dataSchemas), os);
+	}
+
+
+	public org.enquery.encryptedquery.xml.schema.DataSourceResources unmarshal(InputStream fis) throws JAXBException {
+		Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+		jaxbUnmarshaller.setSchema(xmlSchema);
+
+		StreamSource source = new StreamSource(fis);
+		JAXBElement<org.enquery.encryptedquery.xml.schema.DataSourceResources> element =
+				jaxbUnmarshaller.unmarshal(source, org.enquery.encryptedquery.xml.schema.DataSourceResources.class);
+
+		return element.getValue();
+	}
+
+	public DataSourceResources toXMLDataSources(Collection<DataSource> javaDataSources) {
 		if (log.isDebugEnabled()) {
 			log.debug("Converting {} to XML DataSourceResources.", javaDataSources);
 		}
-
-		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
-
 		DataSourceResources result = new DataSourceResources();
 		result.getDataSourceResource().addAll(
 				javaDataSources
@@ -72,14 +130,11 @@ public class DataSourceTypeConverter {
 		return result;
 	}
 
-	@Converter
-	public static DataSourceResource toXMLDataSources(DataSource javaDataSource, Exchange exchange) {
+	public DataSourceResource toXMLDataSource(DataSource javaDataSource) {
 
 		if (log.isDebugEnabled()) {
 			log.debug("Converting {} to XML DataSourceResource.", javaDataSource);
 		}
-
-		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
 
 		org.enquery.encryptedquery.xml.schema.DataSource xmlDataSource =
 				new org.enquery.encryptedquery.xml.schema.DataSource();

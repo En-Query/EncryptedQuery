@@ -1,6 +1,6 @@
 # EncryptedQuery
 ## Deployment
-Encrypted Query has been developed and tested on Centos 7 OS.  The application is written in Java & C and uses Apache Karaf as a launch platform.  Using REST interfaces users interact with the Querier to Configure, Generate, Schedule, & Decrypt a query.   Once Scheduled the Querier will submit the job to the Responder through REST calls to execute the query at the specified time.
+Encrypted Query has been developed and tested on Centos 7 OS.  The application is written in Java & C, and uses Apache Karaf as a launch platform.  Using REST interfaces users interact with the Querier to Configure, Generate, Schedule, & Decrypt a query.   Once Scheduled the Querier will submit the job to the Responder through REST calls to execute the query at the specified time.
 
 Encrypted Query is separated into two pieces (Querier and Responder)  The Querier configures and Encrypts the query.   It is also used to Decrypt the result.   The Responder will run the query to generate a result file.
 The system is designed for the Querier and Responder to run on separate servers.  For testing they can be configured to run on the same server.   Using Apache Flink users can also query against a JDBC database or a Kafka stream.   
@@ -81,7 +81,7 @@ blob.storage.root.url=file:///opt/enquery/blob-storage/
 Note: If you set the above locations, be sure to create the folders before running.  Default location for these files are: `/opt/enquery/querier/data/`
 
 *Increasing Task Count will increase performance.   Recommended to set to 1/2 of the number of cores available on the server.
-*query encryption methods are: (Default, Fast, and FastWithJNI) FastWithJNI uses c native libraries which speeds up encryption and is the recommended setting.
+*query encryption methods are: (Default, Fast, and FastWithJNI) FastWithJNI uses C native libraries which speeds up encryption and is the recommended setting.
 
 If you are using MariaDB as your datastore also update the /opt/enquery/querier/etc/org.ops4j.datasource-querier.cfg file and add/update the following with the specifics of your installation(database server ip, database user/password, database name):
 ```

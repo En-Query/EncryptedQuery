@@ -35,7 +35,6 @@ import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
@@ -153,7 +152,7 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 		OutputStream stdOut = new ByteArrayOutputStream();
 
 		Map<String, String> parameters = new HashMap<>();
-		parameters.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "100");
+		// parameters.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "100");
 
 		runner.run(query, parameters, System.getProperty("response.path"), stdOut);
 	}
@@ -162,6 +161,6 @@ public class FlinkJDBCRunnerIT extends AbstractResponderItest {
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
-		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

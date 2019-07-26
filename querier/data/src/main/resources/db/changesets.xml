@@ -316,4 +316,46 @@
 			<column name="error_msg" type="clob"/>
 		</addColumn>
 	</changeSet>
+	
+	<changeSet id="add-uuid-to-schedule" author="asoto">
+		<addColumn tableName="schedules">
+			<column name="uuid" type="char(32)"/>
+		</addColumn>
+		<addUniqueConstraint columnNames="uuid" tableName="schedules"/>
+	</changeSet>
+	
+	<changeSet id="remove-isarray" author="asoto">
+		<dropColumn tableName="dataschemafields" columnName="isarray"/>
+	</changeSet>
+	
+	<changeSet id="remove-length-type" author="asoto">
+		<dropColumn tableName="queryschemafields" columnName="length_type"/>
+	</changeSet>
+	
+	<changeSet id="remove-embed_selector" author="asoto">
+		<dropColumn tableName="queries" columnName="embed_selector"/>
+	</changeSet>
+	
+	<changeSet id="remove-size-max-array-notnull-constraint" author="asoto">
+		<dropNotNullConstraint 
+            columnDataType="int"
+            columnName="max_size"
+            tableName="queryschemafields"/>
+        
+        <dropNotNullConstraint 
+            columnDataType="int"
+            columnName="max_array_elements"
+            tableName="queryschemafields"/>
+                
+         <dropDefaultValue 
+            columnDataType="int"
+            columnName="max_size"
+            tableName="queryschemafields"/>
+            
+        <dropDefaultValue 
+            columnDataType="int"
+            columnName="max_array_elements"
+            tableName="queryschemafields"/>
+	</changeSet>
+	
 </databaseChangeLog>

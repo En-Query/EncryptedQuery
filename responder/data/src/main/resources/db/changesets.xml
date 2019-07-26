@@ -176,4 +176,18 @@
 		<addUniqueConstraint columnNames="execution_id,window_start_ts,window_end_ts" tableName="results"/>
 	</changeSet>
 	
+	<changeSet id="9" author="asoto">
+		<addColumn tableName="executions">
+			<column name="uuid" type="char(32)"/>
+		</addColumn>
+		<addColumn tableName="executions">
+			<column name="canceled" type="boolean"/>
+		</addColumn>
+		<addUniqueConstraint columnNames="uuid" tableName="executions"/>
+	</changeSet>
+	
+	<changeSet id="10" author="asoto">
+		<dropColumn tableName="dataschemafields" columnName="isarray"/>
+	</changeSet>
+	
 </databaseChangeLog>

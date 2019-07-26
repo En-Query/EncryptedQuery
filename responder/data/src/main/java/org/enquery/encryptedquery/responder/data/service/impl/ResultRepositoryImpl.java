@@ -32,14 +32,17 @@ import java.util.Collection;
 import java.util.Date;
 
 import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.responder.data.entity.DataSchema;
+import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.entity.Result;
-import org.enquery.encryptedquery.responder.data.service.BlobLocationRegistry;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
+import org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
 import org.enquery.encryptedquery.responder.data.transformation.URIUtils;
 import org.osgi.service.component.annotations.Activate;
@@ -59,8 +62,8 @@ public class ResultRepositoryImpl implements ResultRepository {
 	@Reference
 	DataSourceRegistry dsRegistry;
 
-	@Reference
-	private BlobLocationRegistry blobLocationRegistry;
+	@Reference(target = "(type=blob)")
+	private ResourceUriRegistry blobLocationRegistry;
 
 	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
 	private JPAEntityManagerProvider provider;
@@ -265,6 +268,59 @@ public class ResultRepositoryImpl implements ResultRepository {
 					result.setPayloadUrl(url.toString());
 
 					return em.merge(result);
+				});
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.responder.data.service.ResultRepository#
+	 * listFilteredByDataSchemaDataSourceAndExecution(org.enquery.encryptedquery.responder.data.
+	 * entity.DataSchema, org.enquery.encryptedquery.responder.data.entity.DataSource,
+	 * org.enquery.encryptedquery.responder.data.entity.Execution)
+	 */
+	@Override
+	public Collection<Result> listFilteredByDataSchemaDataSourceAndExecution(DataSchema dataSchema, DataSource dataSource, Execution execution) {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> {
+					StringBuilder sb = new StringBuilder("Select r From Result r ");
+					boolean hasFilter = (dataSchema != null) || (dataSource != null) || (execution != null);
+					if (hasFilter) {
+						sb.append("Join r.execution e ");
+						sb.append("Where ");
+						boolean needAnd = false;
+						if (dataSchema != null) {
+							sb.append("e.dataSchema = :dataSchema ");
+							needAnd = true;
+						}
+						if (dataSource != null) {
+							if (needAnd) sb.append(" And ");
+							sb.append("e.dataSourceName = :dataSourceName ");
+							needAnd = true;
+						}
+						if (execution != null) {
+							if (needAnd) sb.append(" And ");
+							sb.append(" e = :execution ");
+						}
+					}
+
+					TypedQuery<Result> query = em.createQuery(sb.toString(), Result.class);
+
+					if (hasFilter) {
+						if (dataSchema != null) {
+							query.setParameter("dataSchema", dataSchema);
+						}
+						if (dataSource != null) {
+							query.setParameter("dataSourceName", dataSource.getName());
+						}
+						if (execution != null) {
+							query.setParameter("execution", execution);
+						}
+					}
+
+					return query.getResultList();
 				});
 	}
 

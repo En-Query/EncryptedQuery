@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
@@ -67,8 +68,8 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 		schema1.setName(BOOKS_DATA_SCHEMA_NAME);
 		DataSchemaField field1 = new DataSchemaField();
 		field1.setFieldName("field1");
-		field1.setDataType("int");
-		field1.setIsArray(true);
+		field1.setDataType(FieldType.INT_LIST);
+		// field1.setIsArray(true);
 		field1.setPosition(33);
 		field1.setDataSchema(schema1);
 		schema1.getFields().add(field1);
@@ -79,8 +80,7 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 
 		DataSchemaField field2 = new DataSchemaField();
 		field2.setFieldName("field2");
-		field2.setDataType("string");
-		field2.setIsArray(false);
+		field2.setDataType(FieldType.STRING);
 		field2.setPosition(12);
 		field2.setDataSchema(schema2);
 		schema2.getFields().add(field2);
@@ -104,8 +104,8 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 
 		Field xField = schema.getDataSchema().getField().get(0);
 		assertEquals(field1.getFieldName(), xField.getName());
-		assertEquals(field1.getDataType(), xField.getDataType());
-		assertEquals(field1.getIsArray(), xField.isIsArray());
+		assertEquals(field1.getDataType().getExternalName(), xField.getDataType());
+		// assertEquals(field1.getIsArray(), xField.isIsArray());
 		assertEquals(field1.getPosition(), Integer.valueOf(xField.getPosition()));
 
 		// find schema 2
@@ -121,8 +121,8 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 
 		xField = schema.getDataSchema().getField().get(0);
 		assertEquals(field2.getFieldName(), xField.getName());
-		assertEquals(field2.getDataType(), xField.getDataType());
-		assertEquals(field2.getIsArray(), xField.isIsArray());
+		assertEquals(field2.getDataType().getExternalName(), xField.getDataType());
+		// assertEquals(field2.getIsArray(), xField.isIsArray());
 		assertEquals(field2.getPosition(), Integer.valueOf(xField.getPosition()));
 
 	}

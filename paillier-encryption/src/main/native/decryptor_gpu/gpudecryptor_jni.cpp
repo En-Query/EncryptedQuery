@@ -22,6 +22,8 @@
 #include <thread>
 #include <stdexcept>
 
+static const char CFG_BUSY_POLICY[] = "paillier.gpu.libdecryptor.busy.policy";
+
 extern pool_t<device_t> device_pool;
 
 extern "C" {
@@ -35,31 +37,48 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
     close_native_library();
 }
 
-/********************
+/*
  * Class:     org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme
- * Method:    gpuDecryptorSetBusyPolicy
- * Signature: (I)Z
- *
- * Function:  (JNI) setBusyPolicy
- *
- * Sets the policy for what to do if all the GPUs are busy (the "busy
- *   policy").
- *
- * Arguments:
- *     policy: a policy_t value representing the policy to use
- *
- * Returns JNI_TRUE on success, JNI_FALSE on failure.
+ * Method:    gpuDecryptorInitialize
+ * Signature: (Ljava/util/Map;)Z
  */
-JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuDecryptorSetBusyPolicy
-  (JNIEnv *env, jobject obj, jint policy) {
-    // TODO: replace function body
+JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuDecryptorInitialize
+  (JNIEnv *env, jobject obj, jobject cfg) {
     std::thread::id this_id = std::this_thread::get_id();
     COUT_BEGIN;
     std::cout << "thread " << this_id << " : ";
-    std::cout << "gpuDecryptorSetBusyPolicy(policy=" << static_cast<policy_t>(policy) << ")" << std::endl;
+    std::cout << "gpuDecryptorInitialize()" << std::endl;
     COUT_END;
-    if (policy < 0 || policy >= RP_NUM_POLICIES) return JNI_FALSE;
-    set_busy_policy(static_cast<policy_t>(policy));
+    jclass clsMap = env->FindClass("java/util/Map");
+    if (NULL == clsMap) return JNI_FALSE;
+    jmethodID midGet = env->GetMethodID(clsMap, "get", "(Ljava/lang/Object;)Ljava/lang/Object;");
+    if (NULL == midGet) return JNI_FALSE;
+
+    jstring param;
+    jsize paramLen;
+    const char *paramBytes;
+
+    param = (jstring)env->CallObjectMethod(cfg, midGet, env->NewStringUTF(CFG_BUSY_POLICY));
+    policy_t policy;
+    if (NULL != param) {
+	paramLen = env->GetStringUTFLength(param);
+	paramBytes = env->GetStringUTFChars(param, JNI_FALSE);
+	std::string policyString = std::string(paramBytes, paramLen);
+	env->ReleaseStringUTFChars(param, paramBytes);
+	COUT_BEGIN;
+	std::cout << "thread " << this_id << " : ";
+	std::cout << CFG_BUSY_POLICY << "=" << policyString << std::endl;
+	COUT_END;
+	policy = busyPolicyFromString(policyString, DEFAULT_BUSY_POLICY);
+    } else {
+	COUT_BEGIN;
+	std::cout << "thread " << this_id << " : ";
+	std::cout << "using default busy policy" << std::endl;
+	COUT_END;
+	policy = DEFAULT_BUSY_POLICY;
+    }    
+    set_busy_policy(policy);
+
     return JNI_TRUE;
 }
 

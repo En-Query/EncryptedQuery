@@ -5,13 +5,11 @@
 	<field>
 		<name>FieldName</name>
 		<dataType>String</dataType>
-		<isArray>false</isArray>
 		<position>0</position>
 	</field>
 	<field>
 		<name>NewFieldName</name>
-		<dataType>Integer</dataType>
-		<isArray>false</isArray>
+		<dataType>int</dataType>
 		<position>1</position>
 	</field>
 </dataSchema>

@@ -68,28 +68,18 @@
                             </xs:annotation>
                         </xs:element>
 
-                        <xs:element name="lengthType" type="xs:string"
-                            default="fixed" minOccurs="0">
-                            <xs:annotation>
-                                <xs:documentation>Whether or not the schema element is
-                                    fixed or variable length.  fixed if unspecified.
-                                </xs:documentation>
-                            </xs:annotation>
-                        </xs:element>
-
-                        <xs:element name="size" type="xs:int" default="10" minOccurs="0">
+                        <xs:element name="size" type="xs:int" minOccurs="0">
                             <xs:annotation>
                                 <xs:documentation>The maximum length for string or 
-                                    bytearray elements. 10 if unspecified.
+                                    byte[] elements. Entire string or byte[] if not specified.
                                 </xs:documentation>
                             </xs:annotation>
                         </xs:element>
                         
-                        <xs:element name="maxArrayElements" type="xs:int"
-                            default="1" minOccurs="0">
+                        <xs:element name="maxArrayElements" type="xs:int" minOccurs="0">
                             <xs:annotation>
                                 <xs:documentation>The maximum number of elements if the 
-                                    element is an array. 1 if unspecified.
+                                    element is an array. All elements returned if unspecified.
                                 </xs:documentation>
                             </xs:annotation>
                         </xs:element>

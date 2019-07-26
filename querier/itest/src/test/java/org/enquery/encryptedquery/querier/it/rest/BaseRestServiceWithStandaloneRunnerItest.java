@@ -16,6 +16,7 @@
  */
 package org.enquery.encryptedquery.querier.it.rest;
 
+import static org.junit.Assert.assertNotNull;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.replaceConfigurationFile;
 
 import java.io.File;
@@ -36,6 +37,7 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.standalone.StandaloneConfigurationProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -58,6 +60,10 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 		log.info("Initializing");
 		super.init();
 		waitForFileConsumed(new File(responderInboxDir, "simple-data-schema.xml"));
+		DataSchemaResponse jsonDataSchema = retrieveDataSchemaByName("Simple Data");
+		assertNotNull(jsonDataSchema);
+		DataSourceResponse jsonDataSource = retrieveDataSourceByName(jsonDataSchema, "Standalone-Simple-Name-Record");
+		assertNotNull(jsonDataSource);
 		log.info("Finished Initializing");
 	}
 
@@ -90,7 +96,6 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 		selectorValues.add("31");
 		q.setSelectorValues(selectorValues);
 
-		q.setEmbedSelector(true);
 		return q;
 	}
 
@@ -125,13 +130,13 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 		return postSchedule(query.getSchedulesUri(), jsonDataSource.getData().getId(), dataSourceParams());
 	}
 
-	private Query createQueryAndWaitForEncryption(QuerySchema querySchema) throws Exception {
+	protected Query createQueryAndWaitForEncryption(QuerySchema querySchema) throws Exception {
 		Query query = createQuery();
 		// submit the Query and wait for its encryption
 		return createQueryAndWaitForEncryption(querySchema.getQueriesUri(), query).getData();
 	}
 
-	private QuerySchema createQuerySchema(DataSchema dataSchema) {
+	protected QuerySchema createQuerySchema(DataSchema dataSchema) {
 		QuerySchema result = new QuerySchema();
 
 		result.setName("Age Query Schema " + querySchemaCount++);
@@ -145,34 +150,31 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 		result.setFields(fields);
 
 		QuerySchemaField field1 = new QuerySchemaField();
-		field1.setLengthType("fixed");
 		field1.setName("name");
-		field1.setSize(128);
-		field1.setMaxArrayElements(1);
+		// field1.setSize(128);
+		// field1.setMaxArrayElements(1);
 		fields.add(field1);
 
 		QuerySchemaField field2 = new QuerySchemaField();
-		field2.setLengthType("fixed");
 		field2.setName("children");
-		field2.setSize(128);
-		field2.setMaxArrayElements(3);
+		// field2.setSize(128);
+		// field2.setMaxArrayElements(3);
 		fields.add(field2);
 
 		QuerySchemaField field3 = new QuerySchemaField();
-		field3.setLengthType("fixed");
 		field3.setName("age");
-		field3.setSize(4);
-		field3.setMaxArrayElements(1);
+		// field3.setSize(4);
+		// field3.setMaxArrayElements(1);
 		fields.add(field3);
 
 
 		return createQuerySchema(dataSchema.getQuerySchemasUri(), result).getData();
 	}
 
-	private Map<String, String> dataSourceParams() {
+	protected Map<String, String> dataSourceParams() {
 		Map<String, String> map = new HashMap<>();
 
-		map.put(StandaloneConfigurationProperties.COMPUTE_THRESHOLD, "10000");
+		map.put(ResponderProperties.COMPUTE_THRESHOLD, "10000");
 		map.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, "100");
 		map.put(StandaloneConfigurationProperties.PROCESSING_THREADS, "8");
 		return map;

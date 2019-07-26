@@ -39,7 +39,6 @@
 			<xs:element name="numBitsPerDataElement" type="xs:int" minOccurs="0" />
 			<xs:element name="dataChunkSize" type="xs:int" />
 			<xs:element name="numPartitionsPerDataElement" type="xs:int" minOccurs="0" />
-			<xs:element name="embedSelector" type="xs:boolean" />
 			<xs:element ref="qschema:querySchema" />
 		</xs:sequence>
 	</xs:complexType>
@@ -60,6 +59,13 @@
 				</xs:complexType>
 			</xs:element>
 		</xs:sequence>
-		<xs:attribute name="schemaVersion" type="xs:decimal" use="required"/>
+		<xs:attribute name="schemaVersion" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:minInclusive value="2.0"/>
+					<xs:maxInclusive value="2.0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 	</xs:complexType>
 </xs:schema>

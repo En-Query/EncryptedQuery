@@ -36,9 +36,39 @@ public interface ExecutionRepository {
 
 	Collection<Execution> listIncomplete();
 
-	Collection<Execution> list(DataSchema dataSchema, DataSource dataSource);
+	/**
+	 * Retrieve collection of Executions matching specified criteria.
+	 * 
+	 * @param dataSchema If not null, restrict to this data schema.
+	 * @param dataSource If not null, restrict to this data source
+	 * @param incomplete If true, only incomplete executions are returned.
+	 * @return collection of executions matching the provided criteria, may be empty, not null
+	 */
+	Collection<Execution> list(DataSchema dataSchema, DataSource dataSource, boolean incomplete);
+
 
 	Execution add(Execution ex);
+
+	/**
+	 * First, it checks the UUID, if already present, return the previous instance. Otherwise adds a
+	 * new execution and returns it.
+	 * 
+	 * @param ex The Execution to be added.
+	 * @param inputStream The Query input stream.
+	 * @param onNewOp Optional operation to call if a new Execution is inserted. If this operation
+	 *        throws an exception, the transaction is rolled back.
+	 * @return
+	 */
+	Execution addIfNotPresent(Execution ex, InputStream inputStream,
+			ThrowingConsumer<Execution> onNewOp);
+
+	/**
+	 * Find an Execution by its UUID
+	 * 
+	 * @param uuid
+	 * @return
+	 */
+	Execution findByUUID(String uuid);
 
 	Execution update(Execution ex);
 

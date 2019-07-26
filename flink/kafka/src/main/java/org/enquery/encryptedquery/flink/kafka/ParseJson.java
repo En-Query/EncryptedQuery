@@ -18,55 +18,44 @@ package org.enquery.encryptedquery.flink.kafka;
 
 import java.util.Map;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.types.Row;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ParseJson implements MapFunction<String, Row> {
+public class ParseJson implements MapFunction<InputRecord, InputRecord> {
 	private static final long serialVersionUID = 1L;
 
 	static final Logger log = LoggerFactory.getLogger(ParseJson.class);
 
-	private final RowTypeInfo rowTypeInfo;
+	private final DataSchema dataSchema;
+	private transient JSONStringConverter jsonConverter;
 
 	/**
 	 * @param rowTypeInfo
 	 */
-	public ParseJson(RowTypeInfo rowTypeInfo) {
-		this.rowTypeInfo = rowTypeInfo;
+	public ParseJson(DataSchema dataSchema) {
+		Validate.notNull(dataSchema);
+		this.dataSchema = dataSchema;
 	}
 
 	@Override
-	public Row map(String value) throws Exception {
+	public InputRecord map(InputRecord value) throws Exception {
+		if (value.eof) return value;
+
 		final boolean debugging = log.isDebugEnabled();
 
-		if (debugging) log.debug("Parsing JSON string: {}", value);
-		final Map<String, Object> map = JSONStringConverter.toStringObjectFlatMap(value);
-
-		if (debugging) log.debug("Converted to map: {}", map.toString());
-
-		final String[] fieldNames = rowTypeInfo.getFieldNames();
-		final int arity = rowTypeInfo.getArity();
-		final Row result = new Row(arity);
-		for (int i = 0; i < arity; ++i) {
-			final String fieldName = fieldNames[i];
-			final Object fieldValue = map.get(fieldName);
-
-			if (debugging) {
-				log.debug("responder ParseJson - Index:{}, name: '{}', value: {}, value type: {}",
-						i,
-						fieldName,
-						fieldValue,
-						(fieldValue != null) ? fieldValue.getClass() : "null value");
-			}
-
-			result.setField(i, fieldValue);
+		if (jsonConverter == null) {
+			jsonConverter = new JSONStringConverter(dataSchema);
 		}
 
-		if (debugging) log.debug("Parsed to Row: {}", result);
-		return result;
+		if (debugging) log.debug("Parsing JSON string: {}", value);
+		final Map<String, Object> map = jsonConverter.toStringObjectFlatMap((String) value.rawData);
+		if (debugging) log.debug("Converted to map: {}", map.toString());
+		value.data = map;
+		return value;
 	}
 }

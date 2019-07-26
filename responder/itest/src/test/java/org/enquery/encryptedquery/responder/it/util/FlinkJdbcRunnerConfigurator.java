@@ -53,7 +53,7 @@ public class FlinkJdbcRunnerConfigurator {
 		properties.put(".jdbc.query", "Select id, title, author, price, qty From books");
 
 		// paths just needs to exists, no other check is done during initialization
-		properties.put(".jar.file.path", System.getProperty("flink.jdbc.app"));
+		properties.put(".application.jar.path", System.getProperty("flink.jdbc.app"));
 		properties.put(".flink.install.dir", System.getProperty("flink.install.dir"));
 		properties.put(".run.directory", tempDir.getAbsolutePath());
 

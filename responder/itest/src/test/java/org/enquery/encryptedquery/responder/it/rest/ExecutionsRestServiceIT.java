@@ -23,6 +23,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.xml.datatype.DatatypeFactory;
@@ -36,6 +37,7 @@ import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -122,6 +124,9 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 		// Now add an execution and test its retrieval
 		DatatypeFactory dtf = DatatypeFactory.newInstance();
 		Execution ex = new Execution();
+		ex.setSchemaVersion(Versions.EXECUTION_BI);
+		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
+
 		GregorianCalendar cal = new GregorianCalendar();
 		cal.add(GregorianCalendar.DAY_OF_YEAR, 1);
 
@@ -187,19 +192,6 @@ public class ExecutionsRestServiceIT extends BaseRestServiceItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(bytes);
 
-		// Properties baseTestEncryptionProperties = EncryptionPropertiesBuilder
-		// .newBuilder()
-		// .dataChunkSize(DATA_CHUNK_SIZE)
-		// .hashBitSize(HASH_BIT_SIZE)
-		// // .modulusBitSize(modulusBitSize)
-		// .certainty(certainty)
-		// .embedSelector(true)
-		// .build();
-		//
-		// return querierFactory.encrypt(querySchema,
-		// SELECTORS,
-		// baseTestEncryptionProperties);
-
-		return querierFactory.encrypt(querySchema, SELECTORS, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

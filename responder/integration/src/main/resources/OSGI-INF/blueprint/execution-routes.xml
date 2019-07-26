@@ -28,9 +28,10 @@
 			
 			<to uri="direct:resolve-execution-parents"/>
 			
-			<bean ref="executionRepo" method="list(${header.dataSchema}, ${header.dataSource})"/>
+			<bean ref="executionRepo" method="list(${header.dataSchema}, ${header.dataSource}, false)"/>
 
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.ExecutionResources"/>
+			<bean ref="executionConverter" method="toXMLExecutions"/>
+			
 			<to uri="direct:success"/>
 		</route>
 		
@@ -52,7 +53,8 @@
 				<stop/>
 			</filter>
 			
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.ExecutionResource"/>
+			<bean ref="executionConverter" method="toXMLExecution"/>
+			
 			<to uri="direct:success"/>
 		</route>
 		
@@ -66,7 +68,7 @@
 			<!-- stores and schedules the execution -->
 			<bean ref="executionUpdater" method="create(${header.dataSchema}, ${header.dataSource}, ${body})"/>
 			
-			<convertBodyTo type="org.enquery.encryptedquery.xml.schema.ExecutionResource"/>
+			<bean ref="executionConverter" method="toXMLExecution"/>
 			
 			<!-- do not send to direct:created since we are doing out marshaling explicitly here  -->
 			<setHeader headerName="Location">

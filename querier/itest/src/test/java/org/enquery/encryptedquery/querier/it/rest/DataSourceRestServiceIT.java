@@ -96,22 +96,22 @@ public class DataSourceRestServiceIT extends BaseRestServiceItest {
 		// emulate Responder not reachable (connection refused)
 		// it should return the data sources from the database
 		int oldPort = responderPort();
-		configuteResponderPort(oldPort + 10);
+		configureResponderPort(oldPort + 10);
 		try {
 			validateDataSourceList(retrieveDataSources(bookCatalogDataSchema));
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 
 		// emulate Responder http error (404 in this case)
 		// since we are providing our own (querier) port, so the
 		// service URI is not found (404)
 		// it should return the data schemas from the database
-		configuteResponderPort(8182);
+		configureResponderPort(8182);
 		try {
 			validateDataSourceList(retrieveDataSources(bookCatalogDataSchema));
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 	}
 

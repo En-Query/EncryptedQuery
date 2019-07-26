@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-querier-parent</artifactId>
-		<version>2.1.3</version>
+		<version>2.1.4</version>
 	</parent>
 	<artifactId>encryptedquery-querier-itest</artifactId>
 
@@ -38,6 +38,14 @@
 			<artifactId>geronimo-atinject_1.0_spec</artifactId>
 			<scope>test</scope>
 			<version>1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.aries.tx-control</groupId>
+			<artifactId>tx-control-service-local</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.apache.aries.tx-control</groupId>
+		    <artifactId>tx-control-provider-jpa-local</artifactId>
 		</dependency>
 		
 		<!-- Application -->
@@ -132,6 +140,17 @@
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-core</artifactId>
 		</dependency>
+		<!-- <dependency>
+			<groupId>commons-httpclient</groupId>
+			<artifactId>commons-httpclient</artifactId>
+			<version>3.1</version>
+		</dependency> -->
+		
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpmime</artifactId>
+			<version>4.5.6</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-http4</artifactId>
@@ -153,6 +172,11 @@
 			<artifactId>camel-jaxb</artifactId>
 		</dependency>
 		
+		<dependency>
+		    <groupId>org.codehaus.woodstox</groupId>
+		    <artifactId>woodstox-core-asl</artifactId>
+		    <version>4.4.1</version>
+		</dependency>
 	</dependencies>
 	
 	<profiles>

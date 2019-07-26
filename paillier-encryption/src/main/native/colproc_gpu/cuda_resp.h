@@ -129,6 +129,7 @@ typedef struct yao_t {
     query_t &query;
     size_t batch_size;
     bins_t bins;
+    size_t weight;
     yao_t(query_t &query, size_t batch_size);
     void insert_chunk(size_t row, binnum_t chunk);
     void insert_chunk_bi(uint32_t *v, binnum_t chunk);

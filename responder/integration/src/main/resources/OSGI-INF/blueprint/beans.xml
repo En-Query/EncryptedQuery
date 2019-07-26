@@ -100,22 +100,33 @@
 	<reference id="executionRepo"
 		interface="org.enquery.encryptedquery.responder.data.service.ExecutionRepository"/>
 		
-	<reference id="executionUpdater"
-		interface="org.enquery.encryptedquery.responder.business.execution.ExecutionUpdater"
-	/>
-			
-	<bean id="restRegistry"
-		class="org.enquery.encryptedquery.responder.data.service.RestServiceRegistry">
-		<argument value="#{context.path}#{api.root.path}"/>
-	</bean>
-	
 	<reference id="resultsRepo"
 		interface="org.enquery.encryptedquery.responder.data.service.ResultRepository"/>
 		
+	<reference id="executionUpdater"
+		interface="org.enquery.encryptedquery.responder.business.execution.ExecutionUpdater"
+	/>
+	
+	<reference id="dataSchemaConverter"
+		interface="org.enquery.encryptedquery.responder.data.transformation.DataSchemaTypeConverter"
+		ext:proxy-method="classes"/>
+
+	<reference id="dataSourceConverter"
+		interface="org.enquery.encryptedquery.responder.data.transformation.DataSourceTypeConverter"
+		ext:proxy-method="classes"/>
+					
+	<reference id="executionConverter"
+		interface="org.enquery.encryptedquery.responder.data.transformation.ExecutionTypeConverter"
+		ext:proxy-method="classes"/>
+		
 	<reference id="resultConverter"
 		interface="org.enquery.encryptedquery.responder.data.transformation.ResultTypeConverter"
-		ext:proxy-method="classes"/>		
- 
+		ext:proxy-method="classes"/>
+		
+	<reference id="restRegistry"
+		interface="org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry"
+		filter="(type=rest)"/>
+		
  	<reference id="executionStatusUpdater" interface="org.enquery.encryptedquery.responder.business.execution.ExecutionStatusUpdater"
 	 		ext:proxy-method="classes"/> 
  
@@ -128,5 +139,5 @@
 	    	</props>
 	    </property>
 	</bean>
-	
+		
  </blueprint>

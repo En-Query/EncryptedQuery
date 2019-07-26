@@ -16,17 +16,22 @@
  */
 package org.enquery.encryptedquery.flink.jdbc;
 
-import java.sql.ResultSet;
-
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.jdbc.JDBCInputFormat;
 import org.enquery.encryptedquery.flink.BaseQueryExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Responder extends BaseQueryExecutor {
+
+	private static final Logger log = LoggerFactory.getLogger(Responder.class);
 
 	private String driverClassName;
 	private String connectionUrl;
 	private String sqlQuery;
+	// private final PirToFlinkTypeConverter pirToFlinkTypeConverter = new
+	// PirToFlinkTypeConverter();
+
+	private Integer fetchSize;
 
 	public String getSqlQuery() {
 		return sqlQuery;
@@ -57,17 +62,18 @@ public class Responder extends BaseQueryExecutor {
 	}
 
 	public void run(ExecutionEnvironment env) throws Exception {
+		log.info("Initializing Flink JDBC Query Execution");
+
 		initializeCommon();
 		initializeBatch();
 
-		JDBCInputFormat inputBuilder = JDBCInputFormat.buildJDBCInputFormat()
-				.setDrivername(driverClassName)
-				.setDBUrl(connectionUrl)
-				.setQuery(sqlQuery)
-				.setRowTypeInfo(getRowTypeInfo())
-				.setResultSetType(ResultSet.TYPE_SCROLL_INSENSITIVE)
-				.finish();
+		JDBCSource source = new JDBCSource(sqlQuery,
+				driverClassName,
+				connectionUrl,
+				fetchSize,
+				dataSchema);
 
-		run(env, env.createInput(inputBuilder));
+		run(env, env.createInput(source));
 	}
+
 }

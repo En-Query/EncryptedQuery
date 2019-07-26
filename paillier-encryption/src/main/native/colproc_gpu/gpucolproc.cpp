@@ -28,12 +28,18 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <thread>
 #include <utility>
 
 #include <unistd.h>
 
 using namespace std;
+
+////////////////////////////////////////////////////////////
+
+bool logging = false;
+string log_file_prefix;
 
 ////////////////////////////////////////////////////////////
 
@@ -254,10 +260,10 @@ bool query_set_qelt(handle_t h_query, size_t row, mpz_t qelt) {
 
 bool remove_query(handle_t h_query) {
   std::thread::id this_id = std::this_thread::get_id();
-  COUT_BEGIN;
-  cout << "thread " << this_id << " : ";
-  cout << "remove_query()" << endl;
-  COUT_END;
+  //COUT_BEGIN;
+  //cout << "thread " << this_id << " : ";
+  //cout << "remove_query()" << endl;
+  //COUT_END;
   std::lock_guard<std::mutex> mutex_guard(query_mutex);
   auto it = queries.find(h_query);
   if (it == queries.end()) {
@@ -277,12 +283,12 @@ bool remove_query(handle_t h_query) {
       return true;
   }
 
-  COUT_BEGIN;
+  //COUT_BEGIN;
   //cout << "thread " << this_id << " : ";
   //cout << "reference count zero" << endl;
-  cout << "thread " << this_id << " : ";
-  cout << "removing associated column processors" << endl;
-  COUT_END;
+  //cout << "thread " << this_id << " : ";
+  //cout << "removing associated column processors" << endl;
+  //COUT_END;
       
   // first, erase any remaining associated column processors
   {
@@ -310,19 +316,19 @@ bool remove_query(handle_t h_query) {
   delete query;
   queries.erase(it);
 
-  COUT_BEGIN;
-  cout << "thread " << this_id << " : ";
-  cout << "leaving remove_query()" << endl;
-  COUT_END;
+ // COUT_BEGIN;
+ // cout << "thread " << this_id << " : ";
+ // cout << "leaving remove_query()" << endl;
+ // COUT_END;
   return true;
 }
 
 handle_t create_colproc(handle_t h_query) {
   std::thread::id this_id = std::this_thread::get_id();
-  COUT_BEGIN;
-  cout << "thread " << this_id << " : ";
-  cout << "create_colproc()" << endl;
-  COUT_END;
+ // COUT_BEGIN;
+ // cout << "thread " << this_id << " : ";
+ // cout << "create_colproc()" << endl;
+ // COUT_END;
   query_t *query = lookup_query(h_query);
   if (query == NULL) {
     return HANDLE_ERROR;
@@ -441,6 +447,9 @@ int colproc_compute_and_clear(handle_t h_colproc, mpz_t result) {
     //cout << "obtained device " << static_cast<void*>(device) << " (" << (bool)(p_device) << ")" << endl;
     //COUT_END;
 
+    int device_id = device->device;
+    int column_weight = colproc->yao.weight;
+
     // do work
     //cout << "computing with device " << device->device << endl;
     device->set_modulus(*(colproc->query));
@@ -465,6 +474,10 @@ int colproc_compute_and_clear(handle_t h_colproc, mpz_t result) {
 	delete device;
     }
 
+    if (colproc->use_logging) {
+	colproc->logfile << "dev=" << device_id << ", wt=" << column_weight << ", ns=" << compute_time << endl;
+    }
+
     return status;
 }
 
@@ -483,7 +496,7 @@ std::mutex roundrobin_mutex;
 int roundrobin_next = 0;
 
 colproc_t::colproc_t(query_t *query, size_t batch_size) :
-  query(query), yao(*query, batch_size) {
+    query(query), yao(*query, batch_size) {
     derooij_init(&(this->derooij_ctx), query->N2z, query->num_qelts);
     int num_gpus = (int)device_pool.size();
     if (num_gpus > 0) {
@@ -491,6 +504,21 @@ colproc_t::colproc_t(query_t *query, size_t batch_size) :
 	roundrobin_next = (roundrobin_next + 1) % num_gpus;
     } else {
 	this->device = shared_ptr<device_t>(new device_t(-1, DEVICE_W, BATCH_SIZE));
+    }
+    if (logging) {
+	std::thread::id this_id = std::this_thread::get_id();
+	this->use_logging = true;
+	stringstream ss;
+	ss << log_file_prefix << "." << query->uuid << "." << this_id;
+	this->log_file_path = ss.str();
+	this->logfile.open(this->log_file_path);
+	COUT_BEGIN;
+	cout << "thread " << this_id << " : ";
+	cout << "opened log file " << this->log_file_path << " for writing" << endl;
+	if (!this->logfile.is_open()) {
+	    throw std::runtime_error("failed to open log file for writing");
+	}
+	COUT_END;
     }
 }
 

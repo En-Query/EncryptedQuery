@@ -32,7 +32,14 @@
 			<xs:element name="queryInfo" type="q:QueryInfo" />
 			<xs:element name="resultSet" minOccurs="0" maxOccurs="unbounded" type="ResultSet"/>
 		</xs:sequence>
-		<xs:attribute name="schemaVersion" type="xs:decimal" use="required"/>
+		<xs:attribute name="schemaVersion" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:minInclusive value="2.0"/>
+					<xs:maxInclusive value="2.0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 	</xs:complexType>
 	
 	<xs:complexType name="ResultSet">

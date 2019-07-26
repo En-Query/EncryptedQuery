@@ -24,7 +24,7 @@
   <parent>
     <groupId>org.enquery.encryptedquery</groupId>
     <artifactId>encryptedquery-flink-parent</artifactId>
-    <version>2.1.3</version>
+    <version>2.1.4</version>
   </parent>
   <artifactId>encryptedquery-flink-kafka-runner</artifactId>
   
@@ -83,10 +83,10 @@
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-jackson</artifactId>
 		</dependency>
-		<dependency>
+		<!-- <dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-core-osgi</artifactId>
 			<version>${camel.version}</version>
-		</dependency>
+		</dependency> -->
 	</dependencies>
 </project>

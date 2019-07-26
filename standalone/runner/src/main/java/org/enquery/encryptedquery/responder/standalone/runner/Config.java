@@ -67,9 +67,9 @@ public @interface Config {
 			description = "Options to Java runtime, such as Heap size, etc.")
 	String _java_options();
 
-	@AttributeDefinition(name = "Standalone application jar path",
+	@AttributeDefinition(name = "Application jar file",
 			required = true,
-			description = "Path to the standalone application jar.")
+			description = "Fully Qualified application jar file name.")
 	String _application_jar_path();
 
 	@AttributeDefinition(name = "Number of thread to use.",
@@ -79,11 +79,36 @@ public @interface Config {
 
 	@AttributeDefinition(name = "Internal Max Queue Size.",
 			required = false,
-			description = "Internal processing maximum queue size.")
+			description = "(v1 only) Internal processing maximum queue size.")
 	int _max_queue_size() default 1000;
 
 	@AttributeDefinition(name = "Compute threshold.",
 			required = false,
-			description = "Compute threshold.")
+			description = "(v1 only) Compute threshold.")
 	long _compute_threshold() default 30000L;
+
+	@AttributeDefinition(name = "Algorithm version",
+			required = false,
+			description = "Either 'v1' or 'v2'. Default is version 1. ")
+	String _algorithm_version();
+	
+	@AttributeDefinition(name = "Column buffer memory MB",
+			required = false,
+			description = "(v2 only) Size of column buffer in MB.  Default is 2048 MB.")
+	int _column_buffer_memory_mb() default 2048;
+
+	@AttributeDefinition(name = "Record max queue size",
+			required = false,
+			description = "(v2 only) Max queue size for input records.  Default is 100.")
+	int _max_record_queue_size() default 100;
+
+	@AttributeDefinition(name = "Column max queue size",
+			required = false,
+			description = "(v2 only) Max queue size for multithreading.  Default is 2 * Number of Threads.")
+	int _max_column_queue_size();
+
+	@AttributeDefinition(name = "Response max queue size",
+			required = false,
+			description = "(v2 only) Max queue size for output ciphertexts.  Default is 10 * Number of Threads.")
+	int _max_response_queue_size();
 }

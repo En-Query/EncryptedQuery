@@ -25,8 +25,11 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.enquery.encryptedquery.flink.TimestampFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +37,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Abstract base class takes care of ending the source when a maximum runtime has elapsed.
  */
-public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E> implements StoppableFunction {
+public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<InputRecord> implements StoppableFunction {
 
 	/**
 	 * 
@@ -52,18 +55,23 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 
 	// private final Long runtimeInSeconds;
 	private final Long maxTimestamp;
+	private final long windowSize;
 	private final String responseFilePath;
-
+	// private final SharedState sharedState = new SharedState();
 	private transient volatile boolean isRunning = true;
 	private transient volatile boolean failed = false;
-
+	private TimeWindow lastWindow;
+	private long windowCount;
 
 	/**
 	 * 
 	 */
-	public TimeBoundStoppableConsumer(Long maxTimestamp, Path responseFilePath) {
+	public TimeBoundStoppableConsumer(Long maxTimestamp, Path responseFilePath, Time windowSize) {
 		this.maxTimestamp = maxTimestamp;
 		this.responseFilePath = responseFilePath.toString();
+		this.windowSize = windowSize.toMilliseconds();
+		Validate.isTrue(this.windowSize / 1000 > 0L, "Window size must be > 0 seconds");
+
 	}
 
 	/**
@@ -142,7 +150,7 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 		return isRunning && (maxTimestamp == null || System.currentTimeMillis() < maxTimestamp);
 	}
 
-	protected void endRun() throws InterruptedException, IOException {
+	protected void endRun(SourceContext<InputRecord> ctx) throws InterruptedException, IOException {
 		if (failed) {
 			log.info("Failed.");
 		} else if (maxTimestamp != null && System.currentTimeMillis() >= maxTimestamp) {
@@ -152,6 +160,12 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 		} else {
 			log.info("Source is exhausted.");
 		}
+
+		if (lastWindow != null) {
+			sendEof(ctx, lastWindow);
+			lastWindow = null;
+		}
+
 
 		Thread.sleep(MARKER_FILE_WAIT_TIME);
 		// if (!failed) {
@@ -193,4 +207,99 @@ public abstract class TimeBoundStoppableConsumer<E> extends RichSourceFunction<E
 			// ok if the file was not there
 		}
 	}
+
+	/*--
+	protected long calcEventTimestamp() throws Exception {
+		 final boolean debugging = log.isDebugEnabled();
+	
+		long now = System.currentTimeMillis();
+		long start = TimeWindow.getWindowStartWithOffset(now, 0, windowSize);
+		long end = start + windowSize;
+	
+		// are we in the last second of the window
+		 if ((Math.abs(end - now) <= 1000) && !isWindowComplete(start, end)) {
+		 ResponseFileNameBuilder.createWindowCompleteFile(Paths.get(responseFilePath),
+		 start,
+		 end);
+		 }
+		 while (isWindowComplete(start, end)) {
+		 while (end - now <= 1000) {
+		 if (debugging) {
+		 log.debug("Window {} is complete, waiting for the next window.",
+		 WindowInfo.windowInfo(start, end - 1));
+		 }
+		 Thread.sleep(1000);
+		 now = System.currentTimeMillis();
+		 start = TimeWindow.getWindowStartWithOffset(now, 0, windowSize);
+		 end = start + windowSize;
+		 }
+	
+		// if (debugging) {
+		// log.debug("Calculated time {} ", TimestampFormatter.format(now));
+		// }
+	//		long cnt = sharedState.incrementAndGetPerWindowRecordCount(getRuntimeContext(), start, end);
+	//		log.info("Count={}", cnt);
+		return now;
+	}*/
+
+	/**
+	 * @param start
+	 * @param end
+	 * @return
+	 * @throws IOException
+	 */
+	// private boolean isWindowComplete(long start, long end) {
+	// try {
+	// Path file = ResponseFileNameBuilder.makeWindowCompleteFileName(Paths.get(responseFilePath),
+	// start,
+	// end);
+	//
+	// return Files.exists(file);
+	// } catch (IOException e) {
+	// throw new RuntimeException("IO error", e);
+	// }
+	// }
+
+
+	protected void collect(SourceContext<InputRecord> ctx, Object record, long timestamp) {
+		Validate.notNull(record);
+		long start = TimeWindow.getWindowStartWithOffset(timestamp, 0, windowSize);
+		long end = start + windowSize;
+		TimeWindow current = new TimeWindow(start, end);
+
+		// if we see a new window, send previous window eof signal
+		if (lastWindow != null && !current.equals(lastWindow)) {
+			sendEof(ctx, lastWindow);
+		}
+		lastWindow = current;
+
+		// send current record
+		InputRecord ir = new InputRecord();
+		ir.rawData = record;
+		ir.windowMinTimestamp = current.getStart();
+		ir.windowMaxTimestamp = current.maxTimestamp();
+		ir.windowSize = windowCount++;
+
+		// log.info("Sending record for window {}", WindowInfo.windowInfo(current));
+		ctx.collectWithTimestamp(ir, timestamp);
+	}
+
+	/**
+	 * @param lastWindow2
+	 * @param lastWindow3
+	 */
+	private void sendEof(SourceContext<InputRecord> ctx, TimeWindow timeWindow) {
+		InputRecord ir = new InputRecord();
+		ir.windowMinTimestamp = timeWindow.getStart();
+		ir.windowMaxTimestamp = timeWindow.maxTimestamp();
+		ir.eof = true;
+		ir.windowSize = windowCount;
+		log.info("Sending EOF signal for window {} with a total of {} records.", WindowInfo.windowInfo(timeWindow), windowCount);
+		ctx.collectWithTimestamp(ir, System.currentTimeMillis());
+
+		// reset counters
+		lastWindow = null;
+		windowCount = 0;
+	}
+
 }

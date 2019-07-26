@@ -16,93 +16,65 @@
  */
 package org.enquery.encryptedquery.flink;
 
-import java.util.HashMap;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.types.Row;
-import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.QueryInfo;
-import org.enquery.encryptedquery.responder.QueueRecord;
-import org.enquery.encryptedquery.responder.RecordPartitioner;
+import org.enquery.encryptedquery.data.RecordEncoding;
 import org.enquery.encryptedquery.utils.KeyedHash;
 
-public final class RowHashMapFunction implements MapFunction<Row, QueueRecord>, FieldTypes {
+public final class RowHashMapFunction implements MapFunction<Map<String, Object>, QueueRecord> {
 
 	private static final long serialVersionUID = 1L;
 
-	private final int selectorFieldIndex;
-	private final String selectorFieldType;
-	private final RowTypeInfo rowTypeInfo;
+	// private final int selectorFieldIndex;
+	// private final RowTypeInfo rowTypeInfo;
 	private final QueryInfo queryInfo;
 	private final String key;
 	private final int hashBitSize;
-	private final int dataChunkSize;
 
 	transient private Partitioner partitioner;
+	transient private RecordEncoding recordEncoding;
 
 
-	public RowHashMapFunction(int selectorFieldIndex,
-			String selectorFieldType,
-			RowTypeInfo rowTypeInfo,
-			QueryInfo queryInfo) {
-		Validate.notNull(selectorFieldType);
-		Validate.notNull(rowTypeInfo);
+	public RowHashMapFunction(QueryInfo queryInfo) {
+
 		Validate.notNull(queryInfo);
 
 		this.queryInfo = queryInfo;
-		this.selectorFieldIndex = selectorFieldIndex;
-		this.selectorFieldType = selectorFieldType;
 		this.key = queryInfo.getHashKey();
 		this.hashBitSize = queryInfo.getHashBitSize();
-		this.rowTypeInfo = rowTypeInfo;
-		this.dataChunkSize = queryInfo.getDataChunkSize();
-		if (queryInfo.getEmbedSelector()) {
-			Validate.notNull(queryInfo.getQuerySchema().getSelectorField());
-		}
+		Validate.notNull(queryInfo.getQuerySchema().getSelectorField());
 	}
 
 	@Override
-	public QueueRecord map(Row row) throws Exception {
+	public QueueRecord map(Map<String, Object> recordData) throws Exception {
 
-		if (row == null) return new QueueRecord();
+		if (recordData == null) return new QueueRecord();
 
 		if (partitioner == null) {
 			partitioner = new Partitioner();
 		}
+		if (recordEncoding == null) {
+			recordEncoding = new RecordEncoding(queryInfo);
+		}
 
 		// TODO: use asString, or asByteArray?
-		final String selectorValue = asString(row.getField(selectorFieldIndex), selectorFieldType);
+		final String selectorValue = recordEncoding.getSelectorStringValue(recordData);
 
 		final Integer rowIndex = KeyedHash.hash(key, hashBitSize, selectorValue);
 
-		// Load Row into a Map to pass to the partitioner
-		final Map<String, Object> recordData = new HashMap<>();
-		queryInfo.getQuerySchema().getElementList()
-				.stream()
-				.forEach(field -> {
-					Object value = getFieldValue(row, field.getName());
-					if (value != null) {
-						recordData.put(field.getName(), value);
-					}
-				});
-
-		List<Byte> recordParts = RecordPartitioner.partitionRecord(partitioner,
-				queryInfo,
-				recordData);
-
-		QueueRecord record = new QueueRecord(rowIndex, selectorValue, recordParts);
-		record.setHitValPartitions(partitioner.createPartitions(recordParts, dataChunkSize));
+		final ByteBuffer encoded = recordEncoding.encode(recordData);
+		final List<byte[]> dataChunks = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
+		QueueRecord record = new QueueRecord();
+		record.setRowIndex(rowIndex);
+		record.setSelector(selectorValue);
+		record.setDataChunks(dataChunks);
 		return record;
 	}
 
-	private Object getFieldValue(Row row, final String fieldName) {
-		final int index = rowTypeInfo.getFieldIndex(fieldName);
-		Validate.exclusiveBetween(-1, row.getArity(), index, "Field %s not found in row.", fieldName);
-		return row.getField(index);
-	}
 }

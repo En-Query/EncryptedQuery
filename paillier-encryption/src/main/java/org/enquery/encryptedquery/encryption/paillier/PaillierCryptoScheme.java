@@ -75,19 +75,9 @@ public class PaillierCryptoScheme extends AbstractCryptoScheme implements Crypto
 		Basic, DeRooij, DeRooijJNI, Yao, YaoJNI, GPU
 	}
 
-	// Available GPU busy policies
-	public enum GPUResponderBusyPolicyId {
-		Wait, CallerRuns, Abort, GPUNow
-	}
-
 	// Available methods for response decryption.
 	public enum ResponseDecryptionMethodId {
 		CPU, GPU
-	}
-
-	// Available GPU decryptor busy policies
-	public enum GPUDecryptorBusyPolicyId {
-		Wait, CallerRuns, Abort
 	}
 
 	// Method to use for query generation.
@@ -108,23 +98,18 @@ public class PaillierCryptoScheme extends AbstractCryptoScheme implements Crypto
 	private Integer threadPoolCoreSize;
 	private Integer threadPoolTaskQueueSize;
 
-	private GPUResponderBusyPolicyId gpuResponderBusyPolicyId;
-
-	native boolean gpuResponderSetBusyPolicy(int policy);
-
-	native boolean gpuDecryptorSetBusyPolicy(int policy);
-
+	native boolean gpuResponderInitialize(Map<String,String> cfg);
 	native long gpuResponderLoadQuery(String queryId, int modulusBitSize, byte[] N_bytes, int hashBitSize, Map<Integer, CipherText> queryElements);
-
 	native boolean gpuResponderUnloadQuery(long hQuery);
 
+	native boolean gpuDecryptorInitialize(Map<String,String> cfg);
+
 	private ResponseDecryptionMethodId responseDecryptionMethodId;
-	private GPUDecryptorBusyPolicyId gpuDecryptorBusyPolicyId;
 
 	@Override
 	@Activate
 	public void initialize(Map<String, String> cfg) throws Exception {
-		log.info("Initialized called.");
+		log.info("Initializing Paillier Encryption.");
 		Validate.notNull(cfg);
 
 		config = extractConfig(cfg);
@@ -141,31 +126,31 @@ public class PaillierCryptoScheme extends AbstractCryptoScheme implements Crypto
 				config.getOrDefault(PaillierProperties.COLUMN_PROCESSOR,
 						ColumnProcessorId.Basic.toString()));
 
-		gpuResponderBusyPolicyId = GPUResponderBusyPolicyId.valueOf(
-				config.getOrDefault(PaillierProperties.GPU_LIBRESPONDER_BUSY_POLICY,
-						GPUResponderBusyPolicyId.CallerRuns.toString()));
-
 		responseDecryptionMethodId = ResponseDecryptionMethodId.valueOf(
 				config.getOrDefault(PaillierProperties.DECRYPT_RESPONSE_METHOD,
 						ResponseDecryptionMethodId.CPU.toString()));
 
-		gpuDecryptorBusyPolicyId = GPUDecryptorBusyPolicyId.valueOf(
-				config.getOrDefault(PaillierProperties.GPU_LIBDECRYPTOR_BUSY_POLICY,
-						GPUDecryptorBusyPolicyId.CallerRuns.toString()));
-
 		loadNativeLibraries();
 
 		if (columnProcessorId == ColumnProcessorId.GPU) {
-			Validate.isTrue(gpuResponderSetBusyPolicy(gpuResponderBusyPolicyId.ordinal()), "Failed to set GPU responder busy policy");
+			Validate.isTrue(gpuResponderInitialize(cfg), "Failed to initialize GPU responder library");
 		}
 
 		if (responseDecryptionMethodId == ResponseDecryptionMethodId.GPU) {
-			Validate.isTrue(gpuDecryptorSetBusyPolicy(gpuDecryptorBusyPolicyId.ordinal()), "Failed to set GPU decryptor busy policy");
+			Validate.isTrue(gpuDecryptorInitialize(cfg), "Failed to initialize GPU decryptor library");
 		}
 
 		intializeReferences(config);
 
-		log.info("Initialized with: " + config);
+		StringBuilder sb = new StringBuilder();
+		config.forEach((k, v) -> {
+			sb.append("\n     ");
+			sb.append(k);
+			sb.append("=");
+			sb.append(v);
+		});
+		log.info("Paillier Encryption Initialized with: {}", sb.toString());
+
 	}
 
 	private void loadNativeLibraries() {

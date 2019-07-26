@@ -19,9 +19,8 @@ package org.enquery.encryptedquery.querier.data.entity.json;
 public class QuerySchemaField {
 
 	private String name;
-	private String lengthType;
-	private int size;
-	private int maxArrayElements;
+	private Integer size;
+	private Integer maxArrayElements;
 
 	public QuerySchemaField() {}
 
@@ -33,27 +32,19 @@ public class QuerySchemaField {
 		this.name = name;
 	}
 
-	public String getLengthType() {
-		return lengthType;
-	}
-
-	public void setLengthType(String lengthType) {
-		this.lengthType = lengthType;
-	}
-
-	public int getSize() {
+	public Integer getSize() {
 		return size;
 	}
 
-	public void setSize(int size) {
+	public void setSize(Integer size) {
 		this.size = size;
 	}
 
-	public int getMaxArrayElements() {
+	public Integer getMaxArrayElements() {
 		return maxArrayElements;
 	}
 
-	public void setMaxArrayElements(int maxArrayElements) {
+	public void setMaxArrayElements(Integer maxArrayElements) {
 		this.maxArrayElements = maxArrayElements;
 	}
 
@@ -61,7 +52,6 @@ public class QuerySchemaField {
 	public String toString() {
 		StringBuilder output = new StringBuilder();
 		output.append("\n  Name: " + name + "\n");
-		output.append("  lengthType: " + lengthType + "\n");
 		output.append("  size: " + size + "\n");
 		output.append("  maxArrayElements: " + maxArrayElements);
 

@@ -16,12 +16,15 @@
  */
 package org.enquery.encryptedquery.flink.kafka;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
-import java.util.Random;
+import java.util.Scanner;
 
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,21 +32,19 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class FileTestSource extends TimeBoundStoppableConsumer<String> {
+public class FileTestSource extends TimeBoundStoppableConsumer {
 
 	private static final long serialVersionUID = 896339099221645435L;
 	private static final Logger log = LoggerFactory.getLogger(FileTestSource.class);
-	// private static final int MAX_DELAY_MS = 5_000;
 	private final String inputDataFile;
-	private final int maxDelay;
 
 	/**
+	 * @param windowSize
 	 * 
 	 */
-	public FileTestSource(Path inputDataFile, Path responseFile, long maxTimestamp, int maxDelay) {
-		super(maxTimestamp, responseFile);
+	public FileTestSource(Path inputDataFile, Path responseFile, Long maxTimestamp, Time windowSize) {
+		super(maxTimestamp, responseFile, windowSize);
 		this.inputDataFile = inputDataFile.toString();
-		this.maxDelay = maxDelay;
 	}
 
 	/*
@@ -54,34 +55,45 @@ public class FileTestSource extends TimeBoundStoppableConsumer<String> {
 	 * .api.functions.source.SourceFunction.SourceContext)
 	 */
 	@Override
-	public void run(SourceContext<String> ctx) throws Exception {
+	public void run(SourceContext<InputRecord> ctx) throws Exception {
 		int count = 0;
-		Random random = new Random();
-
 		beginRun();
+		try {
+			Iterator<String> iter = Files.lines(Paths.get(inputDataFile)).iterator();
+			while (canRun() && iter.hasNext()) {
 
-		// final long stoptime = System.currentTimeMillis() + (runtimeInSeconds * 1000);
-		Iterator<String> iter = Files.lines(Paths.get(inputDataFile)).iterator();
-
-		while (canRun() && iter.hasNext()) {
-
-			// delay only after first item
-			if (count > 0) {
-			if (maxDelay > 0) {
-				Thread.sleep(random.nextInt(maxDelay));
 				if (!canRun()) break;
-			}
-			}
 
-			String line = iter.next();
+				// read the first value as delay
+				String line = delay(iter.next());
 
-			synchronized (ctx.getCheckpointLock()) {
-				ctx.collect(line);
+				collect(ctx, line, System.currentTimeMillis());
 				count++;
 			}
+
+			log.info("{} records processed.", count);
+		} finally {
+			endRun(ctx);
+		}
+	}
+
+	/**
+	 * @param next
+	 * @return
+	 * @throws InterruptedException
+	 * @throws IOException
+	 */
+	private String delay(String line) throws InterruptedException, IOException {
+		if (line.charAt(0) == '{') return line;
+
+		int tabPos = line.indexOf("\t");
+
+		try (Scanner scanner = new Scanner(line)) {
+			int delay = scanner.nextInt();
+			// first value is the delay in seconds
+			Thread.sleep(delay * 1_000);
 		}
 
-		log.info("{} records processed.", count);
-		endRun();
+		return line.substring(tabPos + 1, line.length());
 	}
 }

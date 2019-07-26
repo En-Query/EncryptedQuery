@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -49,6 +50,7 @@ import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.responder.it.util.KafkaDriver;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.Configuration.Entry;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
@@ -221,6 +223,9 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		// Add an execution for current time
 		DatatypeFactory dtf = DatatypeFactory.newInstance();
 		Execution ex = new Execution();
+		ex.setSchemaVersion(Versions.EXECUTION_BI);
+		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
+
 		GregorianCalendar cal = new GregorianCalendar();
 		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
 
@@ -244,7 +249,7 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 
 	private Boolean executionFinished(ExecutionResource execution) {
 		try {
-			tryUntilTrue(30,
+			tryUntilTrue(40,
 					5_000,
 					"Timeout waiting for an execution to finish.",
 					uri -> retrieveExecution(uri).getExecution().getCompletedOn() != null,
@@ -257,7 +262,7 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 	}
 
 	private void validateSingleResult(ExecutionResource execution) throws Exception {
-		tryUntilTrue(20,
+		tryUntilTrue(40,
 				5_000,
 				"Timeout waiting for an execution result.",
 				uri -> retrieveResults(uri).getResultResource().size() > 0,
@@ -346,6 +351,6 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(bytes);
 
-		return querierFactory.encrypt(querySchema, SELECTORS, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

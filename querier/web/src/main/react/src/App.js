@@ -10,6 +10,8 @@ import QueryStatus from "./components/QueryStatus";
 import QueryResults from "./components/QueryResults";
 import QuerySchedulesStatus from "./components/QuerySchedulesStatus";
 import PageNotFound from "./components/PageNotFound";
+import Versions from "./components/Versions";
+import Overview from "./components/Overview";
 
 import {
   BrowserRouter,

@@ -18,12 +18,16 @@ package org.enquery.encryptedquery.querier.data.entity.jpa;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+
+import org.enquery.encryptedquery.core.FieldType;
 
 @Entity
 @Table(name = "dataschemafields")
@@ -39,10 +43,14 @@ public class DataSchemaField {
 
 	@Column(name = "fieldname", nullable = false)
 	private String fieldName;
+
+	@Enumerated(EnumType.STRING)
 	@Column(name = "datatype", nullable = false)
-	private String dataType;
-	@Column(name = "isarray", nullable = false)
-	private Boolean isArray;
+	private FieldType dataType;
+
+	// @Column(name = "isarray", nullable = false)
+	// private Boolean isArray;
+
 	@Column(name = "pos", nullable = false)
 	private Integer position;
 
@@ -56,21 +64,21 @@ public class DataSchemaField {
 		this.fieldName = fieldName;
 	}
 
-	public String getDataType() {
+	public FieldType getDataType() {
 		return dataType;
 	}
 
-	public void setDataType(String dataType) {
+	public void setDataType(FieldType dataType) {
 		this.dataType = dataType;
 	}
 
-	public Boolean getIsArray() {
-		return isArray;
-	}
-
-	public void setIsArray(Boolean isArray) {
-		this.isArray = isArray;
-	}
+	// public Boolean getIsArray() {
+	// return isArray;
+	// }
+	//
+	// public void setIsArray(Boolean isArray) {
+	// this.isArray = isArray;
+	// }
 
 	public Integer getId() {
 		return id;
@@ -128,7 +136,6 @@ public class DataSchemaField {
 		builder.append("DataSchemaField [id=").append(id)
 				.append(", fieldName=").append(fieldName)
 				.append(", dataType=").append(dataType)
-				.append(", isArray=").append(isArray)
 				.append(", position=").append(position)
 				.append("]");
 		return builder.toString();

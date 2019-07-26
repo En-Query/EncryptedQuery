@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.standalone;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
@@ -30,10 +31,10 @@ import java.util.stream.Stream;
 
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.RecordEncoding;
 import org.enquery.encryptedquery.json.JSONStringConverter;
-import org.enquery.encryptedquery.responder.QueueRecord;
-import org.enquery.encryptedquery.responder.RecordPartitioner;
 import org.enquery.encryptedquery.utils.KeyedHash;
+import org.enquery.encryptedquery.utils.PIRException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,10 +48,9 @@ public class FileReader implements Callable<Long> {
 
 	private long selectorNullCount;
 	private final Path inputDataFile;
-	private final int maxHitsPerSelector;
+	private final Integer maxHitsPerSelector;
 	private final AtomicLong recordsRead;
 	private AtomicLong lineNumber = new AtomicLong(0);
-	// AtomicLong recordsReadCounter
 
 	// keeps track of how many hits a given
 	// selector has
@@ -61,13 +61,15 @@ public class FileReader implements Callable<Long> {
 	private HashMap<Integer, Integer> rowIndexOverflowCounter = new HashMap<>();
 	private final QueryInfo queryInfo;
 	private final List<BlockingQueue<QueueRecord>> queues;
+	private final RecordEncoding recordEncoding;
+	private final JSONStringConverter jsonConverter;
 
 	/**
 	 * 
 	 */
 	public FileReader(Path inputDataFile,
 			QueryInfo queryInfo,
-			int maxHitsPerSelector,
+			Integer maxHitsPerSelector,
 			List<BlockingQueue<QueueRecord>> queues,
 			Partitioner partitioner,
 			AtomicLong recordsReadCounter) {
@@ -77,6 +79,9 @@ public class FileReader implements Callable<Long> {
 		this.queues = queues;
 		this.partitioner = partitioner;
 		this.recordsRead = recordsReadCounter;
+
+		recordEncoding = new RecordEncoding(queryInfo);
+		jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
 	}
 
 	/*
@@ -138,7 +143,7 @@ public class FileReader implements Callable<Long> {
 	private void processLine(String line) {
 		Map<String, Object> jsonData = null;
 		try {
-			jsonData = JSONStringConverter.toStringObjectFlatMap(line);
+			jsonData = jsonConverter.toStringObjectFlatMap(line);
 		} catch (Exception e) {
 			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
 			return;
@@ -156,49 +161,62 @@ public class FileReader implements Callable<Long> {
 		}
 	}
 
-	private void processRow(Map<String, Object> jsonData) {
+	private void processRow(Map<String, Object> rowData) {
 
-		final String selector = RecordPartitioner.getSelectorValue(queryInfo.getQuerySchema(), jsonData).trim();
+		final String selector = recordEncoding.getSelectorStringValue(rowData);
 		// log.info("Selector Value {}", selector);
-		if (selector == null || selector.length() <= 0) {
+		if (selector == null || selector.trim().length() <= 0) {
 			selectorNullCount++;
 			return;
 		}
 
 		try {
-			int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
+			final int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
 			// logger.info("Selector {} / Hash {}", selector, rowIndex);
 
-			// Track how many "hits" there are for each selector (Converted into
-			// rowIndex)
-			if (rowIndexCounter.containsKey(rowIndex)) {
-				rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
+			if (maxHitsPerSelector == null) {
+				ingestRecord(rowData, selector, rowIndex);
 			} else {
-				rowIndexCounter.put(rowIndex, 1);
-			}
-
-			// If we are not over the max hits value add the record to the
-			// appropriate queue
-			if (rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-				List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, queryInfo, jsonData);
-				QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
-				int whichQueue = rowIndex % queues.size();
-				// log.info("Hash {} going to queue {} with {} bytes", rowIndex, whichQueue,
-				// parts.size());
-
-				// insert element in queue, waits until space is available
-				queues.get(whichQueue).put(qr);
-				recordsRead.incrementAndGet();
-			} else {
-				if (rowIndexOverflowCounter.containsKey(rowIndex)) {
-					rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
+				// Track how many "hits" there are for each selector (Converted into
+				// rowIndex)
+				if (rowIndexCounter.containsKey(rowIndex)) {
+					rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
 				} else {
-					rowIndexOverflowCounter.put(rowIndex, 1);
+					rowIndexCounter.put(rowIndex, 1);
+				}
+
+				// If we are not over the max hits value add the record to the
+				// appropriate queue
+				if (rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
+					ingestRecord(rowData, selector, rowIndex);
+				} else {
+					if (rowIndexOverflowCounter.containsKey(rowIndex)) {
+						rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
+					} else {
+						rowIndexOverflowCounter.put(rowIndex, 1);
+					}
 				}
 			}
 		} catch (Exception e) {
 			log.error("Exception adding record selector {} / line number {}, Exception: {}", selector, lineNumber.get(), e.getMessage(), e);
 		}
+	}
+
+	private void ingestRecord(Map<String, Object> rowData, final String selector, int rowIndex) throws PIRException, InterruptedException {
+
+		ByteBuffer encoded = recordEncoding.encode(rowData);
+		List<byte[]> dataChunks = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
+		QueueRecord record = new QueueRecord(rowIndex, selector, dataChunks);
+
+		// List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, queryInfo, rowData);
+		// QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
+		int whichQueue = rowIndex % queues.size();
+		// log.info("Hash {} going to queue {} with {} bytes", rowIndex, whichQueue,
+		// parts.size());
+
+		// insert element in queue, waits until space is available
+		queues.get(whichQueue).put(record);
+		recordsRead.incrementAndGet();
 	}
 
 }

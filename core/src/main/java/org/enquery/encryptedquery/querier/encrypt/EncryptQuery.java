@@ -66,8 +66,8 @@ public class EncryptQuery {
 		this.randomProvider = randomProvider;
 	}
 
-	public Querier encrypt(QuerySchema querySchema, List<String> selectors,
-			boolean embedSelector,
+	public Querier encrypt(QuerySchema querySchema,
+			List<String> selectors,
 			int dataChunkSize,
 			int hashBitSize) throws InterruptedException, PIRException {
 
@@ -98,9 +98,7 @@ public class EncryptQuery {
 		queryInfo.setHashBitSize(hashBitSize);
 		queryInfo.setDataChunkSize(dataChunkSize);
 		queryInfo.setQueryName(querySchema.getName());
-		queryInfo.setEmbedSelector(embedSelector);
 		queryInfo.setQuerySchema(querySchema);
-
 
 		// Determine the query vector mappings for the selectors; vecPosition -> selectorNum
 		Map<Integer, Integer> selectorQueryVecMapping = computeSelectorQueryVecMap(queryInfo, selectors);

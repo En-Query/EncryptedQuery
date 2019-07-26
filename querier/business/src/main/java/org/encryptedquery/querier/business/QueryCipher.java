@@ -77,24 +77,23 @@ public class QueryCipher {
 			List<String> selectors = JSONConverter.toList(jpaQuery.getSelectorValues());
 			Validate.notNull(selectors, "No selector values, aborting query generation. At least one selector required.");
 
-
 			// TODO: get from JPA Query record as individual fields, we should move away from
 			// generic maps
 			Map<String, String> parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
-			boolean embedSelector = jpaQuery.getEmbedSelector();
+			// boolean embedSelector = jpaQuery.getEmbedSelector();
 			int dataChunkSize = Integer.valueOf(parameters.getOrDefault(QuerierProperties.DATA_CHUNK_SIZE, "1"));
 			if (parameters.containsKey(QuerierProperties.HASH_BIT_SIZE)) {
 				hashBitSize = Integer.parseInt(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, hashBitSize.toString()));
 			}
-			
+
 			logger.info("  - HashBitSize ( {} )", hashBitSize);
 			logger.info("  - Number of Selectors ( {} )", selectors.size());
 			logger.info("  - Additional Parameters:");
 			for (Map.Entry<String, String> entry : parameters.entrySet()) {
-						logger.info("     {} = {}", entry.getKey(), entry.getValue());
+				logger.info("     {} = {}", entry.getKey(), entry.getValue());
 			}
-			
-			Querier querier = encryptQuery.encrypt(querySchema, selectors, embedSelector, dataChunkSize, hashBitSize);
+
+			Querier querier = encryptQuery.encrypt(querySchema, selectors, dataChunkSize, hashBitSize);
 
 			logger.info("Finished encrypting {}.", jpaQuery);
 			return querier;

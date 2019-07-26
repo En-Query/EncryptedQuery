@@ -17,22 +17,43 @@
 package org.enquery.encryptedquery.json;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.data.DataSchema;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 
 public class JSONStringConverter {
+
+	// private static final Logger log = LoggerFactory.getLogger(JSONStringConverter.class);
 
 	private static final TypeReference<Map<String, Object>> typeStringObjectMapRef = new TypeReference<Map<String, Object>>() {};
 	private static final TypeReference<Map<String, String>> typeStringStringMapRef = new TypeReference<Map<String, String>>() {};
 
 	private static final TypeReference<List<String>> typeListRef = new TypeReference<List<String>>() {};
 	private static final ObjectMapper objectMapper = new ObjectMapper();
+	private static final TypeReference<MapWithSchema> mapWithSchematypeRef = new TypeReference<MapWithSchema>() {};
+
+	private final ObjectMapper objectMapperWithDataSchema;
+
+	/**
+	 * 
+	 */
+	public JSONStringConverter(DataSchema dataSchema) {
+		Validate.notNull(dataSchema);
+		objectMapperWithDataSchema = new ObjectMapper();
+		SimpleModule module = new SimpleModule();
+		module.addValueInstantiator(MapWithSchema.class, new MapWithSchemaInstantiator(dataSchema));
+		module.addAbstractTypeMapping(Map.class, MapWithSchema.class);
+		// module.addValueInstantiator(Map.class, new MapWithSchemaInstantiator(dataSchema));
+		objectMapperWithDataSchema.registerModule(module);
+	}
 
 	public static Map<String, Object> toStringObjectMap(String json) {
 		Map<String, Object> returnMap = null;
@@ -45,6 +66,19 @@ public class JSONStringConverter {
 					e);
 		}
 		return returnMap;
+	}
+
+	private Map<String, Object> toStringObjectMapWithDataSchema(String json) {
+		if (json == null) return null;
+
+		try {
+			MapWithSchema mapWithSchema = objectMapperWithDataSchema.readValue(json, mapWithSchematypeRef);
+			return mapWithSchema.getData();
+		} catch (Exception e) {
+			throw new RuntimeException(
+					String.format("Exception converting %s to map.", json),
+					e);
+		}
 	}
 
 	/**
@@ -60,37 +94,8 @@ public class JSONStringConverter {
 	 * @param json
 	 * @return
 	 */
-	public static Map<String, Object> toStringObjectFlatMap(String json) {
-		Map<String, Object> deepMap = toStringObjectMap(json);
-		return flatten(deepMap, null);
-	}
-
-
-	/**
-	 * @param deepMap
-	 * @param prefix
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	private static Map<String, Object> flatten(Map<String, Object> deepMap, String prefix) {
-		Map<String, Object> result = new HashMap<>();
-		deepMap.forEach((key, value) -> {
-			final String newKey = concat(prefix, key);
-			if (value instanceof Map) {
-				result.putAll(flatten((Map<String, Object>) value, newKey));
-			} else {
-				result.put(newKey, value);
-			}
-		});
-		return result;
-	}
-
-	private static String concat(String prefix, String key) {
-		// TODO: escape the | character if present in the key
-		// key.replaceAll("\\", "\\");
-		// key.replaceAll("\\|", "\\|");
-		if (prefix == null || prefix.length() == 0) return key;
-		return String.format("%s|%s", prefix, key);
+	public Map<String, Object> toStringObjectFlatMap(String json) {
+		return toStringObjectMapWithDataSchema(json);
 	}
 
 

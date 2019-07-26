@@ -40,13 +40,19 @@
 	            <to uri="direct:data-schemas-from-db"/>
 	           	<to uri="direct:success"/>
 			</onException>
+			
 						
-			<setHeader headerName="CamelHttpPath">
-				<constant>/responder/api/rest/dataschemas</constant>
-			</setHeader>
-			<removeHeader headerName="CamelHttpQuery"/>
-			<to uri="direct:get-from-responder"/>
-           	<to uri="direct:store-data-schemas"/>
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+			
+				<setHeader headerName="CamelHttpPath">
+					<constant>/responder/api/rest/dataschemas</constant>
+				</setHeader>
+				<removeHeader headerName="CamelHttpQuery"/>
+				<to uri="direct:get-from-responder"/>
+	           	<to uri="direct:store-data-schemas"/>
+			</filter>
+			
            	<to uri="direct:data-schemas-from-db"/>
 			<to uri="direct:success"/>
 		</route>
@@ -98,16 +104,8 @@
 			<setHeader headerName="CAMEL_JSON_VIEW">
 				<constant>org.enquery.encryptedquery.querier.data.entity.json.Views$ListView</constant>
 			</setHeader>
-			
-<!-- 			<split strategyRef="arrayListAggregator">
-				<simple>${body}</simple>
-				<convertBodyTo type="org.enquery.encryptedquery.querier.data.entity.json.DataSchema"/>		
-			</split>
-			<convertBodyTo type="org.enquery.encryptedquery.querier.data.entity.json.DataSchemaCollectionResponse"/>
- -->
  
  			<bean ref="dataSchemaConverter" method="toJSONCollectionResponse"/>
- 
  		</route>
 
 	</routeContext>

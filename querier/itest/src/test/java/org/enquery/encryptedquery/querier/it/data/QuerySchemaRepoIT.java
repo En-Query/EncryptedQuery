@@ -24,6 +24,7 @@ import java.util.Collection;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
@@ -70,9 +71,8 @@ public class QuerySchemaRepoIT extends AbstractQuerierItest {
 		ds.setName(DATA_SCHEMA_NAME);
 		DataSchemaField field = new DataSchemaField();
 		field.setDataSchema(ds);
-		field.setDataType("string");
+		field.setDataType(FieldType.STRING);
 		field.setFieldName("field1");
-		field.setIsArray(false);
 		field.setPosition(0);
 		ds.getFields().add(field);
 
@@ -86,7 +86,6 @@ public class QuerySchemaRepoIT extends AbstractQuerierItest {
 
 			for (int j = 0; j < 3; ++j) {
 				QuerySchemaField qsf = new QuerySchemaField();
-				qsf.setLengthType("fixed");
 				qsf.setMaxArrayElements(12);
 				qsf.setMaxSize(122);
 				qsf.setName("field-" + j);

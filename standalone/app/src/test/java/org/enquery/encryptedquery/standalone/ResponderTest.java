@@ -18,6 +18,7 @@ package org.enquery.encryptedquery.standalone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -36,7 +37,7 @@ import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
 
-import org.enquery.encryptedquery.core.FieldTypes;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.DataSchema;
@@ -81,6 +82,7 @@ public class ResponderTest {
 
 	private Map<String, String> config;
 
+	// private Responder responder;
 	private ExecutorService decryptionThreadPool = Executors.newCachedThreadPool();;
 
 	// private Responder responder;
@@ -161,6 +163,49 @@ public class ResponderTest {
 	}
 
 	@Test
+	public void gapIssue() throws Exception {
+		Path DATA_FILE = Paths.get("target/test-classes/", "phone-calls.json");
+
+		querySchema = createPhoneDataQuerySchema();
+		List<String> selectors = Arrays.asList(new String[] {"666-951-8350", "893-324-3654"});
+
+		Querier querier = createQuerier(crypto, "Phone calls", selectors);
+		queryKey = querier.getQueryKey();
+		saveQuery(querier.getQuery());
+
+		try (ResponderV2 responder = new ResponderV2()) {
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.setInputDataFile(DATA_FILE);
+			responder.setQueryFileName(QUERY_FILE_NAME);
+			responder.setBufferWidth(40);
+			responder.run(config);
+		}
+
+		Response response = loadFile();
+		response.getQueryInfo().printQueryInfo();
+
+		log.info("# Response records: ", response.getResponseElements().size());
+
+		DecryptResponse dr = new DecryptResponse();
+		dr.setCrypto(crypto);
+		dr.setExecutionService(decryptionThreadPool);
+		dr.activate();
+
+		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		log.info(answer.toString());
+		Selector selector = answer.selectorByName("Caller #");
+		assertEquals(2, selector.hitCount());
+		Map<String, ClearTextQueryResponse.Hits> hitsPerSelector = new HashMap<>();
+		selector.forEachHits(h -> {
+			hitsPerSelector.put(h.getSelectorValue(), h);
+		});
+		assertTrue(hitsPerSelector.containsKey("666-951-8350"));
+		assertEquals(2, hitsPerSelector.get("666-951-8350").recordCount());
+		assertTrue(hitsPerSelector.containsKey("893-324-3654"));
+		assertEquals(1, hitsPerSelector.get("893-324-3654").recordCount());
+	}
+
+	@Test
 	public void testXertaFile() throws Exception {
 
 		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
@@ -171,7 +216,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (Responder responder = new Responder()) {
+		try (ResponderV2 responder = new ResponderV2()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(CDR_DATA_FILE);
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -209,10 +254,61 @@ public class ResponderTest {
 	}
 
 	@Test
+	public void testPcapFile() throws Exception {
+
+		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "pcap-data-test.json");
+
+		querySchema = createPcapQuerySchema();
+
+		// List<String> selectors = Arrays.asList(new String[] {"sll:ethertype:ip:udp:data",
+		// "sll:ethertype:ip:tcp:mysql:vssmonitoring", "sll:ethertype:ip:tcp:ssh"});
+		List<String> selectors = Arrays.asList(new String[] {"sll:ethertype:ip:tcp:ssh"});
+		Querier querier = createQuerier(crypto, "Pcap", selectors);
+		queryKey = querier.getQueryKey();
+		saveQuery(querier.getQuery());
+
+		try (ResponderV2 responder = new ResponderV2()) {
+			responder.setOutputFileName(RESPONSE_FILE_NAME);
+			responder.setInputDataFile(CDR_DATA_FILE);
+			responder.setQueryFileName(QUERY_FILE_NAME);
+			responder.run(config);
+		}
+
+		Response response = loadFile();
+		response.getQueryInfo().printQueryInfo();
+
+		log.info("# Response records: ", response.getResponseElements().size());
+
+		// ExecutorService es = Executors.newCachedThreadPool();
+		DecryptResponse dr = new DecryptResponse();
+		dr.setCrypto(crypto);
+		dr.setExecutionService(decryptionThreadPool);
+		dr.activate();
+
+		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		log.info(answer.toString());
+
+
+
+		final Map<String, Object> returnedFields = new HashMap<>();
+		Selector selector = answer.selectorByName("_source|layers|frame|frame.protocols");
+		assertNotNull(selector);
+		selector.forEachHits(hits -> {
+			assertEquals("sll:ethertype:ip:tcp:ssh", hits.getSelectorValue());
+			hits.forEachRecord(record -> {
+				record.forEachField(field -> {
+					log.info("Field {}", field);
+					returnedFields.put(field.getName(), field.getValue());
+				});
+			});
+		});
+	}
+
+	@Test
 	public void test() throws Exception {
 
 		saveQuery();
-		try (Responder responder = new Responder()) {
+		try (ResponderV2 responder = new ResponderV2()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(DATA_FILE_NAME);
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -289,7 +385,7 @@ public class ResponderTest {
 		queryEnc.setRandomProvider(randomProvider);
 		// dataChunkSize=1
 		// hashBitSize=9
-		return queryEnc.encrypt(querySchema, selectors, true, 1, 9);
+		return queryEnc.encrypt(querySchema, selectors, 2, 9);
 	}
 
 	private QuerySchema createQuerySchema() {
@@ -297,22 +393,19 @@ public class ResponderTest {
 		ds.setName("People");
 		DataSchemaElement dse1 = new DataSchemaElement();
 		dse1.setName("name");
-		dse1.setDataType("string");
-		dse1.setIsArray(false);
+		dse1.setDataType(FieldType.STRING);
 		dse1.setPosition(0);
 		ds.addElement(dse1);
 
 		DataSchemaElement dse2 = new DataSchemaElement();
 		dse2.setName("age");
-		dse2.setDataType("int");
-		dse2.setIsArray(false);
+		dse2.setDataType(FieldType.INT);
 		dse2.setPosition(1);
 		ds.addElement(dse2);
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("children");
-		dse3.setDataType("string");
-		dse3.setIsArray(true);
+		dse3.setDataType(FieldType.STRING_LIST);
 		dse3.setPosition(2);
 		ds.addElement(dse3);
 
@@ -322,25 +415,25 @@ public class ResponderTest {
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
-		field1.setLengthType("fixed");
 		field1.setName("name");
-		field1.setSize(128);
-		field1.setMaxArrayElements(1);
+		// field1.setLengthType("fixed");
+		// field1.setSize(128);
+		// field1.setMaxArrayElements(1);
 		qs.addElement(field1);
 
 		QuerySchemaElement field2 = new QuerySchemaElement();
-		field2.setLengthType("fixed");
 		field2.setName("children");
-		field2.setSize(128);
 		field2.setMaxArrayElements(3);
-		field2.setLengthType("variable");
+		// field2.setSize(128);
+		// field2.setLengthType("fixed");
+		// field2.setLengthType("variable");
 		qs.addElement(field2);
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
-		field3.setLengthType("fixed");
 		field3.setName("age");
-		field3.setSize(4);
-		field3.setMaxArrayElements(1);
+		// field3.setLengthType("fixed");
+		// field3.setSize(4);
+		// field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		return qs;
@@ -351,71 +444,61 @@ public class ResponderTest {
 		ds.setName("xerta");
 		DataSchemaElement dse1 = new DataSchemaElement();
 		dse1.setName("Mnemonic");
-		dse1.setDataType(FieldTypes.STRING);
-		dse1.setIsArray(false);
+		dse1.setDataType(FieldType.STRING);
 		dse1.setPosition(1);
 		ds.addElement(dse1);
 
 		DataSchemaElement dse2 = new DataSchemaElement();
 		dse2.setName("Currency");
-		dse2.setDataType(FieldTypes.STRING);
-		dse2.setIsArray(false);
+		dse2.setDataType(FieldType.STRING);
 		dse2.setPosition(4);
 		ds.addElement(dse2);
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("MaxPrice");
-		dse3.setDataType(FieldTypes.DOUBLE);
-		dse3.setIsArray(false);
+		dse3.setDataType(FieldType.FLOAT);
 		dse3.setPosition(8);
 		ds.addElement(dse3);
 
 		DataSchemaElement dse4 = new DataSchemaElement();
 		dse4.setName("MinPrice");
-		dse4.setDataType(FieldTypes.DOUBLE);
-		dse4.setIsArray(false);
+		dse4.setDataType(FieldType.FLOAT);
 		dse4.setPosition(9);
 		ds.addElement(dse4);
 
 		DataSchemaElement dse5 = new DataSchemaElement();
 		dse5.setName("Date");
-		dse5.setDataType(FieldTypes.STRING);
-		dse5.setIsArray(false);
+		dse5.setDataType(FieldType.STRING);
 		dse5.setPosition(6);
 		ds.addElement(dse5);
 
 		DataSchemaElement dse6 = new DataSchemaElement();
 		dse6.setName("SecurityType");
-		dse6.setDataType(FieldTypes.STRING);
-		dse6.setIsArray(false);
+		dse6.setDataType(FieldType.STRING);
 		dse6.setPosition(3);
 		ds.addElement(dse6);
 
 		DataSchemaElement dse7 = new DataSchemaElement();
 		dse7.setName("SecurityDesc");
-		dse7.setDataType(FieldTypes.STRING);
-		dse7.setIsArray(false);
+		dse7.setDataType(FieldType.STRING);
 		dse7.setPosition(2);
 		ds.addElement(dse7);
 
 		DataSchemaElement dse9 = new DataSchemaElement();
 		dse9.setName("SecurityID");
-		dse9.setDataType(FieldTypes.INT);
-		dse9.setIsArray(false);
+		dse9.setDataType(FieldType.INT);
 		dse9.setPosition(5);
 		ds.addElement(dse9);
 
 		DataSchemaElement dse10 = new DataSchemaElement();
 		dse10.setName("ISIN");
-		dse10.setDataType(FieldTypes.STRING);
-		dse10.setIsArray(false);
+		dse10.setDataType(FieldType.STRING);
 		dse10.setPosition(0);
 		ds.addElement(dse10);
 
 		DataSchemaElement dse11 = new DataSchemaElement();
 		dse11.setName("Time");
-		dse11.setDataType(FieldTypes.STRING);
-		dse11.setIsArray(false);
+		dse11.setDataType(FieldType.STRING);
 		dse11.setPosition(7);
 		ds.addElement(dse11);
 
@@ -425,53 +508,280 @@ public class ResponderTest {
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
-		field1.setLengthType("variable");
 		field1.setName("Mnemonic");
-		field1.setSize(20);
+		// field1.setLengthType("variable");
+		// field1.setSize(20);
+		// field1.setMaxArrayElements(1);
+		qs.addElement(field1);
+
+		QuerySchemaElement field2 = new QuerySchemaElement();
+		field2.setName("Currency");
+		// field2.setLengthType("variable");
+		// field2.setSize(16);
+		// field2.setMaxArrayElements(1);
+		qs.addElement(field2);
+
+		QuerySchemaElement field3 = new QuerySchemaElement();
+		field3.setName("MaxPrice");
+		// field3.setLengthType("fixed");
+		// field3.setSize(8);
+		// field3.setMaxArrayElements(1);
+		qs.addElement(field3);
+
+		QuerySchemaElement field4 = new QuerySchemaElement();
+		field4.setName("MinPrice");
+		// field4.setLengthType("fixed");
+		// field4.setSize(8);
+		// field4.setMaxArrayElements(1);
+		qs.addElement(field4);
+
+		QuerySchemaElement field5 = new QuerySchemaElement();
+		field5.setName("Date");
+		// field5.setLengthType("variable");
+		// field5.setSize(20);
+		// field5.setMaxArrayElements(1);
+		qs.addElement(field5);
+
+		QuerySchemaElement field6 = new QuerySchemaElement();
+		field6.setName("SecurityType");
+		// field6.setLengthType("variable");
+		// field6.setSize(30);
+		// field6.setMaxArrayElements(1);
+		qs.addElement(field6);
+
+		QuerySchemaElement field7 = new QuerySchemaElement();
+		field7.setName("SecurityDesc");
+		// field7.setLengthType("variable");
+		// field7.setSize(1000);
+		// field7.setMaxArrayElements(1);
+		qs.addElement(field7);
+
+		return qs;
+	}
+
+
+	private QuerySchema createPhoneDataQuerySchema() {
+		DataSchema ds = new DataSchema();
+		ds.setName("phone-data");
+
+		DataSchemaElement dse1 = new DataSchemaElement();
+		dse1.setName("Callee #");
+		dse1.setDataType(FieldType.STRING);
+		dse1.setPosition(1);
+		ds.addElement(dse1);
+
+		DataSchemaElement dse2 = new DataSchemaElement();
+		dse2.setName("Caller #");
+		dse2.setDataType(FieldType.STRING);
+		dse2.setPosition(2);
+		ds.addElement(dse2);
+
+		DataSchemaElement dse3 = new DataSchemaElement();
+		dse3.setName("Date/Time");
+		dse3.setDataType(FieldType.STRING);
+		dse3.setPosition(3);
+		ds.addElement(dse3);
+
+		DataSchemaElement dse4 = new DataSchemaElement();
+		dse4.setName("Duration");
+		dse4.setDataType(FieldType.STRING);
+		dse4.setPosition(4);
+		ds.addElement(dse4);
+
+
+		QuerySchema qs = new QuerySchema();
+		qs.setName("Phone Data");
+		qs.setSelectorField("Caller #");
+		qs.setDataSchema(ds);
+
+		QuerySchemaElement field1 = new QuerySchemaElement();
+		field1.setName("Caller #");
+		// field1.setLengthType("variable");
+		// field1.setSize(20);
+		// field1.setMaxArrayElements(1);
+		qs.addElement(field1);
+
+		QuerySchemaElement field2 = new QuerySchemaElement();
+		field2.setName("Callee #");
+		// field2.setLengthType("variable");
+		// field2.setSize(16);
+		// field2.setMaxArrayElements(1);
+		qs.addElement(field2);
+
+		QuerySchemaElement field3 = new QuerySchemaElement();
+		field3.setName("Duration");
+		// field3.setLengthType("variable");
+		// field3.setSize(10);
+		// field3.setMaxArrayElements(1);
+		qs.addElement(field3);
+
+		QuerySchemaElement field4 = new QuerySchemaElement();
+		field4.setName("Date/Time");
+		// field4.setLengthType("variable");
+		// field4.setSize(30);
+		// field4.setMaxArrayElements(1);
+		qs.addElement(field4);
+
+		return qs;
+	}
+
+	private QuerySchema createPcapQuerySchema() {
+		DataSchema ds = new DataSchema();
+		ds.setName("Pcap");
+		DataSchemaElement dse1 = new DataSchemaElement();
+		dse1.setName("_index");
+		dse1.setDataType(FieldType.STRING);
+		dse1.setPosition(0);
+		ds.addElement(dse1);
+
+		DataSchemaElement dse2 = new DataSchemaElement();
+		dse2.setName("_score");
+		dse2.setDataType(FieldType.STRING);
+		dse2.setPosition(2);
+		ds.addElement(dse2);
+
+		DataSchemaElement dse3 = new DataSchemaElement();
+		dse3.setName("_source|layers|eth|eth.dst");
+		dse3.setDataType(FieldType.STRING);
+		dse3.setPosition(5);
+		ds.addElement(dse3);
+
+		DataSchemaElement dse4 = new DataSchemaElement();
+		dse4.setName("_source|layers|eth|eth.src");
+		dse4.setDataType(FieldType.STRING);
+		dse4.setPosition(6);
+		ds.addElement(dse4);
+
+		DataSchemaElement dse5 = new DataSchemaElement();
+		dse5.setName("_source|layers|eth|eth.type");
+		dse5.setDataType(FieldType.STRING);
+		dse5.setPosition(7);
+		ds.addElement(dse5);
+
+		DataSchemaElement dse6 = new DataSchemaElement();
+		dse6.setName("_source|layers|frame|frame.protocols");
+		dse6.setDataType(FieldType.STRING);
+		dse6.setPosition(4);
+		ds.addElement(dse6);
+
+		DataSchemaElement dse7 = new DataSchemaElement();
+		dse7.setName("_source|layers|frame|frame.time_epoch");
+		dse7.setDataType(FieldType.STRING);
+		dse7.setPosition(3);
+		ds.addElement(dse7);
+
+		DataSchemaElement dse9 = new DataSchemaElement();
+		dse9.setName("_source|layers|ip|ip.dst");
+		dse9.setDataType(FieldType.IP4);
+		dse9.setPosition(10);
+		ds.addElement(dse9);
+
+		DataSchemaElement dse10 = new DataSchemaElement();
+		dse10.setName("_source|layers|ip|ip.dst_host");
+		dse10.setDataType(FieldType.IP4);
+		dse10.setPosition(11);
+		ds.addElement(dse10);
+
+		DataSchemaElement dse11 = new DataSchemaElement();
+		dse11.setName("_source|layers|ip|ip.src");
+		dse11.setDataType(FieldType.IP4);
+		dse11.setPosition(8);
+		ds.addElement(dse11);
+
+		DataSchemaElement dse12 = new DataSchemaElement();
+		dse12.setName("_source|layers|ip|ip.src_host");
+		dse12.setDataType(FieldType.IP4);
+		dse12.setPosition(9);
+		ds.addElement(dse12);
+
+		DataSchemaElement dse13 = new DataSchemaElement();
+		dse13.setName("_source|layers|tcp|tcp.dstport");
+		dse13.setDataType(FieldType.INT);
+		dse13.setPosition(13);
+		ds.addElement(dse13);
+
+		DataSchemaElement dse14 = new DataSchemaElement();
+		dse14.setName("_source|layers|tcp|tcp.flags_tree|tcp.flags.syn_tree|_ws.expert|_ws.expert.message");
+		dse14.setDataType(FieldType.STRING);
+		dse14.setPosition(14);
+		ds.addElement(dse14);
+
+		DataSchemaElement dse15 = new DataSchemaElement();
+		dse15.setName("_source|layers|tcp|tcp.payload");
+		dse15.setDataType(FieldType.STRING);
+		dse15.setPosition(15);
+		ds.addElement(dse15);
+
+		DataSchemaElement dse16 = new DataSchemaElement();
+		dse16.setName("_source|layers|tcp|tcp.srcport");
+		dse16.setDataType(FieldType.INT);
+		dse16.setPosition(12);
+		ds.addElement(dse16);
+
+		DataSchemaElement dse8 = new DataSchemaElement();
+		dse8.setName("_type");
+		dse8.setDataType(FieldType.STRING);
+		dse8.setPosition(1);
+		ds.addElement(dse8);
+
+		QuerySchema qs = new QuerySchema();
+		qs.setName("Pcap");
+		qs.setSelectorField("_source|layers|frame|frame.protocols");
+		qs.setDataSchema(ds);
+
+		QuerySchemaElement field1 = new QuerySchemaElement();
+		field1.setName("_source|layers|frame|frame.protocols");
+		field1.setSize(200);
 		field1.setMaxArrayElements(1);
 		qs.addElement(field1);
 
 		QuerySchemaElement field2 = new QuerySchemaElement();
-		field2.setLengthType("variable");
-		field2.setName("Currency");
-		field2.setSize(16);
+		field2.setName("_source|layers|ip|ip.dst");
+		field2.setSize(4);
 		field2.setMaxArrayElements(1);
 		qs.addElement(field2);
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
-		field3.setLengthType("fixed");
-		field3.setName("MaxPrice");
+		field3.setName("_source|layers|ip|ip.src");
 		field3.setSize(4);
 		field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		QuerySchemaElement field4 = new QuerySchemaElement();
-		field4.setLengthType("fixed");
-		field4.setName("MinPrice");
+		field4.setName("_source|layers|tcp|tcp.srcport");
 		field4.setSize(4);
 		field4.setMaxArrayElements(1);
 		qs.addElement(field4);
 
 		QuerySchemaElement field5 = new QuerySchemaElement();
-		field5.setLengthType("variable");
-		field5.setName("Date");
-		field5.setSize(20);
+		field5.setName("_source|layers|tcp|tcp.dstport");
+		field5.setSize(4);
 		field5.setMaxArrayElements(1);
 		qs.addElement(field5);
 
 		QuerySchemaElement field6 = new QuerySchemaElement();
-		field6.setLengthType("variable");
-		field6.setName("SecurityType");
-		field6.setSize(30);
+		field6.setName("_source|layers|tcp|tcp.payload");
+		field6.setSize(5000);
 		field6.setMaxArrayElements(1);
 		qs.addElement(field6);
 
 		QuerySchemaElement field7 = new QuerySchemaElement();
-		field7.setLengthType("variable");
-		field7.setName("SecurityDesc");
-		field7.setSize(1000);
+		field7.setName("_source|layers|frame|frame.time_epoch");
+		field7.setSize(50);
 		field7.setMaxArrayElements(1);
 		qs.addElement(field7);
+
+		QuerySchemaElement field8 = new QuerySchemaElement();
+		field8.setName("_source|layers|tcp|tcp.flags_tree|tcp.flags.syn_tree|_ws.expert|_ws.expert.message");
+		field8.setSize(500);
+		field8.setMaxArrayElements(1);
+		qs.addElement(field8);
+
+		QuerySchemaElement field9 = new QuerySchemaElement();
+		field9.setName("_score");
+		field9.setSize(50);
+		field9.setMaxArrayElements(1);
+		qs.addElement(field9);
 
 		return qs;
 	}

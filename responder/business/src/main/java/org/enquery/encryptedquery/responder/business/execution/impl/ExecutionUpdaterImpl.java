@@ -19,17 +19,25 @@ package org.enquery.encryptedquery.responder.business.execution.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import javax.xml.stream.XMLStreamException;
+
+import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.responder.business.execution.ExecutionUpdater;
 import org.enquery.encryptedquery.responder.business.execution.QueryExecutionScheduler;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
+import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
+import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
-import org.enquery.encryptedquery.xml.transformation.ExecutionXMLExtractor;
+import org.enquery.encryptedquery.xml.transformation.ExecutionExportReader;
+import org.enquery.encryptedquery.xml.transformation.ExecutionReader;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.quartz.JobExecutionException;
@@ -47,6 +55,10 @@ public class ExecutionUpdaterImpl implements ExecutionUpdater {
 	private ExecutorService threadPool;
 	@Reference
 	private QueryExecutionScheduler scheduler;
+	@Reference
+	private DataSchemaService dataSchemaRepo;
+	@Reference
+	private DataSourceRegistry dataSourceRepo;
 
 	/*
 	 * (non-Javadoc)
@@ -58,22 +70,54 @@ public class ExecutionUpdaterImpl implements ExecutionUpdater {
 	 */
 	@Override
 	public Execution create(DataSchema dataSchema, DataSource dataSource, InputStream inputStream) throws IOException, JobExecutionException {
+		try (ExecutionReader extractor = new ExecutionReader(threadPool);) {
+			extractor.parse(inputStream);
+			return scheduleOne(dataSchema, dataSource, extractor);
+		}
+	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.responder.business.execution.ExecutionUpdater#createMultiple(org.
+	 * enquery.encryptedquery.responder.data.entity.DataSchema,
+	 * org.enquery.encryptedquery.responder.data.entity.DataSource, java.io.InputStream)
+	 */
+	@Override
+	public List<Execution> createFromImportXML(InputStream inputStream) throws IOException, JobExecutionException, XMLStreamException {
+		List<Execution> result = new ArrayList<>();
+
+		try (ExecutionExportReader reader = new ExecutionExportReader(threadPool)) {
+			reader.parse(inputStream);
+			while (reader.hasNextItem()) {
+				try (ExecutionReader executionReader = reader.next();) {
+					DataSchema dsch = dataSchemaRepo.findByName(reader.getDataSchemaName());
+					Validate.notNull(dsch);
+					DataSource dsrc = dataSourceRepo.find(reader.getDataSourceName());
+					Validate.notNull(dsrc);
+					result.add(scheduleOne(dsch, dsrc, executionReader));
+				}
+			}
+		}
+		log.info("Processed {} executions.", result.size());
+		return result;
+	}
+
+	private Execution scheduleOne(DataSchema dataSchema, DataSource dataSource, ExecutionReader reader) throws IOException, JobExecutionException {
 		Execution ex = new Execution();
+		ex.setUuid(reader.getUUId());
 		ex.setDataSchema(dataSchema);
 		ex.setDataSourceName(dataSource.getName());
 		ex.setReceivedTime(Date.from(Instant.now()));
+		ex.setScheduleTime(reader.getScheduleDate());
+		ex.setParameters(JSONStringConverter.toString(reader.getConfig()));
 
-		try (ExecutionXMLExtractor extractor = new ExecutionXMLExtractor(threadPool);) {
-			extractor.parse(inputStream);
-			ex.setScheduleTime(extractor.getScheduleDate());
-			ex.setParameters(JSONStringConverter.toString(extractor.getConfig()));
-			log.info("Scheduling execution: {}", ex);
-			ex = executionRepo.add(ex, extractor.getQueryInputStream());
-		}
+		log.info("Scheduling execution: {}", ex);
 
-		scheduler.add(ex);
-		return ex;
+		return executionRepo.addIfNotPresent(ex,
+				reader.getQueryInputStream(),
+				e -> scheduler.add(e));
 	}
 
 }

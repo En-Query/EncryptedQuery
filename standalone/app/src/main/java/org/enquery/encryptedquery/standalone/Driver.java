@@ -108,11 +108,27 @@ public class Driver {
 	}
 
 	public void run() throws Exception {
-		try (Responder responder = new Responder();) {
-			responder.setQueryFileName(queryFileName);
-			responder.setOutputFileName(outputFileName);
-			responder.setInputDataFile(inputDataFile);
-			responder.run(config);
+		String version = "v2";
+		if (config.containsKey(StandaloneConfigurationProperties.ALG_VERSION)) {
+			version = config.get(StandaloneConfigurationProperties.ALG_VERSION);
+		}
+
+		if ("v1".equals(version)) {
+			try (Responder responder = new Responder();) {
+				responder.setQueryFileName(queryFileName);
+				responder.setOutputFileName(outputFileName);
+				responder.setInputDataFile(inputDataFile);
+				responder.run(config);
+			}
+		} else if ("v2".equals(version)) {
+			try (ResponderV2 responder = new ResponderV2();) {
+				responder.setQueryFileName(queryFileName);
+				responder.setOutputFileName(outputFileName);
+				responder.setInputDataFile(inputDataFile);
+				responder.run(config);
+			}
+		} else {
+			throw new RuntimeException("Invalid algorithn version " + version);
 		}
 	}
 

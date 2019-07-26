@@ -16,12 +16,12 @@
  */
 package org.enquery.encryptedquery.querier.it.util;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,62 +32,55 @@ public class ResponderController {
 
 	private String responderInstallDir;
 
+	static private ExecutorService threadPool = Executors.newCachedThreadPool();
+
 	public ResponderController(String responderInstallDir) {
 		this.responderInstallDir = responderInstallDir;
 	}
 
-	public void start() throws IOException, InterruptedException {
-		runCommand("./start");
+	public void start() throws Exception {
+		runCommand("/start");
 	}
 
-	public void stop() throws IOException, InterruptedException {
-		runCommand("./stop");
+	public void stop() throws Exception {
+		runCommand("/stop");
 	}
 
-	public List<String> client(String... extraArgs) throws IOException, InterruptedException {
-		return runCommand("./client", extraArgs);
+	public List<String> client(String... extraArgs) throws Exception {
+		return runCommand("/client", extraArgs);
 	}
 
-	public List<String> runCommand(String command, String... extraArgs) throws IOException, InterruptedException {
+	public List<String> runCommand(String command, String... extraArgs) throws Exception {
+
+		File binDir = new File(responderInstallDir, "bin");
+
 		List<String> arguments = new ArrayList<>();
-		arguments.add(command);
+		arguments.add(binDir.getAbsolutePath() + command);
 		if (extraArgs != null) {
 			for (String arg : extraArgs) {
 				arguments.add(arg);
 			}
 		}
+
 		ProcessBuilder processBuilder = new ProcessBuilder(arguments);
 		processBuilder.redirectErrorStream(true);
-		File binDir = new File(responderInstallDir, "bin");
-		processBuilder.directory(binDir);
+		processBuilder.directory(new File(responderInstallDir));
 
-		log.info("Running Responder in dir {} with command {} ", binDir, arguments);
+		log.info("Running Responder command {} ", binDir, arguments);
 		Process proc = processBuilder.start();
 
-		BufferedReader stdOutReader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-		BufferedReader stdErrReader = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+		// capture and log child process output in separate thread
+		ChildProcessOutputCapturer capturer = new ChildProcessOutputCapturer(proc.getInputStream(), log);
+		Future<?> f = threadPool.submit(capturer);
 		int exitCode = proc.waitFor();
-
-		String line;
-		List<String> result = new ArrayList<>();
-		while ((line = stdOutReader.readLine()) != null) {
-			result.add(line.trim());
-		}
-
-		while ((line = stdErrReader.readLine()) != null) {
-			result.add(line.trim());
-		}
-
-		log.info(result.toString());
 
 		if (exitCode != 0) {
 			throw new RuntimeException(
 					"Failed to run Responder with commnad line arguments: '" + command + "'");
 		}
 
-		return result;
+		f.get();
+		return capturer.getLines();
 	}
-
-
 
 }

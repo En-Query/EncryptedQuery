@@ -260,7 +260,7 @@ public class KafkaDriver {
 		Process p = processBuilder.start();
 		// capture and log child process output in separate thread
 		threadPool.submit(new ChildProcessLogger(p.getInputStream(), log));
-		assertTrue(p.waitFor(10, TimeUnit.SECONDS));
+		assertTrue(p.waitFor(30, TimeUnit.SECONDS));
 		assertEquals(0, p.exitValue());
 	}
 

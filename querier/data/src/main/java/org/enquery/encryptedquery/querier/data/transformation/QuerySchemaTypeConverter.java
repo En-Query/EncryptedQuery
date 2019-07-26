@@ -61,7 +61,6 @@ public class QuerySchemaTypeConverter {
 	public QuerySchemaField toJSONQuerySchemaField(org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField f) {
 		QuerySchemaField result = new QuerySchemaField();
 		result.setName(f.getName());
-		result.setLengthType(f.getLengthType());
 		result.setSize(f.getMaxSize());
 		result.setMaxArrayElements(f.getMaxArrayElements());
 		return result;
@@ -71,7 +70,6 @@ public class QuerySchemaTypeConverter {
 	public org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField toJPAQuerySchemaField(QuerySchemaField jsonFld) {
 		org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField result = new org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField();
 		result.setName(jsonFld.getName());
-		result.setLengthType(jsonFld.getLengthType());
 		result.setMaxArrayElements(jsonFld.getMaxArrayElements());
 		result.setMaxSize(jsonFld.getSize());
 		return result;
@@ -140,7 +138,7 @@ public class QuerySchemaTypeConverter {
 	private QuerySchemaElement toCoreQuerySchemaField(org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchemaField field) {
 		QuerySchemaElement result = new QuerySchemaElement();
 		result.setName(field.getName());
-		result.setLengthType(field.getLengthType());
+		// result.setLengthType(field.getLengthType());
 		result.setMaxArrayElements(field.getMaxArrayElements());
 		result.setSize(field.getMaxSize());
 		return result;

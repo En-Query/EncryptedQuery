@@ -19,9 +19,10 @@ package org.enquery.encryptedquery.flink;
 /**
  * Properties constants for KAFKA
  */
-// TODO: move from here
+// TODO: move from here since this is specific to kafka
 public interface KafkaConfigurationProperties {
 	String BROKERS = "kafka.brokers";
 	String TOPIC = "kafka.topic";
 	String OFFSET = "kafka.start.offset";
+	String EMISSION_RATE_PER_SECOND = "kafka.emission.rate.per.second";
 }

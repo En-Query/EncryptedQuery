@@ -19,6 +19,7 @@ package org.encryptedquery.querier.business;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.UUID;
 
 import javax.xml.bind.JAXBException;
 
@@ -62,6 +63,7 @@ public class ScheduleUpdater {
 	public Schedule create(org.enquery.encryptedquery.querier.data.entity.json.Schedule json, Query query) {
 		Schedule result = new Schedule();
 
+		result.setUuid(UUID.randomUUID().toString().replace("-", ""));
 		// JSON Dates are in UTC, database timestamps also in UTC
 		result.setStartTime(json.getStartTime());
 		result.setParameters(JSONConverter.toString(json.getParameters()));

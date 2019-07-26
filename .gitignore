@@ -27,3 +27,4 @@
 .DS_Store
 pom.xml.releaseBackup
 /bin/
+node_modules/

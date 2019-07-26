@@ -16,12 +16,14 @@
  */
 package org.enquery.encryptedquery.responder.it.business;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.util.Collection;
 
 import javax.inject.Inject;
 
+import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
@@ -46,10 +48,11 @@ public class DataSourceRegistryIT extends AbstractResponderItest {
 	private static final String DATA_SOURCE_NAME = "phone-book-jdbc-flink";
 	private static final String DESCRIPTION = "A phone book JDBC source queried with Flink";
 	@Inject
-	private DataSourceRegistry dsRegistry;
+	private DataSourceRegistry dataSourceRegistry;
 	@Inject
 	private ConfigurationAdmin confAdmin;
 	private FlinkDriver flinkDriver = new FlinkDriver();
+	private DataSchema dataSchema;
 
 	@Configuration
 	public Option[] configuration() {
@@ -62,18 +65,20 @@ public class DataSourceRegistryIT extends AbstractResponderItest {
 	public void init() throws Exception {
 		super.init();
 		installBooksDataSchema();
+		dataSchema = dataSchemaService.findByName(BOOKS_DATA_SCHEMA_NAME);
+		assertNotNull(dataSchema);
 	}
 
 	@Test
 	public void addAndList() throws Exception {
-		Assert.assertEquals(0, dsRegistry.list().size());
+		Assert.assertEquals(0, dataSourceRegistry.list().size());
 
 		FlinkJdbcRunnerConfigurator conf = new FlinkJdbcRunnerConfigurator(confAdmin);
 		conf.create(DATA_SOURCE_NAME, BOOKS_DATA_SCHEMA_NAME, DESCRIPTION);
 
-		waitUntilQueryRunnerCountAtLeast(dummy -> dsRegistry.list().size() >= 1);
+		waitUntilQueryRunnerCountAtLeast(dummy -> dataSourceRegistry.list().size() >= 1);
 
-		Collection<DataSource> sources = dsRegistry.list();
+		Collection<DataSource> sources = dataSourceRegistry.list();
 		Assert.assertEquals(1, sources.size());
 
 		DataSource dataSource = sources.iterator().next();
@@ -81,25 +86,26 @@ public class DataSourceRegistryIT extends AbstractResponderItest {
 		Assert.assertEquals(DESCRIPTION, dataSource.getDescription());
 		Assert.assertNotNull(dataSource.getRunner());
 
-		dataSource = dsRegistry.find(DATA_SOURCE_NAME);
+		dataSource = dataSourceRegistry.find(DATA_SOURCE_NAME);
 		Assert.assertNotNull(dataSource);
 		Assert.assertEquals(DATA_SOURCE_NAME, dataSource.getName());
 		Assert.assertEquals(DESCRIPTION, dataSource.getDescription());
+		Assert.assertEquals(BOOKS_DATA_SCHEMA_NAME, dataSource.getDataSchemaName());
 		Assert.assertNotNull(dataSource.getRunner());
 
-		dataSource = dsRegistry.findForDataSchema(BOOKS_DATA_SCHEMA_NAME);
+		dataSource = dataSourceRegistry.findForDataSchema(dataSchema, DATA_SOURCE_NAME);
 		Assert.assertNotNull(dataSource);
 		Assert.assertEquals(DATA_SOURCE_NAME, dataSource.getName());
 		Assert.assertEquals(DESCRIPTION, dataSource.getDescription());
 		Assert.assertNotNull(dataSource.getRunner());
 
 		conf.delete();
-		waitUntilQueryRunnerCountAtLeast(dummy -> dsRegistry.list().size() == 0);
+		waitUntilQueryRunnerCountAtLeast(dummy -> dataSourceRegistry.list().size() == 0);
 
-		sources = dsRegistry.list();
+		sources = dataSourceRegistry.list();
 		Assert.assertEquals(0, sources.size());
-		assertNull(dsRegistry.find(DATA_SOURCE_NAME));
-		assertNull(dsRegistry.findForDataSchema(BOOKS_DATA_SCHEMA_NAME));
+		assertNull(dataSourceRegistry.find(DATA_SOURCE_NAME));
+		assertNull(dataSourceRegistry.findForDataSchema(dataSchema, BOOKS_DATA_SCHEMA_NAME));
 	}
 
 	private <T> void waitUntilQueryRunnerCountAtLeast(ThrowingPredicate<T> operation) throws Exception {

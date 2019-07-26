@@ -18,7 +18,7 @@ package org.enquery.encryptedquery.flink.batch;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.java.functions.KeySelector;
-import org.enquery.encryptedquery.responder.QueueRecord;
+import org.enquery.encryptedquery.flink.QueueRecord;
 
 public class BucketKeySelector implements KeySelector<QueueRecord, Integer> {
 

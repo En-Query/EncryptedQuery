@@ -5,40 +5,37 @@
 	<selectorField>title</selectorField>
 	<field>
 		<name>price</name>
+		<size>8</size>
 	</field>
 	<field>
 		<name>title</name>
+		<size>40</size>
 	</field>
 	<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema">
 		<name>Books</name>
 		<field> 
 			<name>id</name>
 			<dataType>int</dataType>
-			<isArray>false</isArray>
 			<position>0</position>
 		</field>
 		<field>
 			<name>title</name>
 			<dataType>string</dataType>
-			<isArray>false</isArray>
 			<position>1</position>
 		</field>
 		<field>
 			<name>author</name>
 			<dataType>string</dataType>
-			<isArray>false</isArray>
 			<position>2</position>
 		</field>
 		<field>
 			<name>price</name>
 			<dataType>double</dataType>
-			<isArray>false</isArray>
 			<position>3</position>
 		</field>
 		<field>
 			<name>qty</name>
 			<dataType>int</dataType>
-			<isArray>false</isArray>
 			<position>4</position>
 		</field>
 	</dataSchema>

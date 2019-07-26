@@ -41,10 +41,10 @@ public @interface Config {
 			description = "Name of the DataSchema describing the fields and partitioners.")
 	String data_schema_name();
 
-	@AttributeDefinition(name = ".computer.threshold",
+	@AttributeDefinition(name = ".column.buffer.memory.mb",
 			required = false,
-			description = "Amount of data to process before consolidation.   Larger numbers require more memory per task. Defaults to 30000")
-	String _compute_threshold();
+			description = "Amount of memory in MB to be allocated for Column processing. Default is 100M.")
+	String _column_buffer_memory_mb();
 
 	@AttributeDefinition(name = ".flink.parallelism",
 			required = false,
@@ -58,8 +58,13 @@ public @interface Config {
 
 	@AttributeDefinition(name = ".kafka.topic",
 			required = true,
-			description = "Kafka topic to injest data from.")
+			description = "Kafka topic to ingest data from.")
 	String _kafka_topic();
+
+	@AttributeDefinition(name = ".kafka.emission.rate.per.second",
+			required = false,
+			description = "Maximum rate at which Kafka source emits record to flink stream. Defaults to unlimited.")
+	String _kafka_emission_rate_per_second();
 
 	@AttributeDefinition(name = ".flink.install.dir",
 			required = true,
@@ -71,10 +76,10 @@ public @interface Config {
 			description = "Additional arguments to be passed to Flink 'run' command when executing the query.")
 	String _additional_flink_arguments();
 
-	@AttributeDefinition(name = ".jar.file.path",
+	@AttributeDefinition(name = "Application jar file",
 			required = true,
-			description = "Path to the encryptedquery-flink-kafka jar file.  This is the jar file implementing the query execution.")
-	String _jar_file_path();
+			description = "Fully Qualified application jar file name.")
+	String _application_jar_path();
 
 	@AttributeDefinition(name = ".run.directory",
 			required = true,

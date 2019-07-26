@@ -6,79 +6,66 @@
 	<field>
 		<name>ISIN</name>
 		<dataType>string</dataType>
-		<isArray>false</isArray>
 		<position>0</position>
 	</field>
 	<field>
 		<name>Mnemonic</name>
 		<dataType>string</dataType>
-		<isArray>false</isArray>
 		<position>1</position>
 	</field>
 	<field>
 		<name>SecurityDesc</name>
 		<dataType>string</dataType>
-		<isArray>false</isArray>
 		<position>2</position>
 	</field>
 	<field>
 		<name>SecurityType</name>
 		<dataType>string</dataType>
-		<isArray>false</isArray>
 		<position>3</position>
 	</field>
 	<field>
 		<name>Currency</name>
 		<dataType>string</dataType>
-		<isArray>false</isArray>
 		<position>4</position>
 	</field>
 	<field>
 		<name>SecurityID</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<position>5</position>
 	</field>
 	<field>
 		<name>TradingDate</name>
 		<dataType>ISO8601Date</dataType>
-		<isArray>false</isArray>
 		<position>6</position>
 	</field>
 	<field>
 		<name>StartPrice</name>
 		<dataType>float</dataType>
-		<isArray>false</isArray>
 		<position>7</position>
 	</field>
 	<field>
 		<name>MaxPrice</name>
 		<dataType>float</dataType>
-		<isArray>false</isArray>
 		<position>8</position>
 	</field>
 	<field>
 		<name>MinPrice</name>
 		<dataType>float</dataType>
-		<isArray>false</isArray>
 		<position>9</position>
 	</field>
 	<field>
 		<name>EndPrice</name>
 		<dataType>float</dataType>
-		<isArray>false</isArray>
 		<position>10</position>
 	</field>
 	<field>
 		<name>TradedVolume</name>
 		<dataType>float</dataType>
-		<isArray>false</isArray>
 		<position>11</position>
 	</field>
 	<field>
 		<name>NumberOfTrades</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<position>12</position>
 	</field>	
 </dataSchema>

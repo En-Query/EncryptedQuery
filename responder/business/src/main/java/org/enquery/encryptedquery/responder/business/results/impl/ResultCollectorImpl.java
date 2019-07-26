@@ -25,7 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.concurrency.IntegerSynchronization;
+import org.enquery.encryptedquery.responder.business.execution.ExecutionLock;
 import org.enquery.encryptedquery.responder.business.results.ResultCollector;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
@@ -44,7 +44,8 @@ public class ResultCollectorImpl implements ResultCollector {
 
 	@Reference
 	private ResultRepository resultRepository;
-
+	@Reference
+	private ExecutionLock executionLock;
 
 
 	/*
@@ -57,9 +58,15 @@ public class ResultCollectorImpl implements ResultCollector {
 	public void collect(Execution execution) throws IOException {
 		Validate.notNull(execution);
 
-		// synchronize on the execution id
-		synchronized (IntegerSynchronization.syncObjectFor(execution.getId())) {
-
+		try {
+			executionLock.lock(execution);
+		} catch (InterruptedException e) {
+			// the application may be shutting down as we wait for the lock
+			log.warn("Interrupted while waiting for a lock on execution {}", execution);
+			return;
+		}
+		log.warn("Acquired a lock on execution {}", execution);
+		try {
 			final String filePathStr = execution.getOutputFilePath();
 			if (filePathStr == null) {
 				log.warn("Execution does not have an output file path value: {}", execution);
@@ -79,6 +86,9 @@ public class ResultCollectorImpl implements ResultCollector {
 				log.info("Execution '{}' output '{}' is a file.", execution, path);
 				collectBatch(execution, path);
 			}
+		} finally {
+			executionLock.unlock(execution);
+			log.warn("Released a lock on execution {}", execution);
 		}
 	}
 

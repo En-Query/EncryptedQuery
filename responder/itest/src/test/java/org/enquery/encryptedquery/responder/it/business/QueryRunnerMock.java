@@ -51,14 +51,16 @@ public class QueryRunnerMock implements QueryRunner {
 
 	@Override
 	public byte[] run(Query query, Map<String, String> properties, String outputFileName, OutputStream stdOutput) {
-		log.info("Running a query and storing results to " + outputFileName);
+		log.info("Start running a query and storing results to " + outputFileName);
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
 		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
 		try {
 			FileUtils.write(new File(outputFileName), this.getClass().getName(), "UTF-8");
 			Thread.sleep(1000);
-			return "".getBytes();
+			log.info("Finished running a query and storing results to " + outputFileName);
+
+			return Long.toString(new Date().getTime()).getBytes();
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		} catch (IOException e) {
@@ -74,11 +76,12 @@ public class QueryRunnerMock implements QueryRunner {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see org.enquery.encryptedquery.responder.data.service.QueryRunner#status(byte[])
+	 * @see org.enquery.encryptedquery.responder.integration.QueryRunner#status(byte[])
 	 */
 	@Override
 	public ExecutionStatus status(byte[] handle) {
-		return new ExecutionStatus(new Date(), null, false);
+		Date dt = new Date(Long.parseLong(new String(handle)));
+		return new ExecutionStatus(dt, null, false);
 	}
 
 }

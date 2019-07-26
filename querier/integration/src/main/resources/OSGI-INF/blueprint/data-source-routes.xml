@@ -43,16 +43,19 @@
 	 			<to uri="direct:success"/>
 			</onException>
 			
-			<setHeader headerName="CamelHttpPath">
-				<constant>/responder/api/rest/datasources</constant>
-			</setHeader>
-			<removeHeader headerName="CamelHttpQuery"/>
-			
-			<to uri="direct:get-from-responder"/>
-			
-			<unmarshal ref="dataSourceFormat"/>
-
-			<to uri="direct:update-db-with-data-sources" />
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+				<setHeader headerName="CamelHttpPath">
+					<constant>/responder/api/rest/datasources</constant>
+				</setHeader>
+				<removeHeader headerName="CamelHttpQuery"/>
+				
+				<to uri="direct:get-from-responder"/>
+				
+				<unmarshal ref="dataSourceFormat"/>
+	
+				<to uri="direct:update-db-with-data-sources" />
+			</filter>
  			<to uri="direct:data-sources-from-db"/>
  			<to uri="direct:success"/>
 		</route>

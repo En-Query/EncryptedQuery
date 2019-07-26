@@ -2,6 +2,7 @@ package org.enquery.encryptedquery.querier.data.service;
 
 import java.util.Collection;
 
+import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 
 
@@ -26,4 +27,11 @@ public interface DataSourceRepository {
 	void deleteAll();
 
 	Collection<String> listNames();
+
+	/**
+	 * @param dataSchema
+	 * @param dataSourceName
+	 * @return
+	 */
+	DataSource findForDataSchema(DataSchema dataSchema, String dataSourceName);
 }

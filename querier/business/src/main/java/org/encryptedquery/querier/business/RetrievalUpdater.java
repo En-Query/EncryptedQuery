@@ -20,9 +20,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 
+import javax.xml.stream.XMLStreamException;
+
 import org.enquery.encryptedquery.querier.data.entity.jpa.Retrieval;
 import org.enquery.encryptedquery.querier.data.service.RetrievalRepository;
-import org.enquery.encryptedquery.xml.transformation.ResultXMLExtractor;
+import org.enquery.encryptedquery.xml.transformation.ResultReader;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -34,8 +36,8 @@ public class RetrievalUpdater {
 	@Reference
 	private ExecutorService threadPool;
 
-	public Retrieval updatePayload(Retrieval retrieval, InputStream is) throws IOException {
-		try (ResultXMLExtractor extractor = new ResultXMLExtractor(threadPool)) {
+	public Retrieval updatePayload(Retrieval retrieval, InputStream is) throws IOException, XMLStreamException {
+		try (ResultReader extractor = new ResultReader(threadPool)) {
 			extractor.parse(is);
 			return retrievalRepo.updatePayload(retrieval, extractor.getResponseInputStream());
 		}

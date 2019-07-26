@@ -87,6 +87,12 @@ JNIEXPORT jbyteArray JNICALL Java_org_enquery_encryptedquery_encryption_paillier
 
   ansbyteslength = mpz_sizeinbase(answer, 256);
   ansArray = (*env)->NewByteArray(env, ansbyteslength);
+  if (NULL == ansArray) {
+    char msg[100];
+    snprintf(msg, sizeof(msg), "NewByteArray() returned NULL (ansbyteslength = %ld)", ansbyteslength);
+    msg[sizeof(msg)-1] = 0;
+    (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"), msg);
+  }
 
   ansbytes = (*env)->GetByteArrayElements(env, ansArray, NULL);
   mpz_export(ansbytes, &tmpsize, 1, 1, -1, 0, answer);

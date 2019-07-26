@@ -37,11 +37,12 @@ import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
 
-import org.enquery.encryptedquery.core.FieldTypes;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
@@ -75,15 +76,16 @@ public class GPUResponderTest {
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
 	private QuerySchema querySchema;
-	private ResponseTypeConverter responseConverter;
+	private CryptoScheme crypto;
+	// private ResponseTypeConverter responseConverter;
 	private QueryKey queryKey;
-	// private Query query;
 
 	private Map<String, String> config;
 
-	private PaillierCryptoScheme crypto;
+	// private Responder responder;
+	private ExecutorService decryptionThreadPool = Executors.newCachedThreadPool();;
 
-	private QueryTypeConverter queryConverter;
+	// private Responder responder;
 
 	@Before
 	public void prepare() throws Exception {
@@ -97,10 +99,43 @@ public class GPUResponderTest {
 
 		config = FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME);
 		log.info("Loaded config: " + config);
-
 		crypto = new PaillierCryptoScheme();
 		crypto.initialize(config);
 
+
+		// responder = new Responder();
+		// responder.setOutputFileName(RESPONSE_FILE_NAME);
+		// responder.setInputDataFile(DATA_FILE_NAME);
+		// responder.setQueryFileName(QUERY_FILE_NAME);
+		// saveQuery(responder.getCrypto());
+		// responder.in
+
+		// crypto = new PaillierCryptoScheme();
+		// crypto.initialize(config);
+		// crypto = responder.getCrypto();
+
+
+
+		log.info("Finished initializing test.");
+	}
+
+	private void saveQuery() throws Exception, JAXBException, IOException, FileNotFoundException {
+		querySchema = createQuerySchema();
+
+		Querier querier = createQuerier(crypto, "Books", SELECTORS);
+		queryKey = querier.getQueryKey();
+
+		saveQuery(querier.getQuery());
+	}
+
+	/**
+	 * @param crypto
+	 * @param query
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 * @throws JAXBException
+	 */
+	private void saveQuery(Query query) throws FileNotFoundException, IOException, JAXBException {
 		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
 			@Override
 			public CryptoScheme cryptoSchemeByName(String schemeId) {
@@ -110,26 +145,16 @@ public class GPUResponderTest {
 				return null;
 			}
 		};
-		queryConverter = new QueryTypeConverter();
+
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
 		queryConverter.setCryptoRegistry(cryptoRegistry);
 		queryConverter.initialize();
 
-		responseConverter = new ResponseTypeConverter();
-		responseConverter.setQueryConverter(queryConverter);
-		responseConverter.setSchemeRegistry(cryptoRegistry);
-		responseConverter.initialize();
-
-		querySchema = createQuerySchema();
-
-		Querier querier = createQuerier("Books", SELECTORS);
-		queryKey = querier.getQueryKey();
-
 		// save the query
 		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+			queryConverter.marshal(queryConverter.toXMLQuery(query), os);
 		}
 
-		log.info("Finished initializing test.");
 	}
 
 	@After
@@ -146,21 +171,16 @@ public class GPUResponderTest {
 		Path CDR_DATA_FILE = Paths.get("target/test-classes/", "xerta-50.json");
 
 		querySchema = createXertaQuerySchema();
-
 		List<String> selectors = Arrays.asList(new String[] {"MTX", "LTEC", "S3F", "GBRA", "KCC", "NESR"});
-		Querier querier = createQuerier("Xerta", selectors);
+		Querier querier = createQuerier(crypto, "Xerta", selectors);
 		queryKey = querier.getQueryKey();
-
-		// save the query
-		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
-		}
+		saveQuery(querier.getQuery());
 
 		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(CDR_DATA_FILE);
 			responder.setQueryFileName(QUERY_FILE_NAME);
-			responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
+			responder.run(config);
 		}
 
 		Response response = loadFile();
@@ -168,10 +188,10 @@ public class GPUResponderTest {
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		ExecutorService es = Executors.newCachedThreadPool();
+		// ExecutorService es = Executors.newCachedThreadPool();
 		DecryptResponse dr = new DecryptResponse();
 		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
+		dr.setExecutionService(decryptionThreadPool);
 		dr.activate();
 
 		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
@@ -196,22 +216,22 @@ public class GPUResponderTest {
 	@Test
 	public void test() throws Exception {
 
+		saveQuery();
 		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(DATA_FILE_NAME);
 			responder.setQueryFileName(QUERY_FILE_NAME);
-			responder.run(FileIOUtils.loadPropertyFile(CONFIG_FILE_NAME));
+			responder.run(config);
 		}
-
 		Response response = loadFile();
 		response.getQueryInfo().printQueryInfo();
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		ExecutorService es = Executors.newCachedThreadPool();
+
 		DecryptResponse dr = new DecryptResponse();
 		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
+		dr.setExecutionService(decryptionThreadPool);
 		dr.activate();
 
 		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
@@ -240,21 +260,41 @@ public class GPUResponderTest {
 		// assertEquals("['Zack', 'Yvette']", returnedFields.get("children"));
 	}
 
+
 	private Response loadFile() throws FileNotFoundException, IOException, JAXBException {
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
+
+		QueryTypeConverter queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(cryptoRegistry);
+		queryConverter.initialize();
+
+		ResponseTypeConverter responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoRegistry);
+		responseConverter.initialize();
+
 		try (FileInputStream fis = new FileInputStream(RESPONSE_FILE_NAME.toFile())) {
 			org.enquery.encryptedquery.xml.schema.Response xml = responseConverter.unmarshal(fis);
 			return responseConverter.toCore(xml);
 		}
 	}
 
-	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
+	private Querier createQuerier(CryptoScheme crypto, String queryType, List<String> selectors) throws Exception {
 		RandomProvider randomProvider = new RandomProvider();
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
 		// dataChunkSize=1
 		// hashBitSize=9
-		return queryEnc.encrypt(querySchema, selectors, true, 1, 9);
+		return queryEnc.encrypt(querySchema, selectors, 1, 9);
 	}
 
 	private QuerySchema createQuerySchema() {
@@ -262,22 +302,19 @@ public class GPUResponderTest {
 		ds.setName("People");
 		DataSchemaElement dse1 = new DataSchemaElement();
 		dse1.setName("name");
-		dse1.setDataType("string");
-		dse1.setIsArray(false);
+		dse1.setDataType(FieldType.STRING);
 		dse1.setPosition(0);
 		ds.addElement(dse1);
 
 		DataSchemaElement dse2 = new DataSchemaElement();
 		dse2.setName("age");
-		dse2.setDataType("int");
-		dse2.setIsArray(false);
+		dse2.setDataType(FieldType.INT);
 		dse2.setPosition(1);
 		ds.addElement(dse2);
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("children");
-		dse3.setDataType("string");
-		dse3.setIsArray(true);
+		dse3.setDataType(FieldType.STRING_LIST);
 		dse3.setPosition(2);
 		ds.addElement(dse3);
 
@@ -287,25 +324,25 @@ public class GPUResponderTest {
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
-		field1.setLengthType("fixed");
 		field1.setName("name");
-		field1.setSize(128);
-		field1.setMaxArrayElements(1);
+		// field1.setLengthType("fixed");
+		// field1.setSize(128);
+		// field1.setMaxArrayElements(1);
 		qs.addElement(field1);
 
 		QuerySchemaElement field2 = new QuerySchemaElement();
-		field2.setLengthType("fixed");
 		field2.setName("children");
-		field2.setSize(128);
 		field2.setMaxArrayElements(3);
-		field2.setLengthType("variable");
+		// field2.setLengthType("fixed");
+		// field2.setSize(128);
+		// field2.setLengthType("variable");
 		qs.addElement(field2);
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
-		field3.setLengthType("fixed");
 		field3.setName("age");
-		field3.setSize(4);
-		field3.setMaxArrayElements(1);
+		// field3.setSize(4);
+		// field3.setLengthType("fixed");
+		// field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		return qs;
@@ -316,71 +353,61 @@ public class GPUResponderTest {
 		ds.setName("xerta");
 		DataSchemaElement dse1 = new DataSchemaElement();
 		dse1.setName("Mnemonic");
-		dse1.setDataType(FieldTypes.STRING);
-		dse1.setIsArray(false);
+		dse1.setDataType(FieldType.STRING);
 		dse1.setPosition(1);
 		ds.addElement(dse1);
 
 		DataSchemaElement dse2 = new DataSchemaElement();
 		dse2.setName("Currency");
-		dse2.setDataType(FieldTypes.STRING);
-		dse2.setIsArray(false);
+		dse2.setDataType(FieldType.STRING);
 		dse2.setPosition(4);
 		ds.addElement(dse2);
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("MaxPrice");
-		dse3.setDataType(FieldTypes.DOUBLE);
-		dse3.setIsArray(false);
+		dse3.setDataType(FieldType.DOUBLE);
 		dse3.setPosition(8);
 		ds.addElement(dse3);
 
 		DataSchemaElement dse4 = new DataSchemaElement();
 		dse4.setName("MinPrice");
-		dse4.setDataType(FieldTypes.DOUBLE);
-		dse4.setIsArray(false);
+		dse4.setDataType(FieldType.DOUBLE);
 		dse4.setPosition(9);
 		ds.addElement(dse4);
 
 		DataSchemaElement dse5 = new DataSchemaElement();
 		dse5.setName("Date");
-		dse5.setDataType(FieldTypes.STRING);
-		dse5.setIsArray(false);
+		dse5.setDataType(FieldType.STRING);
 		dse5.setPosition(6);
 		ds.addElement(dse5);
 
 		DataSchemaElement dse6 = new DataSchemaElement();
 		dse6.setName("SecurityType");
-		dse6.setDataType(FieldTypes.STRING);
-		dse6.setIsArray(false);
+		dse6.setDataType(FieldType.STRING);
 		dse6.setPosition(3);
 		ds.addElement(dse6);
 
 		DataSchemaElement dse7 = new DataSchemaElement();
 		dse7.setName("SecurityDesc");
-		dse7.setDataType(FieldTypes.STRING);
-		dse7.setIsArray(false);
+		dse7.setDataType(FieldType.STRING);
 		dse7.setPosition(2);
 		ds.addElement(dse7);
 
 		DataSchemaElement dse9 = new DataSchemaElement();
 		dse9.setName("SecurityID");
-		dse9.setDataType(FieldTypes.INT);
-		dse9.setIsArray(false);
+		dse9.setDataType(FieldType.INT);
 		dse9.setPosition(5);
 		ds.addElement(dse9);
 
 		DataSchemaElement dse10 = new DataSchemaElement();
 		dse10.setName("ISIN");
-		dse10.setDataType(FieldTypes.STRING);
-		dse10.setIsArray(false);
+		dse10.setDataType(FieldType.STRING);
 		dse10.setPosition(0);
 		ds.addElement(dse10);
 
 		DataSchemaElement dse11 = new DataSchemaElement();
 		dse11.setName("Time");
-		dse11.setDataType(FieldTypes.STRING);
-		dse11.setIsArray(false);
+		dse11.setDataType(FieldType.STRING);
 		dse11.setPosition(7);
 		ds.addElement(dse11);
 
@@ -390,52 +417,52 @@ public class GPUResponderTest {
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
-		field1.setLengthType("variable");
 		field1.setName("Mnemonic");
-		field1.setSize(20);
-		field1.setMaxArrayElements(1);
+		// field1.setLengthType("variable");
+		// field1.setSize(20);
+		// field1.setMaxArrayElements(1);
 		qs.addElement(field1);
 
 		QuerySchemaElement field2 = new QuerySchemaElement();
-		field2.setLengthType("variable");
 		field2.setName("Currency");
-		field2.setSize(16);
-		field2.setMaxArrayElements(1);
+		// field2.setLengthType("variable");
+		// field2.setSize(16);
+		// field2.setMaxArrayElements(1);
 		qs.addElement(field2);
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
-		field3.setLengthType("fixed");
 		field3.setName("MaxPrice");
-		field3.setSize(4);
-		field3.setMaxArrayElements(1);
+		// field3.setLengthType("fixed");
+		// field3.setSize(8);
+		// field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		QuerySchemaElement field4 = new QuerySchemaElement();
-		field4.setLengthType("fixed");
 		field4.setName("MinPrice");
-		field4.setSize(4);
-		field4.setMaxArrayElements(1);
+		// field4.setLengthType("fixed");
+		// field4.setSize(8);
+		// field4.setMaxArrayElements(1);
 		qs.addElement(field4);
 
 		QuerySchemaElement field5 = new QuerySchemaElement();
-		field5.setLengthType("variable");
 		field5.setName("Date");
-		field5.setSize(20);
-		field5.setMaxArrayElements(1);
+		// field5.setLengthType("variable");
+		// field5.setSize(20);
+		// field5.setMaxArrayElements(1);
 		qs.addElement(field5);
 
 		QuerySchemaElement field6 = new QuerySchemaElement();
-		field6.setLengthType("variable");
 		field6.setName("SecurityType");
-		field6.setSize(30);
-		field6.setMaxArrayElements(1);
+		// field6.setLengthType("variable");
+		// field6.setSize(30);
+		// field6.setMaxArrayElements(1);
 		qs.addElement(field6);
 
 		QuerySchemaElement field7 = new QuerySchemaElement();
-		field7.setLengthType("variable");
 		field7.setName("SecurityDesc");
-		field7.setSize(1000);
-		field7.setMaxArrayElements(1);
+		// field7.setLengthType("variable");
+		// field7.setSize(1000);
+		// field7.setMaxArrayElements(1);
 		qs.addElement(field7);
 
 		return qs;

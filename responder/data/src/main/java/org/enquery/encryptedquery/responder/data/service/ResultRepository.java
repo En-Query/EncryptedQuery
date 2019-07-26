@@ -20,6 +20,8 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.Collection;
 
+import org.enquery.encryptedquery.responder.data.entity.DataSchema;
+import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.entity.Result;
 
@@ -57,4 +59,12 @@ public interface ResultRepository {
 	void deleteAll();
 
 	InputStream payloadInputStream(int resultId);
+
+	/**
+	 * @param dataSchema
+	 * @param dataSource
+	 * @param execution
+	 * @return
+	 */
+	Collection<Result> listFilteredByDataSchemaDataSourceAndExecution(DataSchema dataSchema, DataSource dataSource, Execution execution);
 }

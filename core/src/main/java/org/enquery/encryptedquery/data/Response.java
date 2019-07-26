@@ -34,15 +34,12 @@ public class Response implements Serializable {
 
 	public static final long responseSerialVersionUID = 1L;
 
-	// @Expose
 	public final long responseVersion = responseSerialVersionUID;
 
-	// @Expose
 	private QueryInfo queryInfo = null; // holds all query info
 
-	// @Expose
-	private List<Map<Integer, CipherText>> responseElements = null; // encrypted response
-																	// columns, colNum -> column
+	// encrypted response columns, colNum -> column
+	private List<Map<Integer, CipherText>> responseElements = null;
 
 	public Response(QueryInfo queryInfoInput) {
 		queryInfo = queryInfoInput;
@@ -63,15 +60,6 @@ public class Response implements Serializable {
 
 	public QueryInfo getQueryInfo() {
 		return queryInfo;
-	}
-
-	// public void addElement(int position, BigInteger element)
-	// {
-	// responseElements.put(position, element);
-	// }
-
-	public void addToElementsList(Map<Integer, CipherText> listElement) {
-		responseElements.add(listElement);
 	}
 
 	@Override

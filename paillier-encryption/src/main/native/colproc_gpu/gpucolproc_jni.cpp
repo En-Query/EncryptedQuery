@@ -26,7 +26,7 @@
 #include <map>
 #include <mutex>
 #include <thread>
-#include <stdexcept>
+#include <sstream>
 
 using namespace std;
 
@@ -34,6 +34,9 @@ static std::mutex create_query_mutex;
 extern std::mutex query_mutex;
 extern std::map<handle_t,query_t*> queries;
 extern pool_t<device_t> device_pool;
+
+static const char CFG_BUSY_POLICY[] = "paillier.gpu.libresponder.busy.policy";
+static const char CFG_LOG_FILE[]    = "paillier.gpu.libresponder.log.file";
 
 extern "C" {
 
@@ -48,68 +51,59 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
 
 /*
  * Class:     org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme
- * Method:    gpuResponderInitializeNativeLibrary
- * Signature: ()Z
+ * Method:    gpuResponderInitialize
+ * Signature: (Ljava/util/Map;)Z
  */
-/*
-JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuResponderInitializeNativeLibrary
-  (JNIEnv *env, jobject obj) {
-    try {
-	bool success = initialize_native_library();
-	return (jboolean)success;
-    } catch (const std::exception &exc) {
-	std::thread::id this_id = std::this_thread::get_id();
-	cout << "thread " << this_id << " : ";
-	cout << exc.what() << endl;
-	return JNI_FALSE;
-    } catch (...) {
-	std::thread::id this_id = std::this_thread::get_id();
-	cout << "thread " << this_id << " : ";
-	cout << "unknown exception occurred" << endl;
-	return JNI_FALSE;
-    }
-}
-*/
-
-/*
- * Class:     org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme
- * Method:    gpuResponderCloseNativeLibrary
- * Signature: ()Z
- */
-/*
-JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuResponderCloseNativeLibrary
-  (JNIEnv *env, jobject obj) {
-    try {
-	bool success = close_native_library();
-	return (jboolean)success;
-    } catch (const std::exception &exc) {
-	std::thread::id this_id = std::this_thread::get_id();
-	cout << "thread " << this_id << " : ";
-	cout << exc.what() << endl;
-	return JNI_FALSE;
-    } catch (...) {
-	std::thread::id this_id = std::this_thread::get_id();
-	cout << "thread " << this_id << " : ";
-	cout << "unknown exception occurred" << endl;
-	return JNI_FALSE;
-    }
-}
-*/
-
-/*
- * Class:     org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme
- * Method:    gpuResponderSetBusyPolicy
- * Signature: (I)Z
- */
-JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuResponderSetBusyPolicy
-  (JNIEnv *env, jobject obj, jint policy) {
+JNIEXPORT jboolean JNICALL Java_org_enquery_encryptedquery_encryption_paillier_PaillierCryptoScheme_gpuResponderInitialize
+  (JNIEnv *env, jobject obj, jobject cfg) {
     std::thread::id this_id = std::this_thread::get_id();
     COUT_BEGIN;
     cout << "thread " << this_id << " : ";
-    cout << "gpuResponderSetBusyPolicy(policy=" << static_cast<policy_t>(policy) << ")" << endl;
+    cout << "gpuResponderInitialize()" << endl;
     COUT_END;
-    if (policy < 0 || policy >= RP_NUM_POLICIES) return JNI_FALSE;
-    set_busy_policy(static_cast<policy_t>(policy));
+    jclass clsMap = env->FindClass("java/util/Map");
+    if (NULL == clsMap) return JNI_FALSE;
+    jmethodID midGet = env->GetMethodID(clsMap, "get", "(Ljava/lang/Object;)Ljava/lang/Object;");
+    if (NULL == midGet) return JNI_FALSE;
+
+    jstring param;
+    jsize paramLen;
+    const char *paramBytes;
+
+    param = (jstring)env->CallObjectMethod(cfg, midGet, env->NewStringUTF(CFG_BUSY_POLICY));
+    policy_t policy;
+    if (NULL != param) {
+	paramLen = env->GetStringUTFLength(param);
+	paramBytes = env->GetStringUTFChars(param, JNI_FALSE);
+	string policyString = string(paramBytes, paramLen);
+	env->ReleaseStringUTFChars(param, paramBytes);
+	COUT_BEGIN;
+	cout << "thread " << this_id << " : ";
+	cout << CFG_BUSY_POLICY << "=" << policyString << endl;
+	COUT_END;
+	policy = busyPolicyFromString(policyString, DEFAULT_BUSY_POLICY);
+    } else {
+	COUT_BEGIN;
+	cout << "thread " << this_id << " : ";
+	cout << "using default busy policy" << endl;
+	COUT_END;
+	policy = DEFAULT_BUSY_POLICY;
+    }    
+    set_busy_policy(policy);
+    
+    param = (jstring)env->CallObjectMethod(cfg, midGet, env->NewStringUTF(CFG_LOG_FILE));
+    if (NULL != param) {
+	paramLen = env->GetStringUTFLength(param);
+	paramBytes = env->GetStringUTFChars(param, JNI_FALSE);
+	string logFilePath = string(paramBytes, paramLen);
+	env->ReleaseStringUTFChars(param, paramBytes);
+	COUT_BEGIN;
+	cout << "thread " << this_id << " : ";
+	cout << "logFilePath = " << logFilePath << endl;
+	logging = true;
+	log_file_prefix = logFilePath;
+	COUT_END;
+    }
     return JNI_TRUE;
 }
 
@@ -143,10 +137,10 @@ JNIEXPORT jlong JNICALL Java_org_enquery_encryptedquery_encryption_paillier_Pail
 		query_t *query = it->second;
 		if (query && query->uuid == queryIdString) {
 		    // found!
-		    COUT_BEGIN;
-		    cout << "thread " << this_id << " : ";
-		    cout << "query for ID " << queryIdString << " already exists, new reference count = " << query->ref_count << endl;
-		    COUT_END;
+		   // COUT_BEGIN;
+		   // cout << "thread " << this_id << " : ";
+		   // cout << "query for ID " << queryIdString << " already exists, new reference count = " << query->ref_count << endl;
+		   // COUT_END;
 		    query->ref_count++;
 		    return (jlong)it->first;
 		}
@@ -390,6 +384,12 @@ JNIEXPORT jbyteArray JNICALL Java_org_enquery_encryptedquery_encryption_paillier
     if (status) {
 	size_t ansbyteslength = mpz_sizeinbase(result, 256);
 	ansArray = env->NewByteArray(ansbyteslength);
+	if (NULL == ansArray) {
+	    std::stringstream ss;
+	    ss << "NewByteArray() returned NULL (ansbyteslength = " << ansbyteslength << ")";
+	    std::string s = ss.str();
+	    env->ThrowNew(env->FindClass("java/lang/RuntimeException"), s.c_str());
+	}
 	jbyte *ansbytes = env->GetByteArrayElements(ansArray, NULL);
 	size_t tmpsize;
 	mpz_export(ansbytes, &tmpsize, 1, 1, -1, 0, result);

@@ -17,20 +17,13 @@
 package org.enquery.encryptedquery.querier.it.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.http4.HttpComponent;
-import org.apache.camel.component.jackson.JacksonDataFormat;
-import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.impl.DefaultCamelContext;
 import org.enquery.encryptedquery.querier.data.entity.json.Resource;
 import org.enquery.encryptedquery.querier.data.entity.json.ResourceCollectionResponse;
-import org.enquery.encryptedquery.querier.it.AbstractQuerierItest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,68 +35,37 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
-public class ResourcesRestServiceIT extends AbstractQuerierItest {
-
-	private DefaultCamelContext itCamelContext;
-	private ProducerTemplate testProducer;
-
-	private MockEndpoint listResultMock;
-
-	@Before
-	public void initService() throws Exception {
-		truncateTables();
-		startCamelProducer();
-		setupRoutes();
-		waitForHealthyStatus();
-	}
-
-	private void setupRoutes() throws Exception {
-		final JacksonDataFormat listDataFormat = new JacksonDataFormat(ResourceCollectionResponse.class);
-
-		itCamelContext.addRoutes(new RouteBuilder() {
-			public void configure() {
-				from("direct:list")
-						.to("http4://localhost:8182/querier/api/rest/?throwExceptionOnFailure=false")
-						.log("${body}")
-						.unmarshal(listDataFormat)
-						.to("mock:result");
-			}
-		});
-		listResultMock = itCamelContext.getEndpoint("mock:result", MockEndpoint.class);
-	}
+public class ResourcesRestServiceIT extends BaseRestServiceItest {
 
 	@Configuration
 	public Option[] configuration() {
 		return new Option[] {baseOptions()};
 	}
 
-
-	private void startCamelProducer() throws Exception {
-		itCamelContext = new DefaultCamelContext();
-		itCamelContext.addComponent("http4", new HttpComponent());
-		itCamelContext.setTracing(true);
-		itCamelContext.setStreamCaching(true);
-		itCamelContext.setName(this.getClass().getSimpleName());
-		itCamelContext.start();
-		testProducer = itCamelContext.createProducerTemplate();
-		testProducer.start();
+	@Override
+	@Before
+	public void init() throws Exception {
+		super.init();
 	}
 
 	@Test
 	public void list() throws Exception {
-		listResultMock.expectedMessageCount(1);
-		listResultMock.expectedHeaderReceived(Exchange.HTTP_RESPONSE_CODE, 200);
-		testProducer.sendBody("direct:list", null);
-		listResultMock.assertIsSatisfied();
-		ResourceCollectionResponse resources = listResultMock.getReceivedExchanges().get(0).getMessage().getBody(ResourceCollectionResponse.class);
+
+		ResourceCollectionResponse resources = invoke("/querier/api/rest/",
+				200,
+				DEFAULT_ACCEPT,
+				resourcesResultMock,
+				"direct:retrieve-resources")
+						.getReceivedExchanges()
+						.get(0)
+						.getMessage()
+						.getBody(ResourceCollectionResponse.class);
+		assertNotNull(resources);
 
 		Map<String, String> map = new HashMap<>();
 		for (Resource ep : resources.getData()) {
 			map.put(ep.getId(), ep.getSelfUri());
 		}
 		assertEquals("/querier/api/rest/dataschemas", map.get("dataschema"));
-		// assertEquals("/querier/api/rest/datasources", map.get("datasource"));
-		// assertEquals("/querier/api/rest/queryschemas", map.get("queryschema"));
-		// assertEquals("/querier/api/rest/queries", map.get("query"));
 	}
 }

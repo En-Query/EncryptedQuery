@@ -19,6 +19,8 @@ public interface ResultRepository {
 
 	Result update(Result r);
 
+	Result addOrUpdate(Result r);
+
 	void delete(Result r);
 
 	void deleteAll();

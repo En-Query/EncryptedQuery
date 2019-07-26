@@ -102,12 +102,24 @@ This class must implement the following methods:
 
         Returns a description of this CryptoScheme
 
-    ColumnProcessor makeColumnProcessor(QueryInfo queryInfo, Map<Integer, CipherText> queryElements)
+    byte[] loadQuery(QueryInfo queryInfo, Map<Integer, CipherText> queryElements)
 
-        This function is called by the responder to return a
-        ColumnProcessor object used to compute CipherText values for
-        the response.
-
+        Initializes the Crypto subsystem with a Query to be executed. This should be used by
+	  	Responder as part of running a query. The query data is used by one more more Column
+	  	Processors returned by `makeColumnProcessor`. The content of the returned handle
+	  	is implementation dependent, and should be considered opaque, and not modified in any form.
+	 
+	void unloadQuery(byte[] handle);
+	
+		Destroy previously initialized query (see `loadQuery`) given its handle. Any resources allocated by
+		`loadQuery` call will be dellocated by this call. Any running
+	 	processes associated to this query will be interrupted (best effort). 
+	 	The handle becomes invalid and can't be used any longer.
+	
+    ColumnProcessor makeColumnProcessor(byte[] handle);
+    
+    	Initializes and return a new instance of ColumnProcessor.
+    
     KeyPair generateKeyPair()
 
         Returns a KeyPair object containing a freshly generated pair

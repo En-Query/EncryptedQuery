@@ -17,6 +17,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  -->
 <xs:schema
+	version="2.0"
+	
 	targetNamespace="http://enquery.net/encryptedquery/execution"
 	xmlns="http://enquery.net/encryptedquery/execution"
 	xmlns:ex="http://enquery.net/encryptedquery/execution"
@@ -28,7 +30,6 @@
 	<xs:import schemaLocation="query.xsd" namespace="http://enquery.net/encryptedquery/query"/>
 	
 	<xs:element name="execution" type="execution" />
-	
 	
 	<xs:complexType name="Configuration">
 		<xs:sequence>
@@ -43,6 +44,21 @@
 	
 	<xs:complexType name="execution">
 		<xs:sequence>
+			<xs:element name="uuid">
+				<xs:annotation>
+					<xs:documentation>Global unique identifier of this execution. 
+					Formatted as a String of 36 hexadecimal digits.
+					Populated by the Querier upon creation. 
+					Used by Responder to detect double submission (Idempotent submission).
+					Can be used by Querier (specially in offline mode) as a correlation key.  
+					</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+            			<xs:pattern value="[a-fA-F0-9]{32}"/>
+        			</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
 			<xs:element name="scheduledFor" type="xs:dateTime">
 				<xs:annotation>
 					<xs:documentation>Time stamp when this Execution is expected to be run.  This time stamp is rounded to the next minute.</xs:documentation>
@@ -85,13 +101,21 @@
 				</xs:annotation>
 			</xs:element>
 			
-			<!-- Keep query at the end, since it can be beig, to allow parsing the small
+			<!-- Keep query at the end, since it can be big, to allows parsing the small
 				data elements without having to load the query -->
-			<xs:element name="query" type="q:Query" minOccurs="0">
+			<xs:element xmlns="http://enquery.net/encryptedquery/query" ref="q:query" minOccurs="0">
 				<xs:annotation>
 					<xs:documentation>Query to be executed execute. Only present for submissions, since this can be very large.</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
+		<xs:attribute name="schemaVersion" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:minInclusive value="2.0"/>
+					<xs:maxInclusive value="2.0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 	</xs:complexType>
 </xs:schema>

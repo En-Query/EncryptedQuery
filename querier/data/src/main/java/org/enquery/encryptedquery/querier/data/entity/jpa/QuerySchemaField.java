@@ -40,14 +40,11 @@ public class QuerySchemaField {
 	@Column(name = "name", nullable = false)
 	private String name;
 
-	@Column(name = "length_type", nullable = false)
-	private String lengthType;
+	@Column(name = "max_size")
+	private Integer maxSize;
 
-	@Column(name = "max_size", nullable = false)
-	private int maxSize;
-
-	@Column(name = "max_array_elements", nullable = false)
-	private int maxArrayElements;
+	@Column(name = "max_array_elements")
+	private Integer maxArrayElements;
 
 	public QuerySchemaField() {}
 
@@ -67,19 +64,11 @@ public class QuerySchemaField {
 		this.querySchema = querySchema;
 	}
 
-	public String getLengthType() {
-		return lengthType;
-	}
-
-	public void setLengthType(String lengthType) {
-		this.lengthType = lengthType;
-	}
-
-	public int getMaxSize() {
+	public Integer getMaxSize() {
 		return maxSize;
 	}
 
-	public void setMaxSize(int maxsize) {
+	public void setMaxSize(Integer maxsize) {
 		this.maxSize = maxsize;
 	}
 
@@ -91,11 +80,11 @@ public class QuerySchemaField {
 		this.id = id;
 	}
 
-	public int getMaxArrayElements() {
+	public Integer getMaxArrayElements() {
 		return maxArrayElements;
 	}
 
-	public void setMaxArrayElements(int maxArrayElements) {
+	public void setMaxArrayElements(Integer maxArrayElements) {
 		this.maxArrayElements = maxArrayElements;
 	}
 

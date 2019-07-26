@@ -27,7 +27,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-parent</artifactId>
-		<version>2.1.3</version>
+		<version>2.1.4</version>
 		<relativePath>../parent</relativePath>
 	</parent>
 
@@ -46,6 +46,18 @@
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
+			<!-- for converter annotations -->
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+
+		<!-- test -->
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
@@ -63,18 +75,19 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-core</artifactId>
-			<!-- for converter annotations -->
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-jaxb</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-null-encryption</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
@@ -90,24 +103,12 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<extension>true</extension>
-							<!-- <args>
-								<arg>-Xannotate</arg>
-							</args>
-							<plugins>
-								<plugin>
-								    <groupId>org.jvnet.jaxb2_commons</groupId>
-								    <artifactId>jaxb2-basics-annotate</artifactId>
-								    <version>1.1.0</version>
-								</plugin>
-							</plugins> -->
+							<!-- <extension>true</extension> -->
+							<strict>false</strict>
  							<generatePackage>org.enquery.encryptedquery.xml.schema</generatePackage>
 							<schemaDirectory>src/main/resources/org/enquery/encryptedquery/xml/schema</schemaDirectory>
 					        <generateDirectory>${project.build.directory}/generated-sources/schema/</generateDirectory>
-							<bindingDirectory>src/main/resources/bindings</bindingDirectory>					        
-							<bindingIncludes>
-								<include>**/*.xml</include>
-							</bindingIncludes>
+					        <!-- <catalog>src/main/resources/org/enquery/encryptedquery/xml/schema/catalog.cat</catalog> -->
 						</configuration>
 					</execution>
 				</executions>

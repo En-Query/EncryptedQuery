@@ -158,7 +158,7 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 
 		// emulate Responder not reachable when submitting a Schedule
 		int oldPort = responderPort();
-		configuteResponderPort(oldPort + 10);
+		configureResponderPort(oldPort + 10);
 		try {
 			ScheduleResponse returned = postSchedule();
 
@@ -169,11 +169,11 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 			assertNotNull(retrieveSchedule(returned.getData().getSelfUri()).getData().getErrorMsg());
 
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 
 		// emulate Responder http error (404 in this case)
-		configuteResponderPort(8182);
+		configureResponderPort(8182);
 		try {
 
 			ScheduleResponse returned = postSchedule();
@@ -185,7 +185,7 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 			assertNotNull(retrieveSchedule(returned.getData().getSelfUri()).getData().getErrorMsg());
 
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 	}
 

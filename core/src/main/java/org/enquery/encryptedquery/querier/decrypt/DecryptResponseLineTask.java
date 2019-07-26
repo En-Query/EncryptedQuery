@@ -33,12 +33,15 @@ import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.PlainText;
 import org.enquery.encryptedquery.utils.PIRException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decrypt a single line from the response file.
  *
  */
 public class DecryptResponseLineTask implements Callable<ClearTextQueryResponse> {
+	private static final Logger log = LoggerFactory.getLogger(ClearTextQueryResponse.class);
 
 	private ExecutorService executionService;
 	private Map<Integer, CipherText> responseLine;
@@ -80,7 +83,10 @@ public class DecryptResponseLineTask implements Callable<ClearTextQueryResponse>
 		Validate.notNull(queryInfo);
 		Validate.notNull(crypto);
 
+		long startTime = System.nanoTime();
 		rElements = decryptElements();
+		long endTime = System.nanoTime();
+		log.info("time in decryptElements():  " + (endTime - startTime) + " nanoseconds to decrypt " + responseLine.size() + " ciphertexts");
 		// selectorMaskMap = initializeSelectorMasks();
 
 		ClearTextQueryResponse result = new ClearTextQueryResponse(queryInfo.getQueryName(), queryInfo.getIdentifier());

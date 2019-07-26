@@ -34,8 +34,7 @@
 				method="toXMLResults(${body},
 					 ${header.dataSchema}, 
 					 ${header.dataSource}, 
-					 ${header.execution}, 
-					 ${ref:restRegistry})"/>
+					 ${header.execution})"/>
 			
 			<to uri="direct:success"/>
 		</route>
@@ -60,8 +59,7 @@
 				method="toXMLResultWithPayload(${body},
 					 ${header.dataSchema}, 
 					 ${header.dataSource}, 
-					 ${header.execution}, 
-					 ${ref:restRegistry})"/>
+					 ${header.execution})"/>
 			
 			<to uri="direct:success"/>
 		</route>

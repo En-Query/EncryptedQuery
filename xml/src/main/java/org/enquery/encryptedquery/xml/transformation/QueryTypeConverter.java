@@ -24,6 +24,7 @@ import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.ObjectFactory;
 import org.enquery.encryptedquery.xml.schema.Query.QueryElements;
 import org.enquery.encryptedquery.xml.schema.Query.QueryElements.Entry;
@@ -79,6 +80,7 @@ public class QueryTypeConverter {
 	}
 
 	public void marshal(org.enquery.encryptedquery.xml.schema.Query q, OutputStream os) throws JAXBException {
+		q.setSchemaVersion(Versions.QUERY_BI);
 		Marshaller marshaller = jaxbContext.createMarshaller();
 		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 		marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
@@ -140,7 +142,7 @@ public class QueryTypeConverter {
 		result.setPublicKey(queryInfo.getPublicKey().getEncoded());
 		result.setCryptoSchemeId(queryInfo.getCryptoSchemeId());
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
-		result.setEmbedSelector(queryInfo.getEmbedSelector());
+		// result.setEmbedSelector(queryInfo.getEmbedSelector());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setHashKey(queryInfo.getHashKey());
 		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
@@ -166,7 +168,7 @@ public class QueryTypeConverter {
 		result.setNumSelectors(queryInfo.getNumSelectors());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
-		result.setEmbedSelector(queryInfo.isEmbedSelector());
+		// result.setEmbedSelector(queryInfo.isEmbedSelector());
 		result.setHashKey(queryInfo.getHashKey());
 		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
 		result.setNumPartitionsPerDataElement(queryInfo.getNumPartitionsPerDataElement());

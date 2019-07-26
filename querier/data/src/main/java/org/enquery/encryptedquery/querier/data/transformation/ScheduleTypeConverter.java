@@ -58,6 +58,7 @@ public class ScheduleTypeConverter {
 		result.setQuery(queryConverter.toResourceIdentifier(jpa.getQuery()));
 		result.setDataSource(dataSourceConverter.toResourceIdentifier(jpa.getDataSource()));
 		result.setResultsUri(registry.resultsUri(jpa));
+		result.setUuid(jpa.getUuid());
 		return result;
 	}
 

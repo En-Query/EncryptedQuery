@@ -78,6 +78,8 @@ public class App {
 			.build();
 	private Map<String, String> config;
 
+	private Integer emissionRatePerSecond;
+
 	public static void main(String[] args) {
 		try {
 			App app = new App();
@@ -101,7 +103,7 @@ public class App {
 
 		outputFileName = Paths.get(getValue(outputFileNameOption));
 		Validate.isTrue(!Files.exists(outputFileName), "Output file %s exists. Delete first.", outputFileName);
-		Files.createDirectories(outputFileName);
+		// Files.createDirectories(outputFileName);
 
 		loadKafkaProperties();
 
@@ -126,6 +128,7 @@ public class App {
 			q.setStartOffset(startOffset);
 			q.setInputFileName(queryFileName);
 			q.setOutputFileName(outputFileName);
+			if (emissionRatePerSecond != null) q.setEmissionRatePerSecond(emissionRatePerSecond);
 			q.setConfig(config);
 			q.run();
 		}
@@ -153,10 +156,15 @@ public class App {
 			startOffset = StartOffset.fromLatestCommit;
 		}
 
+		val = p.getProperty(KafkaConfigurationProperties.EMISSION_RATE_PER_SECOND);
+		if (val != null) {
+			emissionRatePerSecond = Integer.parseInt(val);
+		}
+
 		log.info("Kafka Properties: ");
 		log.info("   Brokers: {}", brokers);
 		log.info("   Topic: {}", topic);
-		// log.info(" groupId: {}", groupId);
+		log.info("   Emission Rate: {}/s", emissionRatePerSecond);
 		log.info("   OffsetLocation: {}", startOffset);
 	}
 

@@ -43,7 +43,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
@@ -188,7 +187,7 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 
 	protected Map<String, String> dataSourceParams() {
 		Map<String, String> result = new HashMap<>();
-		result.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "1000");
+		// result.put(ResponderProperties.MAX_HITS_PER_SELECTOR, "1000");
 		return result;
 	}
 
@@ -203,14 +202,12 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		result.setDataSchema(dsr);
 
 		QuerySchemaField field = new QuerySchemaField();
-		field.setLengthType("fixed");
 		field.setName("author");
 		field.setSize(100);
 		field.setMaxArrayElements(1);
 		List<QuerySchemaField> fields = new ArrayList<>();
 		fields.add(field);
 		QuerySchemaField field2 = new QuerySchemaField();
-		field2.setLengthType("fixed");
 		field2.setName("title");
 		field2.setSize(100);
 		field2.setMaxArrayElements(1);
@@ -235,7 +232,6 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 		selectorValues.add("A Cup of Java");
 		q.setSelectorValues(selectorValues);
 
-		q.setEmbedSelector(true);
 		return q;
 	}
 

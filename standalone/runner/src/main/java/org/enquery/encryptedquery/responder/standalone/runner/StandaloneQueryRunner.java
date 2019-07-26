@@ -75,7 +75,12 @@ public class StandaloneQueryRunner implements QueryRunner {
 	private int numberOfThreads;
 	private int maxQueueSize;
 	private long computeThreshold;
-
+	private String algorithmVersion;
+	private int columnBufferMemoryMB;
+	private int maxRecordQueueSize;
+	private int maxColumnQueueSize;
+	private int maxResponseQueueSize;
+	
 	@Reference
 	private ExecutorService threadPool;
 	@Reference
@@ -119,6 +124,11 @@ public class StandaloneQueryRunner implements QueryRunner {
 		numberOfThreads = config._number_of_threads();
 		maxQueueSize = config._max_queue_size();
 		computeThreshold = config._compute_threshold();
+		algorithmVersion = config._algorithm_version();
+		columnBufferMemoryMB = config._column_buffer_memory_mb();
+		maxRecordQueueSize = config._max_record_queue_size();
+		maxColumnQueueSize = config._max_column_queue_size();
+		maxResponseQueueSize = config._max_response_queue_size();		
 	}
 
 	@Override
@@ -146,7 +156,7 @@ public class StandaloneQueryRunner implements QueryRunner {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
-		Validate.isTrue(!Files.exists(Paths.get(outputFileName)));
+		Validate.isTrue(!Files.exists(Paths.get(outputFileName)), "Folder/file: " +Paths.get(outputFileName).toString() + " already exists.");
 
 		Path workingTempDir = null;
 		try {
@@ -212,20 +222,37 @@ public class StandaloneQueryRunner implements QueryRunner {
 
 	private Path createConfigFile(Path dir, Map<String, String> parameters, Query query) throws FileNotFoundException, IOException {
 		Path result = dir.resolve("config.properties");
-		int maxHitsPerSelector = 1000;
 
 		Properties p = new Properties();
 
 		if (parameters != null) {
 			if (parameters.containsKey(ResponderProperties.MAX_HITS_PER_SELECTOR)) {
-				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+				p.put(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR,
+						parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
 			}
 		}
-		p.put(StandaloneConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 		p.put(StandaloneConfigurationProperties.PROCESSING_THREADS, Integer.toString(numberOfThreads));
 		p.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, Integer.toString(maxQueueSize));
 		p.put(StandaloneConfigurationProperties.COMPUTE_THRESHOLD, Long.toString(computeThreshold));
 
+		if (algorithmVersion != null) {
+			p.put(StandaloneConfigurationProperties.ALG_VERSION, algorithmVersion);
+		}
+
+		// V2-specific configurations
+		if (columnBufferMemoryMB > 0) {
+			p.put(ResponderProperties.COLUMN_BUFFER_MEMORY_MB, Integer.toString(columnBufferMemoryMB));
+		}
+		if (maxRecordQueueSize > 0) {
+			p.put(StandaloneConfigurationProperties.MAX_RECORD_QUEUE_SIZE, Integer.toString(maxRecordQueueSize));
+		}
+		if (maxColumnQueueSize > 0) {
+			p.put(StandaloneConfigurationProperties.MAX_COLUMN_QUEUE_SIZE, Integer.toString(maxColumnQueueSize));	
+		}
+		if (maxResponseQueueSize > 0) {
+			p.put(StandaloneConfigurationProperties.MAX_RESPONSE_QUEUE_SIZE, Integer.toString(maxResponseQueueSize));	
+		}
+		
 		// Pass the CryptoScheme configuration to the external application,
 		// the external application needs to instantiate the CryptoScheme whit these parameters
 		final String schemeId = query.getQueryInfo().getCryptoSchemeId();

@@ -68,15 +68,6 @@
 								</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:element name="isArray" type="xs:boolean"
-							default="false" minOccurs="0">
-							<xs:annotation>
-								<xs:documentation>Whether or not the schema element is an
-									array
-									within the data. False if unspecified.
-								</xs:documentation>
-							</xs:annotation>
-						</xs:element>
 						<xs:element name="position" type="xs:int" default="0">
 							<xs:annotation>
 								<xs:documentation> Index of this field in the data schema. This

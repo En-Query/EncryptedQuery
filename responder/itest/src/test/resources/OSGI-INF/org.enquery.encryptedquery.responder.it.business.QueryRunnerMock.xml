@@ -22,6 +22,6 @@
   <implementation class="org.enquery.encryptedquery.responder.it.business.QueryRunnerMock"/>
 
   <service>
-    <provide interface="org.enquery.encryptedquery.responder.data.service.QueryRunner"/>
+    	<provide interface="org.enquery.encryptedquery.responder.data.service.QueryRunner"/>
   </service>
 </scr:component>

@@ -50,6 +50,12 @@
 				 contextPath="org.enquery.encryptedquery.xml.schema"
 				 schema="classpath:/org/enquery/encryptedquery/xml/schema/data-schema.xsd"
 			/>
+			
+			<jaxb  id="dataSchemaResourceFormat"
+				 contextPath="org.enquery.encryptedquery.xml.schema"
+				 schema="classpath:/org/enquery/encryptedquery/xml/schema/data-schema-resource.xsd"
+			/>
+			
 		</dataFormats>
 		
 		<onException>

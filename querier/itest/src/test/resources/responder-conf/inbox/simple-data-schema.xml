@@ -6,19 +6,16 @@
     <field>
         <name>name</name>
         <dataType>string</dataType>
-        <isArray/>
         <position>0</position>
     </field>
     <field>
         <name>age</name>
         <dataType>int</dataType>
-        <isArray>false</isArray>
         <position>1</position>
     </field>
     <field>
         <name>children</name>
-        <dataType>string</dataType>
-        <isArray>true</isArray>
+        <dataType>string_list</dataType>
         <position>2</position>
     </field>
 </dataSchema>

@@ -19,66 +19,63 @@ package org.enquery.encryptedquery.responder.data.transformation;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import org.apache.camel.Converter;
-import org.apache.camel.Exchange;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
-import org.enquery.encryptedquery.responder.data.service.RestServiceRegistry;
+import org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.Execution;
 import org.enquery.encryptedquery.xml.schema.ExecutionResource;
 import org.enquery.encryptedquery.xml.schema.ExecutionResources;
 import org.enquery.encryptedquery.xml.transformation.XMLFactories;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Converter
-public class ExecutionTypeConverter {
+@Component(service = ExecutionTypeConverter.class)
+public class ExecutionTypeConverter extends
+		org.enquery.encryptedquery.xml.transformation.ExecutionTypeConverter {
 
 	private static final Logger log = LoggerFactory.getLogger(ExecutionTypeConverter.class);
 
-	@Converter
-	public ExecutionResources toXMLExecutions(Collection<org.enquery.encryptedquery.responder.data.entity.Execution> jpaExecutions,
-			Exchange exchange) {
+	@Reference(target = "(type=rest)")
+	private ResourceUriRegistry registry;
+	@Reference
+	private DataSourceRegistry dataSrcRegistry;
+
+	public ExecutionResources toXMLExecutions(Collection<org.enquery.encryptedquery.responder.data.entity.Execution> jpaExecutions) {
 
 		if (log.isDebugEnabled()) {
 			log.debug("Converting {} to XML ExecutionResources.", jpaExecutions);
 		}
-
-		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
-		DataSourceRegistry dataSrcRegistry = CamelContextBeanLocator.dataSourceRegistry(exchange);
 
 		ExecutionResources result = new ExecutionResources();
 		result.getExecutionResource().addAll(
 				jpaExecutions
 						.stream()
 						.map(ex -> {
-							return makeResource(ex, registry, dataSrcRegistry);
+							return makeResource(ex);
 						}).collect(Collectors.toList()));
 		return result;
 	}
 
-
-	@Converter
-	public static ExecutionResource toXMLExecution(org.enquery.encryptedquery.responder.data.entity.Execution jpaExecution,
-			Exchange exchange) {
+	public ExecutionResource toXMLExecution(org.enquery.encryptedquery.responder.data.entity.Execution jpaExecution) {
 
 		if (log.isDebugEnabled()) {
 			log.debug("Converting {} to XML ExecutionResource.", jpaExecution);
 		}
 
-		final RestServiceRegistry registry = CamelContextBeanLocator.restServiceRegistry(exchange);
-		DataSourceRegistry dataSrcRegistry = CamelContextBeanLocator.dataSourceRegistry(exchange);
-
-		return makeResource(jpaExecution, registry, dataSrcRegistry);
+		return makeResource(jpaExecution);
 	}
 
-
-	private static ExecutionResource makeResource(org.enquery.encryptedquery.responder.data.entity.Execution jpaExecution, final RestServiceRegistry registry, DataSourceRegistry dataSrcRegistry) {
+	private ExecutionResource makeResource(org.enquery.encryptedquery.responder.data.entity.Execution jpaExecution) {
 
 		final org.enquery.encryptedquery.xml.schema.Execution xmlExecution =
 				new org.enquery.encryptedquery.xml.schema.Execution();
 
+		xmlExecution.setSchemaVersion(Versions.EXECUTION_BI);
+		xmlExecution.setUuid(jpaExecution.getUuid());
 		xmlExecution.setScheduledFor(XMLFactories.toUTCXMLTime(jpaExecution.getScheduleTime()));
 		xmlExecution.setSubmittedOn(XMLFactories.toUTCXMLTime(jpaExecution.getReceivedTime()));
 		xmlExecution.setStartedOn(XMLFactories.toUTCXMLTime(jpaExecution.getStartTime()));
@@ -86,6 +83,7 @@ public class ExecutionTypeConverter {
 		xmlExecution.setErrorMessage(jpaExecution.getErrorMsg());
 
 		final ExecutionResource resource = new ExecutionResource();
+		resource.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		resource.setExecution(xmlExecution);
 		resource.setId(jpaExecution.getId());
 
@@ -102,10 +100,11 @@ public class ExecutionTypeConverter {
 		return resource;
 	}
 
-	@Converter
+
 	public org.enquery.encryptedquery.responder.data.entity.Execution toJPAExecution(Execution ex) throws Exception {
 
 		org.enquery.encryptedquery.responder.data.entity.Execution result = new org.enquery.encryptedquery.responder.data.entity.Execution();
+		result.setUuid(ex.getUuid());
 		result.setReceivedTime(XMLFactories.toUTCDate(ex.getSubmittedOn()));
 		result.setScheduleTime(XMLFactories.toUTCDate(ex.getScheduledFor()));
 		result.setEndTime(XMLFactories.toUTCDate(ex.getCompletedOn()));

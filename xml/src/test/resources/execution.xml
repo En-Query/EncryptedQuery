@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<execution schemaVersion="2.0" 
+	xmlns="http://enquery.net/encryptedquery/execution" xmlns:ns2="http://enquery.net/encryptedquery/clear-response" xmlns:ns3="http://enquery.net/encryptedquery/resource" xmlns:ns4="http://enquery.net/encryptedquery/query" xmlns:ns5="http://enquery.net/encryptedquery/queryschema" xmlns:ns6="http://enquery.net/encryptedquery/dataschema" xmlns:ns7="http://enquery.net/encryptedquery/datasource" xmlns:ns8="http://enquery.net/encryptedquery/result" xmlns:ns9="http://enquery.net/encryptedquery/response" xmlns:ns10="http://enquery.net/encryptedquery/pagination" xmlns:ns11="http://enquery.net/encryptedquery/querykey">
+    <uuid>3e7c5e594e424cde88c9e531a5dccb06</uuid>
+    <scheduledFor>2019-03-07T16:56:18.934-05:00</scheduledFor>
+    <ns4:query schemaVersion="2.0">
+        <ns4:queryInfo>
+            <ns4:queryId>3e7c5e59-4e42-4cde-88c9-e531a5dccb06</ns4:queryId>
+            <ns4:queryName>Books</ns4:queryName>
+            <ns4:cryptoSchemeId>Paillier</ns4:cryptoSchemeId>
+            <ns4:publicKey>eyJuIjozNzQ5ODI5MTQwMDc3NTU0ODk5MDYyNjkwMDc4MzEzNjQxMzA4NjgwOTIxNzYwMzE2ODQxMTgwNzM2NjAwMTgzMzUyMDQwMTQ5MDkxNzM5MTc5MDU3MTQ0NjU3NTAxNzQwNzY0ODQzMjI0MjUyNDcxMjU5OTU5OTc4NzE3NDgwODA2MDkzMjM1NDAxNTAzMzEyNTc3NTMxMzcyMjIwODkwMjczNTgyNjczNjcyNzA2NDE1NDQwMTk2Mjg5NjgxMzQ2NjA3NjA2MDA2MDc0MTA1NTUzOTIwMDEwNDg5NDI3Njg0MTkzNDYzOTkxODAxNjE4MzI1MDI3NzQ3NjE5NjY1NjYyNjg1MjczNTM5ODMzODk4NzU3Mjg2MTU4MTU0Nzg4MzY1MzI4OTQ1MjQ5OTI1MzA0Nzk5MzgyNzg2MTA2NjcxNzU5ODUxNTY2MzczNTU1OTM1Njk3MjAwNDIxMzQyNjI3OTc0NjcyMjY1MDM2MjUxMDA3OTczMzY5NzQwOTYzODA5OTQzOTYyMzkzOTg5MjExNTc0Njk5NjU0MTI3NjkzMzkzOTQ5NTAzODk2OTcxOTc5MTgyODYzNzY5NTU0MjQ2NTkyNjU5MzgxNzY0MjQ0ODkwNjI2MTU2NzE0MTM1Njk1NTkxNDc0MzgxMjM3NDU2NDY3MDM1NTkwNDkwNjA2NDk2NTA5MzIzMjQyODI5OTgxMTA5ODUyMDkwNDA4NzU3OTI1OTQ1NTk1NjIxNzUyMDM0NTE0OTYwMzQzNDQ3MzQwNjEzNDQ4OTA1MTEwNTA1ODExMjgzMDY5MDE2MTc2MjA3MjIyMzA1MDk1MTczMzgxOTE3NjQzMDUyODY1NDA0NjMyNDUzOTg5NjMwMzI1MjY5ODEzODEzNzg0NDc2ODk0OTUzNjIwMDkyNDQ5MTA2NjI4MzY0OTE2MjMwODE3MjgyNDkxNTI0NDI2NDg5NzcxMTg4NDEzMjUxNjE2MjY3MzY2Njg1OTU4ODYzNjY1NzAxOTI2NDM3MTc4NDgwOTU2MTA1OTg5ODAwMDg4Mzg1NDI4OTA0MjUyNDI3NDExMTUyNjY2NDY5NTI5NzM0NjczNjAwOTI5MDA1NDY3MzU3NzM5MDY5NTA3MTM1Nzc3MzYwNTM0MzkzMjUwNTgwNTU1OTY3NDQ1NTE4NzUyNDI1ODQ2MjM3NjI3NzUzOTIwNDUxOTI1OTc4Nzg2OTExNjA4MTI1MTQxMDQxLCJtb2R1bHVzQml0U2l6ZSI6MzA3MiwiYWxnb3JpdGhtIjoiUGFpbGxpZXIiLCJmb3JtYXQiOiJhcHBsaWNhdGlvbi92bmQuZW5jcnlwdGVkcXVlcnkucGFpbGxpZXIuUHVibGljS2V5K2pzb247IHZlcnNpb249MSJ9</ns4:publicKey>
+            <ns4:numSelectors>1</ns4:numSelectors>
+            <ns4:hashBitSize>9</ns4:hashBitSize>
+            <ns4:hashKey>ca9e259742f592b291af</ns4:hashKey>
+            <ns4:numBitsPerDataElement>0</ns4:numBitsPerDataElement>
+            <ns4:dataChunkSize>1</ns4:dataChunkSize>
+            <ns4:numPartitionsPerDataElement>0</ns4:numPartitionsPerDataElement>
+            <ns5:querySchema>
+                <ns5:name>Books</ns5:name>
+                <ns5:selectorField>title</ns5:selectorField>
+                <ns5:field>
+                    <ns5:name>price</ns5:name>
+                </ns5:field>
+                <ns5:field>
+                    <ns5:name>title</ns5:name>
+                </ns5:field>
+                <ns6:dataSchema>
+                    <ns6:name>Books</ns6:name>
+                    <ns6:field>
+                        <ns6:name>id</ns6:name>
+                        <ns6:dataType>int</ns6:dataType>
+                        <ns6:position>0</ns6:position>
+                    </ns6:field>
+                    <ns6:field>
+                        <ns6:name>title</ns6:name>
+                        <ns6:dataType>string</ns6:dataType>
+                        <ns6:position>1</ns6:position>
+                    </ns6:field>
+                    <ns6:field>
+                        <ns6:name>author</ns6:name>
+                        <ns6:dataType>string</ns6:dataType>
+                        <ns6:position>2</ns6:position>
+                    </ns6:field>
+                    <ns6:field>
+                        <ns6:name>price</ns6:name>
+                        <ns6:dataType>double</ns6:dataType>
+                        <ns6:position>3</ns6:position>
+                    </ns6:field>
+                    <ns6:field>
+                        <ns6:name>qty</ns6:name>
+                        <ns6:dataType>int</ns6:dataType>
+                        <ns6:position>4</ns6:position>
+                    </ns6:field>
+                </ns6:dataSchema>
+            </ns5:querySchema>
+        </ns4:queryInfo>
+        <ns4:queryElements>
+            <ns4:entry key="0" value="EPQ0Wqs//nqtro137gafIV/F+DU6Puy5p9Q0r8bY5W0SFQFs+s3gccXHAp1rFLX24/vfZCa8RywUuNNNrmPTaYFU3zlnx2Sa5hko/Lq32QxtAeV431q2D/GUXHuBr6ZIXRz/5HKR7UGli67kN3L0IjEuBftv3Fxl0dYexrkLpypmIk/nfjni/ydpe9KZszrdCk1Ssq5BGndeHMO/pGPESdGfMRTv3c33LKTxfohmOvpepCIDYKZu7BIiPMDcniToMmDv2P4IBiJMXsVVPUwjELDoTBz5V5QDL8RJXBfaV2IyF5EmM5INBf/YA2pCwb5NSlUSeNxj+zAabouLa46zIRfxjfjyzIK1rcJtHWhPK66bBFwdv8Q1R7TTSaZJE3DEfDzAS6dvc5eSMu2K8qO2iQcb+OLyQslGMbixAoEeGUmcPswQrfFsd4vQ0ALzqB5PzBVNI+MgNFA/f0VX/wXPLoYqc3GWFgvAS8d66bkJwuZSdQYKONR29Rx16bqdmHscMxoxHV7Y0AlSLZz087RmuB2tNH8d3TbBXYmnHVVuosK1k9jyArJskcZUxKB8ArGSWmrHoTc3EDQ0yt8EhkSnf3ZNbPNtmtIRKIg6u9RSktI8r6nOqID6ulp18I1z2uq3JCuB/pmvyHBk6DdQ8GjcSyDzOpbyFxoSk79NcopVXMp2/RpomwvpMKwh3tbuOiRRKSD/O51NKGWJrG4kLdwC1x212oE07PNBswctKIuzBag1DlTwTNb7KYyRnnmIxPTVSU98qQ0mFTGj03YIy+pWh1cSZwELYldCcAV69RCUF+A5FoIsWtAN+iJoKjkEjP59PUIIbUN3DFrPsbiV7YX+dlDiQxn8SS00W/9VueDqly1e5BKQ/RljvUqxzKBlNKhJLuquDcKlBjjvt6BLwEI6HZptiVaCTint4Obk8OmTTYYpmVXM8P1Hun4HOFDNBfzoeW5VS7LEDwdH30Pjuw8PzvjsBSIkVmqkxjhKZvvGkz06XDB5QTKWpILNYHnPJX56"/>
+            <ns4:entry key="1" value="FBPawgzDuCQGcAv2a9krr6974uMbZxzUra6UBfDPhTn/DXrHe+yvflsiFZ7D7yqlWgoByEolV4RHnUTlVCbS+iLLX7jZktJ7j5gZwY4zDlimPo8iA6lbsNzAShh56BdZXuFDcbD/RJSnBf+a1Pob3mxQJm14rF+eeCLvLRGUxy6ponkyQrUdkaGxlPacYBcrpcikJTZ1nmJ7rGemJ9+cDRJLxRv4irJ0doWkDQOf0yeY2JQERPX+4BBBYL7q6bHuv8aHTfcsfhkaKwq7qj1e9yi5yX7BT0xEGK1vG+rUmzlFGeL1rQagdE9v0Y3NnsISF7wWp52M9INYF8hWCeoWFyf9Q51E7OXx3PI+JpNddngoFc9B0g56yhwNEchhGCHec9+a2G1r/FrBdXH0LsDdb/SKHFem0QzyzhWUy4MiOOGa4A+ZrlLITepgT5bQMGc/wycrw1RLwAiurOabLnTc0pGlDTa/gD4Jg1Go3YjTXnd4teh5tVK3zPgbc3FI5dDQe+D4hQcUwr04Q74h3XILJ6Ji7jWBrm9JOghjzgsclAAtY3QMC3u/zes5RMP7npk+mFvISLRc5s0rpcs//ybmrp2poeF5EebIhkBJafkz2OvrlvZT4YDpa5XKQ3qpaJKJdFf0AII7K3/ujJ8ZkSwe1jGT2Zw8zt1DzzxfDPIaoIUIPdysKMxF/kDMByY4z90oC/boPI0dkR5YGYHHjA8Ll7EHbOnc9dmHZX52sOQulov7ddmecLZWNYs0bSnNKfYE57I3fHMtCSxE2LZRyLZhLZ6/QaNqKO/h88TAh2VHHtfspwrscIEGn1M7/yZvLzI6UeZLKoAVMmLbU5POpsTqDTxQOmoS68znKxGiPkDrWZnLBF9ko8OBL5PB2vMNxAztrXgvscQ3ADAR/9FgoTS1QGkCWTAamwfexFZUTw7RlQ1lZ79gDABUdW+H4rVSHv6apyW8TZUJ5vo2wCtrMiofVzDf+UgPh8eeq1XZz40dnpwXo9n+2EvwkeqIvLqkJsse"/>
+            <ns4:entry key="2" value="P8SM/N/Jo1g0/QIK4Ja9NZ7OG9bysTR5ikMB65VHfPCuVOY7nxRoPfpDkS3TUVYbQLuWtSF7SFIWqBXWTtKYiA6Bj4PKbwRRyAdlZnLC2w+sFkDS/jkVh4ujPFWO+wWfJVVv20YFABs7LYVqqtLz1723Rh2/n4qKdI/LMHj5NK6KmqJwgPRXA1eOez+TuDnigPlCV7DVerQHmgHmKLYsBpBHUepw3BxT7D86jAVMxUQ6Wvb13s1w/ggK9BRbayxEMGJJQ66RdsgC2CL9X48/X5KYgkfhyzzWXzktQ02aW+Ffube8IcYqHSsOm4he25aZKMfP26Y/dwHFK+lxWAb7sUujJOtYuA0NP+BqaumZaNVL3OG9zl9D3hx1OQbAvogghuvibVHop+KCRgxT9Hhq1dk3fMdTlQ7FBrTmmNu6bcH4u3WJj6LK6IX4RuXnBO3q0w1RjrI9SMINFZTVLcmPxT9WBOvpHQLhNfIfMwcE9BIZPxPEkHsx+/M7aoZ7tQZFieE5OkL53VV5eYFxDZZrSROQ34gzJ3alvA2ySwUSEmpnIe7e99gm6l4oGj4pVru6luv59hhWYOcAUI5YhP9pjB9Hod9zY8AZgCyuc9VIfZkeVJO7Q0gkThshwfNb+qmqSN6G2cXgqcY5HSu8fOhRaD2ZacvhCtt1WF1fQ3v2O3qZ/uQj7u8B+MI2YHm1FdPSUGmMPfImV2i2T+pNjzyO0MfKoFzTtpWTVFb9T/oYlA0RX10etknF/Z6QlKFOrjZ2+MZDYYHLgPx0/s/s1VOtkirZW0T+eD3xRpXyx9l+hN9GQiV9cTh/kAv1pjLIF2Gwf7o/laClF8Rs30PmtDFk1VLazxl9ETNlL/Bd2wXQYrZbIWBHVkZ2TedgS6s30nWZLi5IQsBOAvdkKyhdwZd4/nEw1kjpQyo+paGnaODLGk7ja0lAPrOupn/rz9tAh1Kj1XULhZMIo+Fz1u0BRMyluSP5WDWfF/VZyvfm+dLSN4dWsTRAlkr3UkNbQZl1lhU1"/>
+        </ns4:queryElements>
+    </ns4:query>
+</execution>

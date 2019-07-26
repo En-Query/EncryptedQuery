@@ -26,17 +26,22 @@ import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.Keys;
 import org.enquery.encryptedquery.xml.schema.ObjectFactory;
 import org.enquery.encryptedquery.xml.schema.QueryKey.EmbedSelectorMap;
 import org.enquery.encryptedquery.xml.schema.QueryKey.EmbedSelectorMap.Entry;
 import org.enquery.encryptedquery.xml.schema.QueryKey.Selectors;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 @Component(service = QueryKeyTypeConverter.class)
 public class QueryKeyTypeConverter {
+	private final Logger log = LoggerFactory.getLogger(QueryKeyTypeConverter.class);
 
 	private static final String XSD_PATH = "/org/enquery/encryptedquery/xml/schema/queryKey.xsd";
 	// needs to match version attribute in the XSD resource (most current version)
@@ -63,8 +68,22 @@ public class QueryKeyTypeConverter {
 		objectFactory = new ObjectFactory();
 	}
 
+	@Activate
+	public void initialize() {
+		Validate.notNull(keyConverter);
+	}
+
+	public CryptoSchemeRegistry getSchemeRegistry() {
+		return keyConverter;
+	}
+
+	public void setSchemeRegistry(CryptoSchemeRegistry schemeRegistry) {
+		this.keyConverter = schemeRegistry;
+	}
+
 
 	public void marshal(org.enquery.encryptedquery.xml.schema.QueryKey qk, OutputStream os) throws JAXBException {
+		qk.setSchemaVersion(Versions.QUERY_KEY_BI);
 		Marshaller marshaller = jaxbContext.createMarshaller();
 		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 		marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
@@ -72,6 +91,7 @@ public class QueryKeyTypeConverter {
 	}
 
 	public org.enquery.encryptedquery.xml.schema.QueryKey unmarshal(InputStream fis) throws JAXBException {
+		log.info("unmarshal() called");
 		Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
 		jaxbUnmarshaller.setSchema(xmlSchema);
 		StreamSource source = new StreamSource(fis);

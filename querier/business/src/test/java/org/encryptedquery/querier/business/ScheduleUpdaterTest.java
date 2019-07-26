@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.util.GregorianCalendar;
+import java.util.UUID;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -30,6 +31,7 @@ import org.enquery.encryptedquery.querier.data.entity.ScheduleStatus;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Schedule;
 import org.enquery.encryptedquery.querier.data.service.DataSourceRepository;
 import org.enquery.encryptedquery.querier.data.service.ScheduleRepository;
+import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.Execution;
 import org.enquery.encryptedquery.xml.schema.ExecutionResource;
 import org.hamcrest.Matchers;
@@ -62,7 +64,9 @@ public class ScheduleUpdaterTest {
 	public void testFailedStatus() throws JAXBException, IOException {
 
 		ExecutionResource executionRes = new ExecutionResource();
+		executionRes.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		Execution execution = new Execution();
+		execution.setSchemaVersion(Versions.EXECUTION_BI);
 		execution.setErrorMessage("Some error");
 		execution.setStartedOn(xmlDate());
 		executionRes.setExecution(execution);
@@ -76,7 +80,9 @@ public class ScheduleUpdaterTest {
 	public void testCancelledStatus() throws JAXBException, IOException {
 
 		ExecutionResource executionRes = new ExecutionResource();
+		executionRes.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		Execution execution = new Execution();
+		execution.setSchemaVersion(Versions.EXECUTION_BI);
 		execution.setCancelled(true);
 		execution.setStartedOn(xmlDate());
 		executionRes.setExecution(execution);
@@ -91,7 +97,9 @@ public class ScheduleUpdaterTest {
 	public void testPendingStatus() throws JAXBException, IOException {
 
 		ExecutionResource executionRes = new ExecutionResource();
+		executionRes.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		Execution execution = new Execution();
+		execution.setSchemaVersion(Versions.EXECUTION_BI);
 		executionRes.setExecution(execution);
 
 		Schedule updatedExecution = updater.updateFromExecution(1, executionRes);
@@ -104,6 +112,7 @@ public class ScheduleUpdaterTest {
 	public void testInProgressStatus() throws JAXBException, IOException {
 
 		ExecutionResource executionRes = new ExecutionResource();
+		executionRes.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		Execution execution = new Execution();
 		execution.setStartedOn(xmlDate());
 		executionRes.setExecution(execution);
@@ -117,7 +126,9 @@ public class ScheduleUpdaterTest {
 	public void testCompleteStatus() throws JAXBException, IOException {
 
 		ExecutionResource executionRes = new ExecutionResource();
+		executionRes.setSchemaVersion(Versions.EXECUTION_RESOURCE_BI);
 		Execution execution = new Execution();
+		execution.setSchemaVersion(Versions.EXECUTION_BI);
 		execution.setStartedOn(xmlDate());
 		execution.setCompletedOn(xmlDate());
 		executionRes.setExecution(execution);
@@ -136,6 +147,7 @@ public class ScheduleUpdaterTest {
 		ScheduleRepository scheduleRepo = Mockito.mock(ScheduleRepository.class);
 
 		Schedule persistedSchedule = new Schedule();
+		persistedSchedule.setUuid(UUID.randomUUID().toString().replace("-", ""));
 		persistedSchedule.setId(1);
 
 		Mockito.when(scheduleRepo.find(1)).thenReturn(persistedSchedule);

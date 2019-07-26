@@ -1,168 +1,173 @@
-import React from "react";
+import React, { Component, createRef } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router-dom";
+import {
+  Dropdown,
+  Segment,
+  Header,
+  Divider,
+  Container,
+  Grid,
+  List,
+  Form,
+  Loader,
+  Input,
+  Table,
+  Button,
+  Icon,
+  Rail,
+  Sticky,
+  Ref
+} from "semantic-ui-react";
+import "semantic-ui-css/semantic.min.css";
 import { Checkbox, CheckboxGroup } from "react-checkbox-group";
 
-import LogoSection from "./logo-section.js";
-import CreateQuery from "./CreateQuery";
-import "../css/CreateQuerySchema.css";
-import VerticalNavBar from "./NavigationBar.js";
+import PageFooter from "./PageFooter";
+import PageHeading from "./FixedMenu";
+import TableRowWithCheckbox from "./TableRowWithCheckbox";
+
 import axios from "axios";
-require("axios-debug")(axios);
+
+/*const ReferenceTable = () => (
+  <Table celled columns={3}>
+    <Table.Header>
+      <Table.Row>
+        <Table.HeaderCell>Member</Table.HeaderCell>
+        <Table.HeaderCell>Data type</Table.HeaderCell>
+        <Table.HeaderCell>Description</Table.HeaderCell>
+      </Table.Row>
+    </Table.Header>
+
+    <Table.Body>
+      <Table.Row>
+        <Table.Cell>lengthType</Table.Cell>
+        <Table.Cell>string</Table.Cell>
+        <Table.Cell>Type of length: fixed/variable</Table.Cell>
+      </Table.Row>
+      <Table.Row>
+        <Table.Cell>size</Table.Cell>
+        <Table.Cell>int</Table.Cell>
+        <Table.Cell>Size of bytes to return</Table.Cell>
+      </Table.Row>
+      <Table.Row>
+        <Table.Cell>maxArrayElements</Table.Cell>
+        <Table.Cell>int</Table.Cell>
+        <Table.Cell>If array, how many elements to return</Table.Cell>
+      </Table.Row>
+    </Table.Body>
+  </Table>
+);*/
 
 class CreateQuerySchema extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      schemas: [],
+      dataschemas: [],
+      dataSchemaName: "",
+      querySchemaName: "",
       fields: [],
-      selectorField: [],
+      selectorField: "",
       size: {},
-      lengthType: {},
       maxArrayElements: {},
-      fieldNames: []
+      fieldNames: [],
+      isLoading: true,
+      fieldCheckbox: false,
+      selectedFields: []
     };
-
-    this.onDataSchemaChange = this.onDataSchemaChange.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleCancel = this.handleCancel.bind(this);
   }
 
-  componentDidMount() {
-    axios({
-      method: "get",
-      url: "/querier/api/rest/dataschemas",
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1"
-      }
-    })
-      .then(response => {
-        console.log(response);
-        this.setState({ schemas: response.data.data });
-      })
-      .catch(error => console.log(error.response));
+  async componentDidMount() {
+    await this.getSchemas();
   }
 
-  onDataSchemaChange = event => {
-    const schema = this.state.schemas.find(
-      schema => schema.name === event.target.value
-    );
-    //console.log(schema.uri)
+  getSchemas = async () => {
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: "/querier/api/rest/dataschemas",
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1"
+        }
+      });
+      const dataschemas = data.data;
+
+      this.setState({ dataschemas: dataschemas, isLoading: false });
+
+      console.log("This is the dataschema list:", dataschemas);
+    } catch (error) {
+      console.error(Error(`Error fetching results list: ${error.message}`));
+    }
+  };
+
+  handleSchemaChange = (e, { value }) => {
+    this.setState({ dataSchemaName: value }, () => {
+      console.log("Chosen dataSchema ---> ", this.state.dataSchemaName);
+      //also send a request the selfUri of the selected dataSchema
+    });
+    const schema = this.state.dataschemas.find(schema => schema.name === value);
     if (schema) {
-      //schema now has the entire object
       axios({
         method: "get",
-        url: `${schema.selfUri}`,
+        url: schema.selfUri,
         headers: {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1"
         }
       })
         .then(response => {
           console.log(response);
-          this.setState(
-            {
-              fields: response.data.data.fields,
-              selectedId: response.data.data.id,
-              querySchemasUri: response.data.data.querySchemasUri
-            },
-            () => {
-              console.log(this.state.selectedId);
-              console.log(this.state.querySchemasUri);
-            }
-          );
+          this.setState({
+            fields: response.data.data.fields,
+            selectedId: response.data.data.id,
+            querySchemasUri: response.data.data.querySchemasUri
+          });
+          console.log(this.state.fields);
+          console.log(this.state.selectedId);
+          console.log(this.state.querySchemasUri);
           localStorage.setItem("querySchemasUri", this.state.querySchemasUri);
         })
         .catch(error => console.log(error.response));
     }
-    // Can't find key somehow
   };
 
-  onSizeChange = e => {
-    e.persist();
-    const { fieldNames } = this.state;
-    const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
-    this.setState(prevState => {
-      return {
-        size: {
-          ...prevState.size,
-          [lastCheckedFieldName]: e.target.value
-        }
-      };
+  handleQuerySchemaNameChange = e => {
+    this.setState({ querySchemaName: e.target.value });
+  };
+
+  handleSelectorFieldChange = (e, { value }) => {
+    this.setState({ selectorField: value }, () => {
+      console.log("Chosen selectorField ---> ", this.state.selectorField);
     });
-    console.log([e.target.name]);
   };
 
-  onChangeMaxArrayElements = e => {
-    e.persist();
-    const { fieldNames } = this.state;
-    const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
-    this.setState(prevState => {
-      return {
-        maxArrayElements: {
-          ...prevState.maxArrayElements,
-          [lastCheckedFieldName]: e.target.value
-        }
-      };
-    });
-    console.log([e.target.name]);
-  };
-
-  handleChangeQsName = event => {
-    this.setState({ qsName: event.target.value });
-  };
-
-  handleSelectorFieldChange = event => {
-    this.setState({ selectorField: event.target.value });
+  handleChange = (e, name) => {
+    const { selectedFields } = this.state;
+    if (selectedFields.some(elem => elem.name === name)) {
+      this.setState({
+        selectedFields: [
+          ...selectedFields.map(elem =>
+            elem.name !== name
+              ? elem
+              : {
+                  ...elem,
+                  name,
+                  [e.target.name]: e.target.value
+                }
+          )
+        ]
+      });
+    }
   };
 
   handleCancel = event => {
     event.target.reset();
   };
 
-  fieldNamesChanged = newFieldNames => {
-    this.setState({
-      submitDisabled: !newFieldNames.length,
-      fieldNames: newFieldNames,
-      size: {
-        [newFieldNames[newFieldNames.length - 1]]: 1,
-        ...this.state.size
-      },
-      maxArrayElements: {
-        [newFieldNames[newFieldNames.length - 1]]: 1,
-        ...this.state.maxArrayElements
-      }
-    });
-  };
-
-  updateSelectorField = e => {
-    this.setState({ selectorField: e.target.value });
-  };
-
-  updateLengthType = e => {
-    e.persist();
-    const { fieldNames } = this.state;
-    const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
-    console.log("e", e);
-    this.setState(prevState => {
-      let lengthType = { ...prevState.lengthType };
-      lengthType[lastCheckedFieldName] = e.target.value;
-      return {
-        lengthType
-      };
-    });
-    console.log(this.state.lengthType);
-  };
-
   handleSubmit = event => {
+    const { selectedFields, selectorField, querySchemaName } = this.state;
+    console.log(JSON.stringify(selectedFields));
     event.preventDefault();
-    const fields = this.state.fieldNames.map(fieldName => ({
-      name: fieldName,
-      lengthType: this.state.lengthType[fieldName],
-      size: this.state.size[fieldName],
-      maxArrayElements: this.state.maxArrayElements[fieldName]
-    }));
     const querySchemaUri = localStorage.getItem("querySchemasUri");
     axios({
       method: "post",
@@ -172,9 +177,9 @@ class CreateQuerySchema extends React.Component {
         "Content-Type": "application/json"
       },
       data: JSON.stringify({
-        name: this.state.qsName,
-        selectorField: this.state.selectorField,
-        fields: fields
+        name: querySchemaName,
+        selectorField: selectorField,
+        fields: selectedFields
       })
     })
       .then(response => {
@@ -184,176 +189,229 @@ class CreateQuerySchema extends React.Component {
     this.props.history.push("/createquery");
   };
 
+  checkbox = ({ name, isChecked }) => {
+    //handle check box of each fieldName
+    if (isChecked === true) {
+      //checked conditional
+      this.setState(
+        { selectedFields: [...this.state.selectedFields, { name }] },
+        () => {
+          console.log(
+            "callback in  isChecked if conditional",
+            this.state.selectedFields
+          );
+        }
+      );
+    } else {
+      this.setState(
+        {
+          selectedFields: this.state.selectedFields.filter(f => f.name !== name)
+        },
+        () => {
+          console.log(
+            `box unchecked, deleted from object --->`,
+            this.state.selectedFields
+          );
+        }
+      );
+    }
+  };
+
   render() {
     const {
-      schemas,
+      dataschemas,
+      dataSchemaName,
+      querySchemaName,
       fields,
-      qsName,
       selectorField,
-      size,
-      lengthType,
-      maxArrayElements,
       fieldNames,
-      selectedId
+      size,
+      maxArrayElements,
+      selectedFields
     } = this.state;
-    const lastCheckedFieldName = fieldNames[fieldNames.length - 1];
 
     return (
-      <div>
-        <LogoSection />
-        <VerticalNavBar />
-        <form onSubmit={this.handleSubmit}>
-          <fieldset>
-            <legend>
-              <h2>QuerySchema Information</h2>
-            </legend>
-            <div className="CQS-info-boxes">
-              <div>
-                <label>QuerySchema name (will be saved as):</label>
-                <input
-                  value={this.state.qsName}
-                  onChange={this.handleChangeQsName}
-                  placeholder="Example -- QuerySchema1"
-                  required
-                />
-              </div>
-              <div>
-                <label> Pick the dataschema to describe your data file:</label>{" "}
-                <select
-                  name="schemaName"
-                  value={this.state.value}
-                  onChange={this.onDataSchemaChange}
-                >
-                  <option value="">Choose Dataschema ...</option>
-                  {schemas &&
-                    schemas.length > 0 &&
-                    schemas.map(schema => {
-                      return <option value={schema.name}>{schema.name}</option>;
-                    })}
-                </select>
-              </div>
-            </div>
-            {selectedId && (
-              <div>
-                <div className="selectorField-div">
-                  <div>
-                    <label>Selector Field:</label>{" "}
-                    <select
-                      value={this.state.selectorField}
-                      onChange={this.updateSelectorField}
+      <div
+        style={{ display: "flex", minHeight: "100vh", flexDirection: "column" }}
+      >
+        <PageHeading />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              flex: "1"
+            }}
+          >
+            <div style={{ width: "1100px" }}>
+              <Form onSubmit={this.handleSubmit}>
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Divider horizontal>Query Schema Information</Divider>
+                  <Form.Field required>
+                    <label>Query Schema Name: </label>
+                    <Input
+                      placeholder="Enter Query Schema Name"
+                      name="querySchemaName"
+                      value={querySchemaName}
+                      onChange={this.handleQuerySchemaNameChange}
                       required
-                    >
-                      <option value="">Pick Selector Field...</option>
-                      {fields &&
-                        fields.map(field => {
-                          return (
-                            <option value={field.name}>{field.name}</option>
-                          );
-                        })}
-                    </select>
-                  </div>
-                  <fieldset>
-                    <legend>Choose field names</legend>
-                    <div>
-                      <CheckboxGroup
-                        checkboxDepth={5}
-                        name="fieldNames"
-                        value={this.state.fieldNames}
-                        onChange={this.fieldNamesChanged}
-                        required
-                      >
-                        {fields &&
-                          fields.map(field => {
-                            return (
-                              <li>
-                                <Checkbox value={field.name} />
-                                {field.name}
-                              </li>
-                            );
-                          })}
-                      </CheckboxGroup>
-                    </div>
-                  </fieldset>
-                </div>
-                <div className="CQS-input-boxes">
-                  {lastCheckedFieldName && (
-                    <div>
-                      <label>Length Type:</label>
-                      <select
-                        value={
-                          this.state.lengthType[lastCheckedFieldName] || ""
-                        }
-                        onChange={this.updateLengthType}
-                        required
-                      >
-                        <option value="">Select Length Type...</option>
-                        <option value="fixed">Fixed</option>
-                        <option value="variable">Variable</option>
-                      </select>
-                    </div>
-                  )}
-                  {lastCheckedFieldName && (
-                    <div>
-                      <label>Size:</label>
-                      <input
-                        value={this.state.size[lastCheckedFieldName] || 1}
-                        onChange={this.onSizeChange}
-                        type="number"
-                        name="size"
-                        min="1"
-                        placeholder="1"
-                        required
-                      />
-                    </div>
-                  )}
-                  {lastCheckedFieldName && (
-                    <div>
-                      <label>MaxArray Elements:</label>
-                      <input
-                        value={
-                          this.state.maxArrayElements[lastCheckedFieldName] || 1
-                        }
-                        onChange={this.onChangeMaxArrayElements}
-                        type="number"
-                        name="maxArrayElements"
-                        placeholder="1"
-                        min="1"
-                        max="100"
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </fieldset>
+                    />
+                  </Form.Field>
+                  <Form.Field required>
+                    <label>Select a Data Schema</label>
+                    <Dropdown
+                      placeholder="Select data schema"
+                      scrolling
+                      clearable
+                      fluid
+                      selection
+                      search
+                      noResultsMessage="Try a different Search"
+                      multiple={false}
+                      options={dataschemas.map(schema => {
+                        return {
+                          key: schema.id,
+                          text: schema.name,
+                          value: schema.name
+                        };
+                      })}
+                      header="PLEASE SELECT A DATASCHEMA"
+                      value={dataSchemaName}
+                      onChange={this.handleSchemaChange}
+                    />
+                  </Form.Field>
+                  <Form.Field required>
+                    <label>Choose a Selector Field </label>
+                    <Dropdown
+                      placeholder="Pick a selector field"
+                      clearable
+                      fluid
+                      selection
+                      search
+                      noResultsMessage="Please search again"
+                      multiple={false}
+                      options={fields.map(field => {
+                        return {
+                          key: field.id,
+                          text: field.name,
+                          value: field.name
+                        };
+                      })}
+                      header="CHOOSE A SELECTOR FIELD"
+                      value={selectorField}
+                      onChange={this.handleSelectorFieldChange}
+                      required
+                    />
+                  </Form.Field>
 
-          <div className="btn-group">
-            <span className="input-group-btn">
-              <button
-                className="btnSubmit"
-                handleSubmit={this.handleSubmit}
-                type="submit"
-                disabled={this.state.submitDisabled}
-              >
-                Submit{" "}
-              </button>
-              <button
-                className="btnReset"
-                handleCancel={this.handleCancel}
-                type="reset"
-                onClick={() => {
-                  alert("Clearing current field values.");
-                }}
-              >
-                Reset
-              </button>
-            </span>
+                  {dataSchemaName && (
+                    <>
+                      <Divider style={{ marginTop: "2em" }} horizontal>
+                        Field(s) Selection
+                      </Divider>
+                      <Table inverted celled compact definition selectable>
+                        <Table.Header fullWidth>
+                          <Table.Row>
+                            <Table.HeaderCell />
+                            <Table.HeaderCell>Name</Table.HeaderCell>
+                            <Table.HeaderCell>Data Type</Table.HeaderCell>
+                            <Table.HeaderCell>Position</Table.HeaderCell>
+                            <Table.HeaderCell textAlign="center">
+                              Max Size
+                            </Table.HeaderCell>
+                            <Table.HeaderCell textAlign="center">
+                              Max Array Elements
+                            </Table.HeaderCell>
+                          </Table.Row>
+                        </Table.Header>
+
+                        <Table.Body>
+                          {Object.values(fields).map(
+                            ({ name, dataType, position }) => {
+                              return (
+                                <React.Fragment>
+                                  <TableRowWithCheckbox
+                                    id={name}
+                                    name={name}
+                                    dataType={dataType}
+                                    position={position}
+                                    initialState={Object.keys(
+                                      selectedFields
+                                    ).includes(name)}
+                                    box={this.checkbox.bind(this)}
+                                    handleChange={this.handleChange}
+                                  />
+                                </React.Fragment>
+                              );
+                            }
+                          )}
+                        </Table.Body>
+                      </Table>
+                      <Form.Button
+                        positive
+                        fluid
+                        content="Submit"
+                        style={{
+                          marginTop: "3em",
+                          display: "flex",
+                          justifyContent: "center"
+                        }}
+                      />
+                    </>
+                  )}
+                </Segment>
+              </Form>
+            </div>
           </div>
-        </form>
+        </div>
+        <PageFooter />
       </div>
     );
   }
 }
 
-export default withRouter(CreateQuerySchema);
+export default CreateQuerySchema;
+
+/*export default class StickyContent extends Component {
+  contextRef = createRef();
+
+  render() {
+    return (
+      <div>
+        <PageHeading />
+        <div>
+          <Grid stretched centered columns={3} style={{ marginTop: "3em" }}>
+            <Grid.Column>
+              <Ref innerRef={this.contextRef}>
+                <Container>
+                  <CreateQuerySchema />
+
+                  <Rail position="left">
+                    <Sticky offset={90} context={this.contextRef}>
+                      <Header as="h3">Reference</Header>
+                      <ReferenceTable />
+                    </Sticky>
+                  </Rail>
+
+                  <Rail position="right">
+                    <Sticky offset={90} context={this.contextRef}>
+                      <Header as="h3">Overview</Header>
+                      <List style={{ padding: "5px" }}>
+                        <List.Item>Overview</List.Item>
+                        <List.Item>Examples</List.Item>
+                        <List.Item>Tutorial</List.Item>
+                      </List>
+                    </Sticky>
+                  </Rail>
+                </Container>
+              </Ref>
+            </Grid.Column>
+          </Grid>
+        </div>
+        <PageFooter />
+      </div>
+    );
+  }
+}*/

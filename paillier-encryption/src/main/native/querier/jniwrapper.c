@@ -106,7 +106,12 @@ JNIEXPORT jbyteArray JNICALL Java_org_enquery_encryptedquery_encryption_paillier
   //printf ("ansbyteslength: %d\n", (int)ansbyteslength);
 
   ansArray = (*env)->NewByteArray(env, ansbyteslength);
-  assert (NULL != ansArray);
+  if (NULL == ansArray) {
+    char msg[100];
+    snprintf(msg, sizeof(msg), "NewByteArray() returned NULL (ansbyteslength = %ld)", ansbyteslength);
+    msg[sizeof(msg)-1] = 0;
+    (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"), msg);
+  }
   ansbytes = (*env)->GetByteArrayElements(env, ansArray, NULL);
   assert (NULL != ansbytes);
 

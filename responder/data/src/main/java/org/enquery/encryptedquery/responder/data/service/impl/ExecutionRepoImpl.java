@@ -30,21 +30,26 @@ import java.nio.file.Paths;
 import java.util.Collection;
 
 import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
-import org.enquery.encryptedquery.responder.data.service.BlobLocationRegistry;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
+import org.enquery.encryptedquery.responder.data.service.ResourceUriRegistry;
+import org.enquery.encryptedquery.responder.data.service.ThrowingConsumer;
 import org.enquery.encryptedquery.responder.data.transformation.URIUtils;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.transaction.control.TransactionControl;
 import org.osgi.service.transaction.control.jpa.JPAEntityManagerProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class ExecutionRepoImpl implements ExecutionRepository {
@@ -52,11 +57,14 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 	private static final String QUERY_FILE_NAME = "query.xml";
 	private static final String STD_OUPUT_FILE_NAME = "stdout.log";
 
+	private static final Logger log = LoggerFactory.getLogger(ExecutionRepoImpl.class);
+
+
 	@Reference
 	private DataSourceRegistry dataSourceRegistry;
 
-	@Reference
-	private BlobLocationRegistry blobLocationRegistry;
+	@Reference(target = "(type=blob)")
+	private ResourceUriRegistry blobLocationRegistry;
 
 	@Reference(target = "(osgi.unit.name=responderPersistenUnit)")
 	private JPAEntityManagerProvider provider;
@@ -120,20 +128,40 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 	}
 
 	@Override
-	public Collection<Execution> list(DataSchema dataSchema, DataSource dataSource) {
-		Validate.notNull(dataSchema);
-		Validate.notNull(dataSource);
-
+	public Collection<Execution> list(DataSchema dataSchema, DataSource dataSource, boolean incomplete) {
 		return txControl
 				.build()
 				.readOnly()
-				.supports(() -> em.createQuery("Select ex From Execution ex "
-						+ "Where ex.dataSourceName = :dataSourceName "
-						+ "And   ex.dataSchema = :dataSchema ",
-						Execution.class)
-						.setParameter("dataSourceName", dataSource.getName())
-						.setParameter("dataSchema", findOrRefresh(dataSchema, em))
-						.getResultList());
+				.supports(() -> {
+					StringBuilder sql = new StringBuilder();
+
+					sql.append("Select ex From Execution ex ");
+					if (dataSchema != null || dataSource != null || incomplete) {
+						sql.append("Where ");
+					}
+					if (dataSource != null) {
+						sql.append("ex.dataSourceName = :dataSourceName ");
+					}
+					if (dataSchema != null) {
+						if (dataSource != null) sql.append("And ");
+						sql.append("ex.dataSchema = :dataSchema ");
+					}
+					if (incomplete) {
+						if (dataSource != null || dataSchema != null) sql.append("And ");
+						sql.append("ex.endTime is null");
+					}
+
+					TypedQuery<Execution> query = em.createQuery(sql.toString(), Execution.class);
+
+					if (dataSchema != null) {
+						query.setParameter("dataSchema", findOrRefresh(dataSchema, em));
+					}
+					if (dataSource != null) {
+						query.setParameter("dataSourceName", dataSource.getName());
+					}
+
+					return query.getResultList();
+				});
 	}
 
 
@@ -318,6 +346,7 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 	}
 
 
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -333,4 +362,74 @@ public class ExecutionRepoImpl implements ExecutionRepository {
 						Execution.class).getResultList());
 
 	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.responder.data.service.ExecutionRepository#addIfNotPresent(org.
+	 * enquery.encryptedquery.responder.data.entity.Execution, java.io.InputStream,
+	 * java.util.concurrent.Callable)
+	 */
+	@Override
+	public Execution addIfNotPresent(Execution ex,
+			InputStream inputStream,
+			ThrowingConsumer<Execution> onNewOp) {
+
+		Validate.notNull(ex);
+		Validate.notNull(ex.getUuid(), "UUID is null.");
+		Validate.notNull(inputStream);
+
+		return txControl
+				.build()
+				.required(() -> {
+					// already exists?
+					Execution prev = findByUUID(ex.getUuid());
+					if (prev != null) {
+						log.info("Execution already exists. Not adding: {} ", prev);
+						// discard query input stream
+						IOUtils.copy(inputStream, new NullOutputStream());
+						return prev;
+					}
+
+					log.info("Execution is new. Adding: {}", ex);
+					Execution execution = add(ex);
+					Validate.notNull(execution);
+
+					URL url = makeUrl(execution, QUERY_FILE_NAME);
+					save(url, inputStream);
+
+					execution.setQueryLocation(url.toString());
+					Execution result = update(execution);
+					if (onNewOp != null) {
+						log.info("Calling operation onNewOp.", ex);
+						onNewOp.accept(result);
+					}
+					return result;
+				});
+
+	}
+
+
+	/**
+	 * @param uuid
+	 * @return
+	 */
+	@Override
+	public Execution findByUUID(String uuid) {
+		return txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery(
+						"Select ex From Execution ex Where ex.uuid = :uuid",
+						Execution.class)
+						.setParameter("uuid", uuid)
+						.getResultList()
+						.stream()
+						.findFirst()
+						.orElse(null));
+	}
+
+
 }

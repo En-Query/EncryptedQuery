@@ -65,6 +65,7 @@
 				 contextPath="org.enquery.encryptedquery.xml.schema"
 				 schema="classpath:/org/enquery/encryptedquery/xml/schema/response.xsd"
 			/>
+				
 		</dataFormats>
 
 		<onException>
@@ -89,13 +90,16 @@
 			port="{{port}}"
 			enableCORS="false">
 
-			<componentProperty key="matchOnUriPrefix" value="true"/>
-
-			<endpointProperty key="servletName" value="querierRestApiServlet"/>
+ 			<componentProperty key="matchOnUriPrefix" value="true"/>
+ 			
+ 			<!-- multipart filter not working for some uknonwn reason -->
+ 			<componentProperty key="enableMultipartFilter" value="false"/>
+ 			
  			<endpointProperty key="headerFilterStrategy" value="#serverHeaderFilter" />
-			
+			<endpointProperty key="servletName" value="querierRestApiServlet"/>
 			<dataFormatProperty key="prettyPrint" value="true" />
 		</restConfiguration>
+		
 
 		<rest>
 			<description>EncryptedQuery Querier Rest Services</description>
@@ -697,26 +701,33 @@
 			<!-- Propagate exceptions connecting to Responder to caller route -->
 			<from uri="direct:get-from-responder"/>
 		
-			<setBody>
-				<simple>${null}</simple>
-			</setBody>
-			<setHeader headerName="CamelHttpMethod">
-				<constant>GET</constant>
-			</setHeader>
-		
-			<to uri="direct:send-to-responder" />
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+			
+				<setBody>
+					<simple>${null}</simple>
+				</setBody>
+				<setHeader headerName="CamelHttpMethod">
+					<constant>GET</constant>
+				</setHeader>
+			
+				<to uri="direct:send-to-responder" />
+			</filter>
 		</route>
 		
 		<route id="send-to-responder" errorHandlerRef="noErrorHandler" streamCache="false">
 			<!-- Propagate exceptions connecting to Responder to caller route -->
 			<from uri="direct:send-to-responder"/>
 		
-			<setHeader headerName="Accept">
-				<simple>{{responder.api.media.type}}; version={{responder.api.version}}</simple>
-			</setHeader>
-			
-			<to uri="http4://{{responder.host}}:{{responder.port}}?bridgeEndpoint=true&amp;headerFilterStrategy=#clientHeaderFilter&amp;disableStreamCache=true" />
-			<!-- <log message="Received: ${body}"/> -->
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+				<setHeader headerName="Accept">
+					<simple>{{responder.api.media.type}}; version={{responder.api.version}}</simple>
+				</setHeader>
+				
+				<to uri="http4://{{responder.host}}:{{responder.port}}?bridgeEndpoint=true&amp;headerFilterStrategy=#clientHeaderFilter&amp;disableStreamCache=true" />
+				<!-- <log message="Received: ${body}"/> -->
+			</filter>
 		</route>
 		
 	</camelContext>

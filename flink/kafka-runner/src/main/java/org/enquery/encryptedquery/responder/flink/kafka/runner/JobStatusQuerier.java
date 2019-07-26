@@ -118,7 +118,12 @@ public class JobStatusQuerier {
 
 		Object endTimeObj = map.get("end-time");
 		if (endTimeObj != null || (endTimeObj instanceof Long)) {
-			endTime = new Date((Long) endTimeObj);
+	        if (endTimeObj instanceof Integer) {
+	        	Integer i = (Integer.valueOf(endTimeObj.toString()));
+	            endTime = new Date(new Long(i));
+	        } else {
+				endTime = new Date((Long) endTimeObj);
+	        }
 		}
 
 		return new ExecutionStatus(endTime, error, canceled);

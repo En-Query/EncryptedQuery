@@ -59,7 +59,6 @@
 				<setBody>
 					<simple>${exchangeProperty.schedule}</simple>
 				</setBody>
-				
 			</onException>
 			
 			<to uri="direct:resolve-schedule-parents"/>
@@ -79,24 +78,24 @@
 				<simple>${body}</simple>
 			</setProperty>
 			
-			<!-- attempt to refresh the Schedule status from responder -->
-			<filter>
-				<simple>${body.status} != 'Complete' &amp;&amp; ${body.responderUri} != null</simple>
-				
-				<setHeader headerName="CamelHttpPath">
-					<simple>${body.responderUri}</simple>
-				</setHeader>
-				<removeHeader headerName="CamelHttpQuery"/>
-				
-				<to uri="direct:get-from-responder"/>
-				<unmarshal ref="executionFormat"/>
-				
-				<bean ref="scheduleUpdater" 
-					method="updateFromExecution(
-						${exchangeProperty.schedule.id},
-						${body}
-					)"/>
-			</filter>
+				<!-- attempt to refresh the Schedule status from responder -->
+				<filter>
+					<simple>${body.status} != 'Complete' &amp;&amp; ${body.responderUri} != null</simple>
+					
+					<setHeader headerName="CamelHttpPath">
+						<simple>${body.responderUri}</simple>
+					</setHeader>
+					<removeHeader headerName="CamelHttpQuery"/>
+					
+					<to uri="direct:get-from-responder"/>
+					<unmarshal ref="executionFormat"/>
+					
+					<bean ref="scheduleUpdater" 
+						method="updateFromExecution(
+							${exchangeProperty.schedule.id},
+							${body}
+						)"/>
+				</filter>
 			
 			<bean ref="scheduleConverter" method="toJSONResponse"/>
 			<to uri="direct:success"/>
@@ -142,8 +141,7 @@
 				<simple>${body.dataSource.executionsUri}</simple>
 			</setHeader>
 
-			<!-- TODO:  change to use input stream instead of POJO -->			
-			<bean ref="executionConverter" method="toExecutionXMLStream"/>
+			<bean ref="executionExporter" method="streamSingle"/>
 			
 			<!-- <marshal ref="executionFormat"/>-->
 			<to uri="direct:send-to-responder"/>

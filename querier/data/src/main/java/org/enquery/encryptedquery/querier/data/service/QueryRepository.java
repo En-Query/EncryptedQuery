@@ -85,5 +85,11 @@ public interface QueryRepository {
 	 * @throws IOException
 	 */
 	Query updateWithError(Query query, Exception ex) throws IOException;
+	//
+	// /**
+	// * @param dataSource
+	// * @return
+	// */
+	// Collection<Query> listForDataSource(DataSource dataSource);
 
 }

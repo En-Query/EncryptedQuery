@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <features name="encryptedquery-querier" 
-	xmlns="http://karaf.apache.org/xmlns/features/v1.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://karaf.apache.org/xmlns/features/v1.0.0  http://karaf.apache.org/xmlns/features/v1.0.0">
+	 xmlns="http://karaf.apache.org/xmlns/features/v1.3.0" 
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	 xsi:schemaLocation="http://karaf.apache.org/xmlns/features/v1.3.0 http://karaf.apache.org/xmlns/features/v1.3.0">
 	
 	<repository>mvn:org.apache.camel.karaf/apache-camel/${camel.version}/xml/features</repository>
 	<repository>mvn:org.apache.karaf.features/standard/${karaf.version}/xml/features</repository>
 	<repository>mvn:org.apache.karaf.features/enterprise/${karaf.version}/xml/features</repository>
 	<repository>mvn:org.apache.aries.jpa/jpa-features/${aries.jpa.version}/xml/features</repository>
  	<repository>mvn:org.ops4j.pax.jdbc/pax-jdbc-features/${pax-jdbc.version}/xml/features</repository>
+    <repository>mvn:org.hibernate/hibernate-osgi/${hibernate.version}/xml/karaf</repository>
+
 
 	<feature name='apache-commons' description='Apache Commons' version='1.0.0'>
 		<bundle>mvn:commons-io/commons-io/${commons-io.version}</bundle>
@@ -31,6 +33,15 @@
         <bundle dependency="true">mvn:org.osgi/org.osgi.service.jdbc/1.0.0</bundle>
         <bundle>mvn:org.apache.karaf.jdbc/org.apache.karaf.jdbc.core/${karaf.version}</bundle>
     </feature>
+    
+    <feature name="encryptedquery-hibernate" version="${hibernate.version}">
+        <feature prerequisite="true">wrap</feature>
+        <feature version="${hibernate.version}">hibernate-orm</feature>
+        <bundle dependency="true">mvn:net.bytebuddy/byte-buddy/1.6.6</bundle>
+        <capability>
+            osgi.service;objectClass=javax.persistence.spi.PersistenceProvider;effective:=active;javax.persistence.provider=org.hibernate.jpa.HibernatePersistenceProvider
+        </capability>
+    </feature>
 		
     <feature name="encryptedquery-querier-core" version="${project.version}"
     	description="Provides the EncryptedQuery Querier Web Application">
@@ -47,6 +58,10 @@
      	
      	<config name="org.enquery.encryptedquery.healthcheck.impl.CamelHealthCheck">
      		.required.camel=["rest"]
+     	</config>
+     	
+     	<config name="org.enquery.encryptedquery.healthcheck.impl.BundleStateHealthCheck">
+     		.ignore.bundle=["groovy-jsr223"]
      	</config>
      	
      	<!--  
@@ -66,15 +81,24 @@
      	</config>
   	
   		<config name="org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme">
-     		paillier.prime.certainty=128
+	     	paillier.prime.certainty=128
+	     	
+	     	# Number of tasks to use for Query encryption (tasks are submitted to the Thread Pool)
 			paillier.encrypt.query.task.count=2
-			paillier.modulus.bit.size=3072
-			# paillier.encrypt.query.method is one of ( Fast, FastWithJNI )
-            paillier.encrypt.query.method = FastWithJNI
-            # paillier.column.processor is one of ( Basic, DeRooij, DeRooijJNI, Yao, YaoJNI )
-            paillier.column.processor=DeRooijJNI
+			paillier.modulusBitSize=3072
+			
+			# paillier.encrypt.query.method.  One of (Fast, FastWithJNI)  Recommended FastWithJNI
+			paillier.encrypt.query.method = FastWithJNI
+			
+			# paillier.column.processor is one of (Basic, DeRooij, DeRooijJNI, Yao, YaoJNI, GPU) Recommended DeRooijJNI
+			paillier.column.processor=DeRooijJNI
+
+			# Use only one of the below mod pow classes.  GMP has shown to be the faster.
 			#paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl
 			paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl
+			
+			# paillier.decrypt.response.method is one of (CPU, GPU). CPU is the default if omitted.
+			paillier.decrypt.response.method=CPU
      	</config>
 
 		<!--
@@ -99,9 +123,10 @@
 		<feature>camel-http4</feature>
 		<feature>camel-jaxb</feature>
 		<feature>camel-script</feature>
+		<feature>camel-mail</feature>
 		<feature>camel-script-groovy</feature>
 		<feature>jndi</feature>
-		<feature>hibernate</feature>
+		<feature>encryptedquery-hibernate</feature>
         <feature>transaction</feature>
         <feature version="${aries.jpa.version}">jpa</feature>
       
@@ -126,12 +151,13 @@
 
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}$Bundle-SymbolicName=JnaGmp&amp;Bundle-Version=${jnagmp.version}&amp;Import-Package=com.sun.jna,com.sun.jna.ptr,com.sun.jna.win32</bundle>
-        
 
         <bundle>mvn:${project.groupId}/encryptedquery-querier-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-data/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-integration/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-web/${project.version}</bundle>
+        
+        <bundle>mvn:commons-fileupload/commons-fileupload/1.4</bundle>
     </feature>
     
     <feature name="encryptedquery-querier-mariadb" version="${project.version}"

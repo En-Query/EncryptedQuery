@@ -45,7 +45,7 @@ import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
-import org.enquery.encryptedquery.core.FieldTypes;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
@@ -224,52 +224,47 @@ public class ResponderTest extends JDBCTestBase {
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
 
-		return queryEnc.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 
 	private QuerySchema createQuerySchema() {
+		int pos = 0;
 		DataSchema ds = new DataSchema();
 		ds.setName("Books");
 		DataSchemaElement dse1 = new DataSchemaElement();
 		dse1.setName("id");
-		dse1.setDataType(FieldTypes.INT);
-		dse1.setIsArray(false);
-		dse1.setPosition(0);
+		dse1.setDataType(FieldType.INT);
+		dse1.setPosition(pos++);
 		ds.addElement(dse1);
 
 		DataSchemaElement dse2 = new DataSchemaElement();
 		dse2.setName("title");
-		dse2.setDataType(FieldTypes.STRING);
-		dse2.setIsArray(false);
-		dse2.setPosition(1);
+		dse2.setDataType(FieldType.STRING);
+		dse2.setPosition(pos++);
 		ds.addElement(dse2);
 
 		DataSchemaElement dse3 = new DataSchemaElement();
 		dse3.setName("author");
-		dse3.setDataType(FieldTypes.STRING);
-		dse3.setIsArray(false);
-		dse3.setPosition(2);
+		dse3.setDataType(FieldType.STRING);
+		dse3.setPosition(pos++);
 		ds.addElement(dse3);
 
 		DataSchemaElement dse4 = new DataSchemaElement();
 		dse4.setName("price");
-		dse4.setDataType(FieldTypes.DOUBLE);
-		dse4.setIsArray(false);
-		dse4.setPosition(3);
+		dse4.setDataType(FieldType.DOUBLE);
+		dse4.setPosition(pos++);
 		ds.addElement(dse4);
 
 		DataSchemaElement dse5 = new DataSchemaElement();
 		dse5.setName("qty");
-		dse5.setDataType(FieldTypes.INT);
-		dse5.setIsArray(false);
-		dse5.setPosition(4);
+		dse5.setDataType(FieldType.INT);
+		dse5.setPosition(pos++);
 		ds.addElement(dse5);
 
 		DataSchemaElement dse6 = new DataSchemaElement();
 		dse6.setName("release_dt");
-		dse6.setDataType(FieldTypes.ISO8601DATE);
-		dse6.setIsArray(false);
-		dse6.setPosition(5);
+		dse6.setDataType(FieldType.ISO8601DATE);
+		dse6.setPosition(pos++);
 		ds.addElement(dse6);
 
 
@@ -279,38 +274,26 @@ public class ResponderTest extends JDBCTestBase {
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
-		field1.setLengthType("fixed");
 		field1.setName("id");
-		field1.setSize(4);
-		field1.setMaxArrayElements(1);
 		qs.addElement(field1);
 
 		QuerySchemaElement field2 = new QuerySchemaElement();
-		field2.setLengthType("variable");
 		field2.setName("title");
-		field2.setSize(128);
-		field2.setMaxArrayElements(1);
 		qs.addElement(field2);
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
-		field3.setLengthType("fixed");
 		field3.setName("author");
-		field3.setSize(50);
 		field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		QuerySchemaElement field4 = new QuerySchemaElement();
-		field4.setLengthType("fixed");
 		field4.setName("price");
-		field4.setSize(8);
 		field4.setMaxArrayElements(1);
 		qs.addElement(field4);
 
 
 		QuerySchemaElement field5 = new QuerySchemaElement();
-		field5.setLengthType("fixed");
 		field5.setName("release_dt");
-		field5.setSize(30);
 		field5.setMaxArrayElements(1);
 		qs.addElement(field5);
 

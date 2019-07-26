@@ -66,6 +66,9 @@ public class Schedule {
 	@GeneratedValue(strategy = GenerationType.TABLE, generator = "sequences")
 	private Integer id;
 
+	@Column(name = "uuid", nullable = false, length = 32)
+	private String uuid;
+
 	@Column(nullable = false, name = "start_time")
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date startTime;
@@ -106,6 +109,14 @@ public class Schedule {
 
 	public void setId(Integer id) {
 		this.id = id;
+	}
+
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
 	}
 
 	public Date getStartTime() {

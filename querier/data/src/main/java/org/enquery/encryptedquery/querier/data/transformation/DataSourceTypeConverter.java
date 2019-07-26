@@ -65,7 +65,7 @@ public class DataSourceTypeConverter {
 	}
 
 
-	public org.enquery.encryptedquery.querier.data.entity.jpa.DataSource toJPA(
+	private org.enquery.encryptedquery.querier.data.entity.jpa.DataSource toJPA(
 			org.enquery.encryptedquery.xml.schema.DataSource source) {
 
 		Validate.notNull(source);

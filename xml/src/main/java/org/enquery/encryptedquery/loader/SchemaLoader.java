@@ -21,6 +21,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.xml.schema.ObjectFactory;
 import org.enquery.encryptedquery.xml.schema.QuerySchema;
@@ -122,8 +123,7 @@ public class SchemaLoader {
 	private org.enquery.encryptedquery.data.DataSchemaElement fromXML(org.enquery.encryptedquery.xml.schema.DataSchema.Field field) {
 		org.enquery.encryptedquery.data.DataSchemaElement result = new org.enquery.encryptedquery.data.DataSchemaElement();
 		result.setName(field.getName());
-		result.setDataType(field.getDataType());
-		result.setIsArray(field.isIsArray());
+		result.setDataType(FieldType.fromExternalName(field.getDataType()));
 		result.setPosition(field.getPosition());
 		return result;
 	}
@@ -157,9 +157,9 @@ public class SchemaLoader {
 		org.enquery.encryptedquery.data.QuerySchemaElement result = new org.enquery.encryptedquery.data.QuerySchemaElement();
 		result.setName(element.getName());
 
-		if (element.getLengthType() != null) {
-			result.setLengthType(element.getLengthType());
-		}
+		// if (element.getLengthType() != null) {
+		// result.setLengthType(element.getLengthType());
+		// }
 
 		if (element.getSize() != null) {
 			result.setSize(element.getSize());

@@ -119,6 +119,14 @@ public class ClearTextQueryResponse extends AbstractIndentedToString {
 		public int fieldCount() {
 			return fieldsMap.size();
 		}
+
+		/**
+		 * @param fieldName
+		 * @return
+		 */
+		public Field fieldByName(String fieldName) {
+			return fieldsMap.get(fieldName);
+		}
 	}
 
 	public static class Hits extends AbstractIndentedToString {
@@ -168,6 +176,10 @@ public class ClearTextQueryResponse extends AbstractIndentedToString {
 		public int recordCount() {
 			return records.size();
 		}
+
+		public Record recordByIndex(int index) {
+			return records.get(index);
+		}
 	}
 
 	public static class Selector extends AbstractIndentedToString {
@@ -205,6 +217,10 @@ public class ClearTextQueryResponse extends AbstractIndentedToString {
 
 		public void forEachHits(Consumer<? super Hits> action) {
 			hits.values().stream().filter(h -> h.recordCount() > 0).forEach(action);
+		}
+
+		public Hits hitsBySelectorValue(String selectorValue) {
+			return hits.get(selectorValue);
 		}
 
 		@Override

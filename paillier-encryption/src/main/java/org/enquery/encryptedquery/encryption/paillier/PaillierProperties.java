@@ -29,6 +29,7 @@ public interface PaillierProperties {
 	String SECURE_RANDOM_ALG = "paillier.secureRandom.algorithm";
 	String SECURE_RANDOM_PROVIDER = "paillier.secureRandom.provider";
 	String MOD_POW_CLASS_NAME = "paillier.mod.pow.class.name";
+	String GPU_LIBRESPONDER_LOG_FILE = "paillier.gpu.libresponder.log.file";
 	String GPU_LIBRESPONDER_BUSY_POLICY = "paillier.gpu.libresponder.busy.policy";
 	String GPU_LIBDECRYPTOR_BUSY_POLICY = "paillier.gpu.libdecryptor.busy.policy";
 	String CORE_POOL_SIZE = "paillier.thread.pool.core.size";
@@ -46,6 +47,7 @@ public interface PaillierProperties {
 			SECURE_RANDOM_ALG,
 			SECURE_RANDOM_PROVIDER,
 			MOD_POW_CLASS_NAME,
+			GPU_LIBRESPONDER_LOG_FILE,
 			GPU_LIBRESPONDER_BUSY_POLICY,
 			GPU_LIBDECRYPTOR_BUSY_POLICY,
 			CORE_POOL_SIZE,

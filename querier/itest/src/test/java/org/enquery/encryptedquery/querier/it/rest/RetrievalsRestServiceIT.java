@@ -149,7 +149,7 @@ public class RetrievalsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest
 
 		// emulate Responder not reachable
 		int oldPort = responderPort();
-		configuteResponderPort(oldPort + 10);
+		configureResponderPort(oldPort + 10);
 		try {
 			RetrievalResponse r = postRetrieval(resultResponse);
 			tryUntilTrue(60,
@@ -158,11 +158,11 @@ public class RetrievalsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest
 					uri -> retrieveRetrieval(uri).getData().getStatus() == RetrievalStatus.Failed,
 					r.getData().getSelfUri());
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 
 		// emulate Responder http error (404 in this case)
-		configuteResponderPort(8182);
+		configureResponderPort(8182);
 		try {
 			RetrievalResponse r = postRetrieval(resultResponse);
 			tryUntilTrue(60,
@@ -171,7 +171,7 @@ public class RetrievalsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest
 					uri -> retrieveRetrieval(uri).getData().getStatus() == RetrievalStatus.Failed,
 					r.getData().getSelfUri());
 		} finally {
-			configuteResponderPort(oldPort);
+			configureResponderPort(oldPort);
 		}
 
 	}

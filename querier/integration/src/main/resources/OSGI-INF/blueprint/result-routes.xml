@@ -47,8 +47,11 @@
 			
 			<to uri="direct:resolve-result-parents"/>
 			
-			<!-- update local DB from responder (optional operation) -->
-			<to uri="direct:update-results-from-responder"/>
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+				<!-- update local DB from responder (optional operation) -->
+				<to uri="direct:update-results-from-responder"/>
+			</filter>
 			
 			<bean ref="resultRepo" method="listForSchedule(${header.schedule})"/>
 			

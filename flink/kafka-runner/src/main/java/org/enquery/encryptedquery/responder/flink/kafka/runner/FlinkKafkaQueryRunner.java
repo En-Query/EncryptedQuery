@@ -76,8 +76,8 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 	private Path jarPath;
 	private Path runDir;
 	private Integer flinkParallelism;
-	private Integer computeThreshold;
-	private Integer columnEncryptionPartitionCount;
+
+	private Integer columnBufferMemory;
 
 	@Reference
 	private DataSchemaService dss;
@@ -89,6 +89,8 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 	private CryptoSchemeRegistry cryptoRegistry;
 
 	private JobStatusQuerier statusQuerier;
+
+	private String kafkaEmissionRate;
 
 	@Activate
 	void activate(ComponentContext cc, Config config) throws Exception {
@@ -105,6 +107,7 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 
 		kafkaBrokers = config._kafka_brokers();
 		kafkaTopic = config._kafka_topic();
+		kafkaEmissionRate = config._kafka_emission_rate_per_second();
 
 		dataSchemaName = config.data_schema_name();
 		additionalFlinkArguments = config._additional_flink_arguments();
@@ -114,10 +117,10 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 
 		Validate.notBlank(dataSchemaName, "DataSchema name cannot be blank.");
 		Validate.notBlank(config._flink_install_dir(), "Flink install dir cannot be blank.");
-		Validate.notBlank(config._jar_file_path(), "Flink jar path cannot be blank.");
+		Validate.notBlank(config._application_jar_path(), "Flink jar path cannot be blank.");
 		Validate.notBlank(config._run_directory(), "Run directory cannot be blank.");
 
-		jarPath = Paths.get(config._jar_file_path());
+		jarPath = Paths.get(config._application_jar_path());
 		Validate.isTrue(Files.exists(jarPath), "Does not exists: " + jarPath);
 
 		programPath = Paths.get(config._flink_install_dir(), "bin", "flink");
@@ -130,10 +133,9 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			flinkParallelism = Integer.valueOf(config._flink_parallelism());
 		}
 
-		if (config._compute_threshold() != null) {
-			computeThreshold = Integer.valueOf(config._compute_threshold());
+		if (config._column_buffer_memory_mb() != null) {
+			columnBufferMemory = Integer.valueOf(config._column_buffer_memory_mb());
 		}
-
 
 		String historyServerUri = config._flink_history_server_uri();
 		Validate.notBlank(historyServerUri, ".flink.history.server.uri cannot be blank.");
@@ -244,9 +246,10 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		}
 	}
 
-	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters) throws FileNotFoundException, IOException {
+	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters)
+			throws FileNotFoundException, IOException {
 		Path result = Paths.get(dir.toString(), "config.properties");
-		int maxHitsPerSelector = 1000;
+		Integer maxHitsPerSelector = null;
 		int windowLengthInSeconds = 60;
 		Long runTimeInSeconds = null;
 
@@ -259,7 +262,8 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			}
 
 			if (parameters.containsKey(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS)) {
-				windowLengthInSeconds = Integer.parseInt(parameters.get(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS));
+				windowLengthInSeconds = Integer
+						.parseInt(parameters.get(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS));
 			}
 
 			if (parameters.containsKey(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS)) {
@@ -267,23 +271,29 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			}
 		}
 
-		p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
+		if (maxHitsPerSelector != null) {
+			p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
+		}
+
 		p.setProperty(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS, Integer.toString(windowLengthInSeconds));
 
 		if (runTimeInSeconds != null) {
 			p.setProperty(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS, Long.toString(runTimeInSeconds));
 		}
 
-		if (columnEncryptionPartitionCount != null) {
-			p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT, Integer.toString(columnEncryptionPartitionCount));
+		if (flinkParallelism != null) {
+			p.setProperty(FlinkConfigurationProperties.FLINK_PARALLELISM, Integer.toString(flinkParallelism));
 		}
 
-		if (computeThreshold != null) {
-			p.setProperty(FlinkConfigurationProperties.COMPUTE_THRESHOLD, computeThreshold.toString());
+		if (columnBufferMemory != null) {
+			p.setProperty(ResponderProperties.COLUMN_BUFFER_MEMORY_MB, columnBufferMemory.toString());
 		}
+
+
 
 		// Pass the CryptoScheme configuration to the external application,
-		// the external application needs to instantiate the CryptoScheme whit these parameters
+		// the external application needs to instantiate the CryptoScheme whit these
+		// parameters
 		final String schemeId = query.getQueryInfo().getCryptoSchemeId();
 		CryptoScheme cryptoScheme = cryptoRegistry.cryptoSchemeByName(schemeId);
 		Validate.notNull(cryptoScheme, "CryptoScheme not found for id: %s", schemeId);
@@ -312,6 +322,10 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		Properties p = new Properties();
 		p.setProperty(KafkaConfigurationProperties.BROKERS, this.kafkaBrokers);
 		p.setProperty(KafkaConfigurationProperties.TOPIC, this.kafkaTopic);
+
+		if (kafkaEmissionRate != null) {
+			p.setProperty(KafkaConfigurationProperties.EMISSION_RATE_PER_SECOND, this.kafkaEmissionRate);
+		}
 
 		if (parameters != null) {
 			String value = parameters.get(KafkaConfigurationProperties.OFFSET);

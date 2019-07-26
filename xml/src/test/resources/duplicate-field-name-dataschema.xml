@@ -7,14 +7,12 @@
 	<field>
 		<name>name</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<position>0</position>
 	</field>
 	<field>
 		<!-- name is duplicate -->
 		<name>name</name>
 		<dataType>int</dataType>
-		<isArray>false</isArray>
 		<position>1</position>
 	</field>
 </dataSchema>

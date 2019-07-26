@@ -19,7 +19,6 @@ package org.enquery.encryptedquery.responder.business.execution;
 import java.io.IOException;
 
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.concurrency.IntegerSynchronization;
 import org.enquery.encryptedquery.responder.business.results.ResultCollector;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
@@ -49,6 +48,8 @@ public class ExecutionStatusUpdater {
 	private ExecutionRepository exRepo;
 	@Reference
 	private DataSourceRegistry dataSrcRepo;
+	@Reference
+	private ExecutionLock executionLock;
 
 	/**
 	 * Update the status of any pending execution, and collect its results if complete
@@ -62,14 +63,24 @@ public class ExecutionStatusUpdater {
 	/**
 	 * @param e
 	 * @return
+	 * @throws InterruptedException
 	 * @throws IOException
 	 */
 	private void updateExecution(Execution e) {
 		Validate.notNull(e);
 		if (e.getHandle() == null) return;
+		Validate.notNull(e.getId());
 
 		// synchronize on the execution id
-		synchronized (IntegerSynchronization.syncObjectFor(e.getId())) {
+		try {
+			executionLock.lock(e);
+		} catch (InterruptedException e2) {
+			// normal case, if the application is shutown, just return without doing anything
+			log.warn("Interrupted while waiting for a lock on execution {}", e);
+			return;
+		}
+		log.warn("Acquired a lock on execution {}", e);
+		try {
 			log.info("Updating status of execution {}", e.getId());
 			DataSource dataSource = dataSrcRepo.find(e.getDataSourceName());
 			if (dataSource == null) {
@@ -84,6 +95,7 @@ public class ExecutionStatusUpdater {
 			if (status == null) return;
 
 			if (status.getEndTime() != null) {
+				e.setCanceled(status.isCanceled());
 				e.setErrorMsg(status.getError());
 				e.setEndTime(status.getEndTime());
 				exRepo.update(e);
@@ -93,6 +105,9 @@ public class ExecutionStatusUpdater {
 			} catch (IOException e1) {
 				log.error("Error collecting results for execution: " + e.getId(), e1);
 			}
+		} finally {
+			executionLock.unlock(e);
+			log.warn("Released a lock on execution {}", e);
 		}
 	}
 }

@@ -26,9 +26,9 @@
 	
 	<routeContext id="dataschema-inbox-routes"  xmlns="http://camel.apache.org/schema/blueprint">
 		
-		<route id="inbox-ingester">
+		<route id="data-schemma-inbox-ingester">
 			
-			<from uri="file:{{inbox.dir}}?initialDelay={{inbox.initial-delay}}&amp;delay={{inbox.check-interval}}&amp;readLockTimeout={{inbox.read-lock-timeout}}&amp;readLock=changed&amp;readLockMinAge={{inbox.read-lock-min-age}}&amp;runLoggingLevel=INFO&amp;move=.processed&amp;moveFailed=.failed"/>
+			<from uri="file:{{inbox.dir}}?antInclude=*.xml&amp;autoCreate=true&amp;initialDelay={{inbox.initial-delay}}&amp;delay={{inbox.check-interval}}&amp;readLockTimeout={{inbox.read-lock-timeout}}&amp;readLock=changed&amp;readLockMinAge={{inbox.read-lock-min-age}}&amp;runLoggingLevel=INFO&amp;move=.processed&amp;moveFailed=.failed"/>
 			
 			<onException>
 				<exception>java.lang.Exception</exception>
@@ -40,8 +40,7 @@
 			
 			<unmarshal ref="dataSchemaFormat"/>
 
-			<convertBodyTo type="org.enquery.encryptedquery.responder.data.entity.DataSchema"/>
-			
+			<bean ref="dataSchemaConverter" method="toDataSchemaJPAEntity"/>
 			<bean ref="dataSchemaRegistry" method="addOrUpdate"/>
 		</route>
 	</routeContext>

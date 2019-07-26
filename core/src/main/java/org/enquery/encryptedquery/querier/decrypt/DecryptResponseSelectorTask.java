@@ -16,6 +16,7 @@
  */
 package org.enquery.encryptedquery.querier.decrypt;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +25,12 @@ import java.util.concurrent.Callable;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Hits;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
 import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.QuerySchema;
+import org.enquery.encryptedquery.data.QuerySchemaElement;
+import org.enquery.encryptedquery.data.RecordEncoding;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.PlainText;
 import org.enquery.encryptedquery.utils.PIRException;
@@ -37,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Selector> {
-	private static final Logger logger = LoggerFactory.getLogger(DecryptResponseSelectorTask.class);
+	private static final Logger log = LoggerFactory.getLogger(DecryptResponseSelectorTask.class);
 
 	private final List<PlainText> rElements;
 	private final QueryInfo queryInfo;
@@ -78,47 +83,98 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 
 		ClearTextQueryResponse.Hits hits = new ClearTextQueryResponse.Hits(selectorValue);
 
-		int dataChunkSize = queryInfo.getDataChunkSize();
+		log.debug("Number of Columns = ( " + rElements.size() + " )");
+		log.info("Processing selector value = {}", selectorValue);
 
-
-		logger.debug("Number of Columns = ( " + rElements.size() + " )");
-		logger.info("Processing selector value = {}", selectorValue);
-
-		final List<byte[]> partitions = new ArrayList<>();
-		boolean zeroElement = collectChunks(partitions);
-		if (zeroElement) {
-			// logger.warn("Partitions are all zeroes.");
-			return result;
+		final List<byte[]> chunks = new ArrayList<>();
+		int size = 0;
+		for (PlainText pt : rElements) {
+			final byte[] chunk = crypto.plainTextChunk(queryInfo, pt, selectorIndex);
+			chunks.add(chunk);
+			size += chunk.length;
 		}
 
-		processRecords(hits, dataChunkSize, partitions);
+		ByteBuffer buffer = ByteBuffer.allocate(size);
+		for (byte[] chunk : chunks) {
+			buffer.put(chunk);
+		}
+		buffer.rewind();
+		if (log.isDebugEnabled()) {
+			log.debug("Assembled buffer from plain text with size : {}.", size);
+		}
+
+		RecordEncoding recordEncoding = new RecordEncoding(queryInfo);
+
+		// process all record, skipping gaps between each record
+		while (buffer.hasRemaining()) {
+
+			skipGap(buffer);
+			if (!buffer.hasRemaining()) break;
+
+			if (log.isDebugEnabled()) {
+				log.debug("Decoding record at offset {}.", buffer.position());
+			}
+			Map<String, Object> decodedRecord = recordEncoding.decode(buffer);
+			if (log.isDebugEnabled()) {
+				log.debug("Offset after decoding record: {}.", buffer.position());
+			}
+
+			collectRecord(recordEncoding.getEmbeddedSelector(), hits, decodedRecord);
+		}
 
 		result.add(hits);
 
-		if (logger.isDebugEnabled()) {
-			logger.debug("There were {}  good hits and {} false hit(s) for selector '{}'", goodHits, falseHits, selectorValue);
-			logger.debug("Returning: {}", result);
+		if (log.isDebugEnabled()) {
+			log.debug("There were {}  good hits and {} false hit(s) for selector '{}'", goodHits, falseHits, selectorValue);
+			log.debug("Returning: {}", result);
 		}
-		logger.info("There were {}  good hits and {} false hit(s) for selector '{}'", goodHits, falseHits, selectorValue);
+		// logger.info("There were {} good hits and {} false hit(s) for selector '{}'", goodHits,
+		// falseHits, selectorValue);
+		log.info("There were {} Positive hits for selector '{}'", goodHits, selectorValue);
 
 		return result;
 	}
 
-	private void processRecords(final ClearTextQueryResponse.Hits hits, int dataChunkSize, final List<byte[]> partitions) throws PIRException {
-		final int bytesPerPartition = dataChunkSize; // calcBytesPerPartition(dataPartitionBitSize);
-		final List<Byte> parts = makeParts(partitions, bytesPerPartition);
-		final List<Record> returnRecords = RecordExtractor.getQueryResponseRecords(queryInfo, parts, bytesPerPartition);
-		for (Record record : returnRecords) {
-			if (shouldAddHit(record)) {
-				hits.add(record);
-				++goodHits;
+	/**
+	 * @param hits
+	 * @param decodedRecord
+	 */
+	private void collectRecord(int embeddedSelector, Hits hits, Map<String, Object> decodedRecord) {
+		final QuerySchema qSchema = queryInfo.getQuerySchema();
+
+		ClearTextQueryResponse.Record record = new ClearTextQueryResponse.Record();
+		record.setSelector(embeddedSelector);
+
+		// logger.info("Field Count to Extract {}", fieldsToExtract.size());
+		for (QuerySchemaElement qsField : qSchema.getElementList()) {
+			final String fieldName = qsField.getName();
+
+			// We do not need to caputure the selector field in record (redundant)
+			if (fieldName.equals(queryInfo.getQuerySchema().getSelectorField())) continue;
+
+			record.add(fieldName, decodedRecord.get(fieldName));
+		}
+
+		if (shouldAddHit(record)) {
+			hits.add(record);
+			++goodHits;
+		}
+	}
+
+	/**
+	 * @param buffer
+	 */
+	private void skipGap(ByteBuffer buffer) {
+		while (buffer.hasRemaining()) {
+			buffer.mark();
+			if (buffer.get() != 0x00) {
+				buffer.reset();
+				break;
 			}
 		}
 	}
 
 	private boolean shouldAddHit(Record record) {
-		if (!queryInfo.getEmbedSelector()) return true;
-
 		final String expectedSelectorValue = embedSelectorMap.get(selectorIndex);
 		boolean result = Objects.equals(expectedSelectorValue, record.getSelector().toString());
 		if (!result) {
@@ -127,39 +183,5 @@ class DecryptResponseSelectorTask implements Callable<ClearTextQueryResponse.Sel
 			falseHits++;
 		}
 		return result;
-	}
-
-	private List<Byte> makeParts(List<byte[]> partitions, int bytesPerPartition) {
-		List<Byte> result = new ArrayList<>();
-		for (byte[] partitionBytes : partitions) {
-			for (byte b : partitionBytes) {
-				result.add(b);
-			}
-		}
-		return result;
-	}
-
-	private boolean collectChunks(List<byte[]> chunks) {
-		boolean result = true;
-		for (int partNum = 0; partNum < rElements.size(); partNum++) {
-			final PlainText plainText = rElements.get(partNum);
-			final byte[] chunk = crypto.plainTextChunk(queryInfo, plainText, selectorIndex);
-			chunks.add(chunk);
-			result = result && isAllZeroes(chunk);
-		}
-		return result;
-	}
-
-	/**
-	 * @param chunk
-	 * @return
-	 */
-	private boolean isAllZeroes(byte[] chunk) {
-		for (byte b : chunk) {
-			if (b != 0) {
-				return false;
-			}
-		}
-		return true;
 	}
 }

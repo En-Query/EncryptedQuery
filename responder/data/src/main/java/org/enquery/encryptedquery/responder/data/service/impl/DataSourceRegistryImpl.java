@@ -100,6 +100,7 @@ public class DataSourceRegistryImpl implements DataSourceRegistry {
 			policy = ReferencePolicy.DYNAMIC,
 			policyOption = ReferencePolicyOption.GREEDY)
 	void addRunner(QueryRunner runner) {
+		log.info("Runner activated: " + runner);
 		DataSource ds = new DataSource();
 		ds.setId(generateId(runner.name()));
 		ds.setName(runner.name());
@@ -179,14 +180,16 @@ public class DataSourceRegistryImpl implements DataSourceRegistry {
 	}
 
 	@Override
-	public DataSource findForDataSchema(String name) {
-		Validate.notNull(name);
+	public DataSource findForDataSchema(DataSchema dataSchema, String dataSourceName) {
+		Validate.notNull(dataSchema);
+		Validate.notNull(dataSourceName);
+
 		resolveReferences();
 		return dataSources
 				.stream()
 				.filter(ds -> ds.getId() != null)
-				.filter(ds -> ds.getDataSchema() != null)
-				.filter(ds -> name.equals(ds.getDataSchemaName()))
+				.filter(ds -> dataSchema.equals(ds.getDataSchema()))
+				.filter(ds -> dataSourceName.equals(ds.getName()))
 				.findFirst()
 				.orElse(null);
 	}

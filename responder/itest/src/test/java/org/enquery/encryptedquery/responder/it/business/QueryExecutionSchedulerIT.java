@@ -17,19 +17,23 @@
 package org.enquery.encryptedquery.responder.it.business;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.UUID;
 
 import javax.inject.Inject;
+import javax.xml.bind.JAXBException;
 
 import org.apache.sshd.common.util.io.IoUtils;
 import org.enquery.encryptedquery.data.Query;
@@ -43,7 +47,6 @@ import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.entity.Execution;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
-import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
 import org.enquery.encryptedquery.responder.it.AbstractResponderItest;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
@@ -60,6 +63,7 @@ import org.ops4j.pax.exam.junit.PaxExam;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.quartz.JobExecutionException;
 
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
@@ -93,6 +97,8 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 	private Querier querier;
 	private Query query;
 	private DataSchema booksDataSchema;
+	private DataSource dataSource;
+	private org.enquery.encryptedquery.xml.schema.Query xmlQuery;
 
 
 	@Override
@@ -120,12 +126,6 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 		booksDataSchema = dataSchemaService.findByName(BOOKS_DATA_SCHEMA_NAME);
 		assertNotNull(booksDataSchema);
 
-	}
-
-	@Test
-	public void addAndRun() throws Exception {
-		Assert.assertEquals(0, dsRegistry.list().size());
-
 		// register a MOCK query runner
 		org.osgi.service.cm.Configuration conf = confAdmin.createFactoryConfiguration(
 				"org.enquery.encryptedquery.responder.it.business.QueryRunnerMock", "?");
@@ -135,35 +135,18 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 
 		waitUntilQueryRunnerRegistered(DATA_SOURCE_NAME);
 
-		// the corresponding data source should be in the registry
-		DataSource dataSource = dsRegistry.find(DATA_SOURCE_NAME);
+		dataSource = dsRegistry.find(DATA_SOURCE_NAME);
 		Assert.assertNotNull(dataSource);
-
-		// run the query
-		QueryRunner runner = dataSource.getRunner();
-		assertNotNull(runner);
-
+		assertNotNull(dataSource.getRunner());
 		querier = createQuerier("Books", SELECTORS);
 		query = querier.getQuery();
+		xmlQuery = converter.toXMLQuery(query);
+	}
 
-		Execution ex = new Execution();
-		ex.setDataSchema(booksDataSchema);
-		ex.setReceivedTime(new Date());
-		ex.setScheduleTime(new Date());
-		ex.setDataSourceName(DATA_SOURCE_NAME);
-		ex = executionRepository.add(ex);
+	@Test
+	public void runSingleJob() throws Exception {
 
-		org.enquery.encryptedquery.xml.schema.Query xmlQuery = converter.toXMLQuery(query);
-
-		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		converter.marshal(xmlQuery, os);
-		ex = executionRepository.updateQueryBytes(ex.getId(), os.toByteArray());
-
-		// final File outputFile = new File("data/responses/response-" + ex.getId() + ".xml");
-		// Assert.assertTrue(!outputFile.exists());
-
-		// add the schedule
-		scheduler.add(ex);
+		Execution ex = scheduleJob(new Date());
 
 		tryUntilTrue(30,
 				3000,
@@ -185,9 +168,80 @@ public class QueryExecutionSchedulerIT extends AbstractResponderItest {
 		assertTrue(updated.getEndTime().after(updated.getStartTime()));
 	}
 
+	@Test
+	public void runsOneAtATime() throws Exception {
+
+		Date date = new Date();
+		Execution ex1 = scheduleJob(date);
+		Execution ex2 = scheduleJob(date);
+
+		tryUntilTrue(30,
+				3000,
+				"Result not created.",
+				e -> resultRepository.listForExecution(e).size() > 0,
+				ex1);
+
+		tryUntilTrue(30,
+				3000,
+				"Result not created.",
+				e -> resultRepository.listForExecution(e).size() > 0,
+				ex2);
+
+		// the Execution record is updated with run time stamps
+		ex1 = executionRepository.find(ex1.getId());
+		log.info("Execution 1 ran from: {} to {}.", ex1.getStartTime(), ex1.getEndTime());
+		ex2 = executionRepository.find(ex2.getId());
+		log.info("Execution 2 ran from: {} to {}.", ex2.getStartTime(), ex2.getEndTime());
+
+		assertFalse(overlap(ex1.getStartTime().getTime(),
+				ex1.getEndTime().getTime(),
+				ex2.getStartTime().getTime(),
+				ex2.getEndTime().getTime()));
+	}
+
+	private boolean overlap(long x1, long x2, long y1, long y2) {
+		return x1 <= y2 && y1 <= x2;
+	}
+
+	@Test
+	public void runsWhenScheduleDateInPast() throws Exception {
+		// it should run the job even if the schedule date is in the past
+		long ts = 0;
+		Date date = new Date(ts);
+		Execution ex1 = scheduleJob(date);
+
+		tryUntilTrue(30,
+				3000,
+				"Result not created.",
+				e -> resultRepository.listForExecution(e).size() > 0,
+				ex1);
+
+		// the Execution record is updated with run time stamps
+		ex1 = executionRepository.find(ex1.getId());
+		log.info("Execution 1 ran from: {} to {}.", ex1.getStartTime(), ex1.getEndTime());
+	}
+
+
+	private Execution scheduleJob(Date date) throws JAXBException, IOException, JobExecutionException {
+		Execution ex = new Execution();
+		ex.setDataSchema(booksDataSchema);
+		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
+		ex.setReceivedTime(date);
+		ex.setScheduleTime(date);
+		ex.setDataSourceName(DATA_SOURCE_NAME);
+		ex = executionRepository.add(ex);
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		converter.marshal(xmlQuery, os);
+		ex = executionRepository.updateQueryBytes(ex.getId(), os.toByteArray());
+
+		scheduler.add(ex);
+		return ex;
+	}
+
 	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(Paths.get(System.getProperty("query.schema.path")));
-		return querierFactory.encrypt(querySchema, selectors, true, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

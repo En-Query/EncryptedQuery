@@ -21,14 +21,21 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.enquery.encryptedquery.core.FieldType;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 /**
  *
@@ -38,21 +45,21 @@ public class JSONStringConverterTest {
 	private static final Logger log = LoggerFactory.getLogger(JSONStringConverterTest.class);
 	private String json = "{"
 			+ "\"string\":\"string value\","
-			+ "\"boolean\":true,"
+			+ "\"byte\": \"1\","
 			+ "\"null\":null,"
 			+ "\"int\": 12345,"
 			+ "\"double\": 1547215054.479078000,"
 			+ "\"array\":[1, 2, 3, 4, 5],"
-			+ "\"object\":{"
+			+ "\"object1\":{"
 			+ "		\"string\":\"string value\","
-			+ "		\"boolean\":true,"
+			+ "		\"byte\":\"1\","
 			+ "		\"null\":null,"
 			+ "		\"int\": 12345,"
 			+ "		\"double\": 1547215054.479078000,"
 			+ "		\"array\":[1, 2, 3, 4, 5],"
-			+ "		\"object\":{"
+			+ "		\"object2\":{"
 			+ "			\"string\":\"string value\","
-			+ "			\"boolean\":true,"
+			+ "			\"byte\":\"1\","
 			+ "			\"null\":null,"
 			+ "			\"int\": 12345,"
 			+ "			\"double\": 1547215054.479078000,"
@@ -66,10 +73,133 @@ public class JSONStringConverterTest {
 	@Test
 	public void testFlatMap() {
 
-		Map<String, Object> flat = JSONStringConverter.toStringObjectFlatMap(json);
+		DataSchema ds = makeSchema();
+
+		JSONStringConverter converter = new JSONStringConverter(ds);
+		Map<String, Object> flat = converter.toStringObjectFlatMap(json);
+		// Map<String, Object> flat = JSONStringConverter.toStringObjectFlatMap(json);
 		log.info("Flattened to: {}", flat);
 
 		validate(flat);
+	}
+
+	private DataSchema makeSchema() {
+		DataSchema ds = new DataSchema();
+		DataSchemaElement element;
+		int pos = 0;
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING);
+		element.setName("string");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BYTE);
+		element.setName("byte");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING);
+		element.setName("null");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("int");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.DOUBLE);
+		element.setName("double");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT_LIST);
+		element.setName("array");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING);
+		element.setName("object1|string");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BYTE);
+		element.setName("object1|byte");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("object1|null");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("object1|int");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.DOUBLE);
+		element.setName("object1|double");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT_LIST);
+		element.setName("object1|array");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING);
+		element.setName("object1|object2|string");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BYTE);
+		element.setName("object1|object2|byte");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING);
+		element.setName("object1|object2|null");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("object1|object2|int");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.DOUBLE);
+		element.setName("object1|object2|double");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT_LIST);
+		element.setName("object1|object2|array");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+
+
+		return ds;
 	}
 
 	private void validate(Map<String, Object> flat) {
@@ -79,10 +209,10 @@ public class JSONStringConverterTest {
 		assertTrue("Actual type=" + value.getClass(), value instanceof String);
 		assertEquals("string value", value);
 
-		value = flat.get("boolean");
+		value = flat.get("byte");
 		assertNotNull(value);
-		assertTrue("Actual type=" + value.getClass(), value instanceof Boolean);
-		assertEquals(Boolean.TRUE, value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Byte);
+		assertEquals((byte) 1, value);
 
 		value = flat.get("null");
 		assertNull(value);
@@ -100,62 +230,95 @@ public class JSONStringConverterTest {
 		value = flat.get("array");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof ArrayList);
-		assertEquals(expectedArray, value);
+		assertTrue(expectedArray.equals(value));
 
 		// second level object
-		value = flat.get("object|string");
+		value = flat.get("object1|string");
 		assertTrue("Actual type=" + value.getClass(), value instanceof String);
 		assertEquals("string value", value);
 
-		value = flat.get("object|boolean");
+		value = flat.get("object1|byte");
 		assertNotNull(value);
-		assertTrue("Actual type=" + value.getClass(), value instanceof Boolean);
-		assertEquals(Boolean.TRUE, value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Byte);
+		assertEquals((byte) 1, value);
 
-		value = flat.get("object|null");
+		value = flat.get("object1|null");
 		assertNull(value);
 
-		value = flat.get("object|int");
+		value = flat.get("object1|int");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof Integer);
 		assertEquals(12345, value);
 
-		value = flat.get("object|double");
+		value = flat.get("object1|double");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof Double);
 		assertEquals(1547215054.479078000, value);
 
-		value = flat.get("object|array");
+		value = flat.get("object1|array");
+		log.info("type={},value={}", value.getClass().getName(), value);
+
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof ArrayList);
-		assertEquals(expectedArray, value);
+		assertTrue("expected:" + expectedArray + ", actual:" + value, expectedArray.equals(value));
 
 		// third level object
-		value = flat.get("object|object|string");
+		value = flat.get("object1|object2|string");
 		assertTrue("Actual type=" + value.getClass(), value instanceof String);
 		assertEquals("string value", value);
 
-		value = flat.get("object|object|boolean");
+		value = flat.get("object1|object2|byte");
 		assertNotNull(value);
-		assertTrue("Actual type=" + value.getClass(), value instanceof Boolean);
-		assertEquals(Boolean.TRUE, value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Byte);
+		assertEquals((byte) 1, value);
 
-		value = flat.get("object|object|null");
+		value = flat.get("object1|object2|null");
 		assertNull(value);
 
-		value = flat.get("object|object|int");
+		value = flat.get("object1|object2|int");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof Integer);
 		assertEquals(12345, value);
 
-		value = flat.get("object|object|double");
+		value = flat.get("object1|object2|double");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof Double);
 		assertEquals(1547215054.479078000, value);
 
-		value = flat.get("object|object|array");
+		value = flat.get("object1|object2|array");
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof ArrayList);
 		assertEquals(expectedArray, value);
+	}
+
+	@Test
+	public void testDataPrunedInReturnedMap() throws JsonParseException, JsonMappingException, IOException {
+		DataSchema ds = new DataSchema();
+		DataSchemaElement element;
+		int pos = 0;
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("int");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		JSONStringConverter converter = new JSONStringConverter(ds);
+
+
+		String json = "{"
+				+ "\"string\":\"string value\","
+				+ "\"boolean\":\"true\","
+				+ "\"int\": \"12345\","
+				+ "\"long\": \"123456\"}";
+
+		Map<String, Object> map = converter.toStringObjectFlatMap(json);
+		log.info("returned map: {}", map);
+		assertEquals(1, map.size());
+
+		Object val = map.get("int");
+		log.info("read '{}' of type '{}'.", val, val.getClass().getName());
+		assertTrue(val instanceof Integer);
+		assertEquals(Integer.valueOf(12345), val);
 	}
 }

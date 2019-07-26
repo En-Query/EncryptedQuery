@@ -21,7 +21,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
@@ -59,10 +61,9 @@ public class SampleData {
 		DataSchema dataSchema = new DataSchema();
 		DataSchemaField dsf = new DataSchemaField();
 		dsf.setDataSchema(dataSchema);
-		dsf.setDataType("int");
+		dsf.setDataType(FieldType.INT);
 		dsf.setFieldName("field1");
 		dsf.setPosition(0);
-		dsf.setIsArray(false);
 		List<DataSchemaField> fields = new ArrayList<>();
 		fields.add(dsf);
 		dataSchema.setFields(fields);
@@ -89,6 +90,7 @@ public class SampleData {
 
 	public Execution createExecution(DataSchema dataSchema, DataSource dataSource) throws JsonProcessingException {
 		Execution result = new Execution();
+		result.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
 		result.setDataSchema(dataSchema);
 		result.setDataSourceName(dataSource.getName());
 		result.setScheduleTime(new Date());

@@ -22,6 +22,7 @@ import java.util.Collection;
 import javax.persistence.EntityManager;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.service.DataSourceRepository;
 import org.osgi.service.component.annotations.Activate;
@@ -171,5 +172,26 @@ public class DataSourceServiceImpl implements DataSourceRepository {
 						.stream()
 						.findFirst()
 						.orElse(null));
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.querier.data.service.DataSourceRepository#findForDataSchema(org.
+	 * enquery.encryptedquery.querier.data.entity.jpa.DataSchema, java.lang.String)
+	 */
+	@Override
+	public DataSource findForDataSchema(DataSchema dataSchema, String dataSourceName) {
+		return (DataSource) txControl
+				.build()
+				.readOnly()
+				.supports(() -> em.createQuery("Select dsrc From DataSource dsrc "
+						+ "Join Fetch dsrc.dataSchema dsch  "
+						+ "Where dsrc.name = :name "
+						+ "And   dsch.id   = :dSchema  ")
+						.setParameter("dSchema", dataSchema.getId())
+						.setParameter("name", dataSourceName)
+						.getResultList());
 	}
 }

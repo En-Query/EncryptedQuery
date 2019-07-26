@@ -75,8 +75,8 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	private Path jarPath;
 	private Path runDir;
 	private Integer flinkParallelism;
-	private Integer computeThreshold;
-	private Integer columnEncryptionPartitionCount;
+	private Integer columnBufferMemory;
+	// private Integer columnEncryptionPartitionCount;
 
 	@Reference
 	private DataSchemaService dss;
@@ -113,21 +113,21 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 		Validate.notBlank(sqlQuery, "JDBC SQL cannot be blank.");
 		Validate.notBlank(dataSchemaName, "DataSchema name cannot be blank.");
 		Validate.notBlank(config._flink_install_dir(), "Flink install dir cannot be blank.");
-		Validate.notBlank(config._jar_file_path(), "Flink jar path cannot be blank.");
+		Validate.notBlank(config._application_jar_path(), "Flink jar path cannot be blank.");
 		Validate.notBlank(config._run_directory(), "Run directory cannot be blank.");
 
-		jarPath = Paths.get(config._jar_file_path());
+		jarPath = Paths.get(config._application_jar_path());
 		Validate.isTrue(Files.exists(jarPath), "Does not exists: " + jarPath);
 
 		programPath = Paths.get(config._flink_install_dir(), "bin", "flink");
 		Validate.isTrue(Files.exists(programPath), "Does not exists: " + programPath);
 
 		if (config.type() != null) {
-		type = DataSourceType.valueOf(config.type());
+			type = DataSourceType.valueOf(config.type());
 		} else {
 			type = DataSourceType.Batch;
 		}
-		
+
 		runDir = Paths.get(config._run_directory());
 		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
 
@@ -135,17 +135,10 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 			flinkParallelism = Integer.valueOf(config._flink_parallelism());
 		}
 
-		if (config._compute_threshold() != null) {
-			computeThreshold = Integer.valueOf(config._compute_threshold());
+		if (config._column_buffer_memory_mb() != null) {
+			columnBufferMemory = Integer.valueOf(config._column_buffer_memory_mb());
 		}
 
-//		Validate.notBlank(config.type(), "Type is required.");
-//		this.type = DataSourceType.valueOf(config.type());
-
-		if (config._column_encryption_partition_count() != null) {
-			columnEncryptionPartitionCount = Integer.parseInt(config._column_encryption_partition_count());
-			Validate.isTrue(columnEncryptionPartitionCount > 0);
-		}
 	}
 
 	@Override
@@ -186,6 +179,7 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 					arguments.add(o);
 				}
 			}
+
 			if (flinkParallelism != null) {
 				arguments.add("-p");
 				arguments.add(Integer.toString(flinkParallelism));
@@ -237,7 +231,7 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 
 	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters) throws FileNotFoundException, IOException {
 		Path result = Paths.get(dir.toString(), "config.properties");
-		int maxHitsPerSelector = 1000;
+		Integer maxHitsPerSelector = null;
 
 		Properties p = new Properties();
 
@@ -246,15 +240,13 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
 			}
 		}
-		p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 
-		if (columnEncryptionPartitionCount != null) {
-			p.setProperty(FlinkConfigurationProperties.COLUMN_ENCRYPTION_PARTITION_COUNT,
-					Integer.toString(columnEncryptionPartitionCount));
+		if (maxHitsPerSelector != null) {
+			p.setProperty(FlinkConfigurationProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 		}
 
-		if (computeThreshold != null) {
-			p.setProperty(FlinkConfigurationProperties.COMPUTE_THRESHOLD, computeThreshold.toString());
+		if (columnBufferMemory != null) {
+			p.setProperty(ResponderProperties.COLUMN_BUFFER_MEMORY_MB, columnBufferMemory.toString());
 		}
 
 		// Pass the CryptoScheme configuration to the external application,

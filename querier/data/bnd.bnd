@@ -17,9 +17,11 @@ Meta-Persistence: META-INF/persistence.xml
 
 # Due to a long standing bug in Hibernate's entity enhancement these packages must 
 # be imported when Hibernate is used (https://hibernate.atlassian.net/browse/HHH-10742)
+#  Warning: org.apache.camel.spi is needed in order for the JacksonDFWithDynamicViews custom data format to be registered 
 Import-Package: \
 	org.hibernate.proxy;resolution:=optional,\
 	javassist.util.proxy;resolution:=optional,\
 	org.encryptedquery.querier.data.orm, \
+	org.apache.camel.spi, \
 	*
 	

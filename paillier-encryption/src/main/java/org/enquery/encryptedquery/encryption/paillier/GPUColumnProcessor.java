@@ -28,18 +28,24 @@ import org.slf4j.LoggerFactory;
 public class GPUColumnProcessor implements ColumnProcessor {
 	private final Logger log = LoggerFactory.getLogger(GPUColumnProcessor.class);
 
-	final long hQuery;
-	long hColproc;
-	
+	private final long hQuery;
+	private long hColproc;
+
 	native long createColproc(long hQuery);
+
 	native boolean colprocInsertChunk(long hColproc, int rowIndex, int chunk);
+
 	native byte[] colprocComputeAndClear(long hColproc);
+
 	native boolean colprocClear(long hColproc);
+
 	native boolean colprocRemove(long hColproc);
-	
+
 	GPUColumnProcessor(long hQuery) {
 		this.hQuery = hQuery;
+		Validate.isTrue(hQuery != 0L);
 		hColproc = createColproc(hQuery);
+		Validate.isTrue(hColproc != 0L);
 	}
 
 	private void validateParameters(int dataChunkSize) {
@@ -54,6 +60,7 @@ public class GPUColumnProcessor implements ColumnProcessor {
 	 */
 	@Override
 	public void insert(int rowIndex, byte[] input) {
+		Validate.isTrue(hColproc != 0L);
 		// TODO: review data to big int conversion
 		BigInteger part = new BigInteger(1, input);
 		colprocInsertChunk(hColproc, rowIndex, part.intValue());
@@ -80,10 +87,12 @@ public class GPUColumnProcessor implements ColumnProcessor {
 	 */
 	@Override
 	public CipherText computeAndClear() {
+		Validate.isTrue(hColproc != 0L);
 		final byte[] bytes = colprocComputeAndClear(hColproc);
+		Validate.notNull(bytes, "Native call `colprocComputeAndClear` returned null.");
 		return new PaillierCipherText(new BigInteger(1, bytes));
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -95,7 +104,7 @@ public class GPUColumnProcessor implements ColumnProcessor {
 			colprocClear(hColproc);
 		}
 	}
-	
+
 	public void remove() {
 		if (hColproc != 0L) {
 			colprocRemove(hColproc);

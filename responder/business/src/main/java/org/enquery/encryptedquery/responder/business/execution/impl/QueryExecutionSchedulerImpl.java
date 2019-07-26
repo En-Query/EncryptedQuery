@@ -33,9 +33,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.stream.XMLStreamException;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.Query;
@@ -48,6 +48,8 @@ import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.ExecutionRepository;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
 import org.enquery.encryptedquery.responder.data.service.ResultRepository;
+import org.enquery.encryptedquery.xml.schema.QueryInfo;
+import org.enquery.encryptedquery.xml.transformation.QueryReader;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -62,6 +64,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
+import org.quartz.SimpleScheduleBuilder;
 import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
@@ -130,9 +133,10 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 	 */
 	private Properties defaultConfiguration() {
 		Properties p = new Properties();
-		p.setProperty("org.quartz.threadPool.threadCount", "5");
+
+		// this thead count controls how many jobs in parallel are executed
+		p.setProperty("org.quartz.threadPool.threadCount", "1");
 		p.setProperty("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
-		p.setProperty("org.quartz.jobStore.misfireThreshold", Long.toString(TimeUnit.MILLISECONDS.convert(1, TimeUnit.HOURS)));
 		p.setProperty("org.quartz.jobStore.useProperties", "true");
 		p.setProperty("org.quartz.dataSource.responder.jndiURL", "osgi:service/responder");
 		p.setProperty("org.quartz.jobStore.dataSource", "responder");
@@ -158,10 +162,9 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		log.info("Scheduling: " + execution);
 		validateExecution(execution);
 
-		// TODO: validate without loading the whole Query in memory
-		// final DataSource dataSource = extractDataSource(execution);
-		// final Query query = extractQuery(execution);
-		// validateQueryAgainstDataSource(dataSource, query);
+		final DataSource dataSource = findDataSource(execution);
+		QueryInfo info = extractQueryInfo(execution);
+		validateQueryAgainstDataSource(dataSource, info);
 
 		try {
 			JobDetail job = makeOrGetJobDetail(execution);
@@ -201,8 +204,13 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 			throw new SchedulerException("Already scheduled: " + triggerKey);
 		}
 
-		return (SimpleTrigger) newTrigger()
+		SimpleScheduleBuilder scheduleBuilder = SimpleScheduleBuilder.simpleSchedule();
+		scheduleBuilder.withMisfireHandlingInstructionFireNow();
+		scheduleBuilder.withRepeatCount(0);
+
+		return newTrigger()
 				.withIdentity(triggerKey)
+				.withSchedule(scheduleBuilder)
 				.startAt(startTime)
 				.build();
 	}
@@ -250,13 +258,11 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		try {
 			log.info("Running execution id {}.", execution.getId());
 
-			DataSource dataSource = null;
-			dataSource = extractDataSource(execution);
+			DataSource dataSource = findDataSource(execution);
 			runner = dataSource.getRunner();
 			Validate.notNull(runner, "DataSource '%s' runner is null.", dataSource.getName());
 
-			// TODO: do not load the entire query, use SAX to get the elements needed
-			query = extractQuery(execution);
+			query = loadEntireQuery(execution);
 			validateQueryAgainstDataSource(dataSource, query);
 
 		} catch (Exception e) {
@@ -333,6 +339,19 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		return sw.toString();
 	}
 
+	private void validateQueryAgainstDataSource(final DataSource dataSource, final QueryInfo queryInfo) {
+		String queryDataSchemaName = queryInfo.getQuerySchema().getDataSchema().getName();
+		Validate.notBlank(queryDataSchemaName);
+
+		String dataSourceDataSchemaName = dataSource.getDataSchemaName();
+		Validate.notBlank(dataSourceDataSchemaName);
+
+		Validate.isTrue(dataSourceDataSchemaName.equals(queryDataSchemaName),
+				"Data schema names mismatch. Query references: %s, while DataSource references: %s.",
+				queryDataSchemaName,
+				dataSourceDataSchemaName);
+	}
+
 	private void validateQueryAgainstDataSource(final DataSource dataSource, final Query query) {
 		String queryDataSchemaName = query.getQueryInfo().getQuerySchema().getDataSchema().getName();
 		Validate.notBlank(queryDataSchemaName);
@@ -346,13 +365,23 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 				dataSourceDataSchemaName);
 	}
 
-	private DataSource extractDataSource(Execution execution) {
+	private DataSource findDataSource(Execution execution) {
 		final DataSource dataSource = dataSourceRegistry.find(execution.getDataSourceName());
 		Validate.notNull(dataSource, "Data Source %s not found.", execution.getDataSourceName());
 		return dataSource;
 	}
 
-	private Query extractQuery(Execution execution) throws JobExecutionException {
+	private QueryInfo extractQueryInfo(Execution execution) throws JobExecutionException {
+		try (InputStream is = executionRepository.queryBytes(execution.getId());
+				QueryReader reader = new QueryReader()) {
+			reader.parse(is);
+			return reader.getQueryInfo();
+		} catch (IOException | XMLStreamException e) {
+			throw new JobExecutionException("Error deserializing query associated with execution: " + execution, e);
+		}
+	}
+
+	private Query loadEntireQuery(Execution execution) throws JobExecutionException {
 		try (InputStream is = executionRepository.queryBytes(execution.getId())) {
 			return queryConverter.toCoreQuery(is);
 		} catch (JAXBException | IOException e) {

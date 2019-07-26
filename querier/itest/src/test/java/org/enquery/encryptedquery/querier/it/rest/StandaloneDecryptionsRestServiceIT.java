@@ -67,7 +67,7 @@ public class StandaloneDecryptionsRestServiceIT extends BaseRestServiceWithStand
 		assertEquals(created.getRetrieval().getSelfUri(), retrieved.getRetrieval().getSelfUri());
 		assertEquals(DecryptionStatus.Complete, retrieved.getStatus());
 
-		validateClearTextResponse(retrieved, "age", "31", "children", "[Zack, Yvette, ]");
+		validateClearTextResponse(retrieved, "age", "31", "children", "[Zack, Yvette]");
 		validateClearTextResponse(retrieved, "age", "31", "name", "Alice");
 	}
 }

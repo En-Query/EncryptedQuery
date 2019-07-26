@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
+import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchemaField;
 import org.enquery.encryptedquery.querier.data.entity.json.DataSchema;
@@ -56,7 +57,7 @@ public class DataSchemaTypeConverter {
 	private DataSchemaElement toCoreDataSchemaElement(DataSchemaField field) {
 		DataSchemaElement result = new DataSchemaElement();
 		result.setDataType(field.getDataType());
-		result.setIsArray(field.getIsArray());
+		// result.setIsArray(field.getIsArray());
 		result.setName(field.getFieldName());
 		result.setPosition(field.getPosition());
 		return result;
@@ -78,9 +79,9 @@ public class DataSchemaTypeConverter {
 
 			DataSchemaField dsf = new DataSchemaField();
 			dsf.setDataSchema(result);
-			dsf.setDataType(element.getDataType());
+			dsf.setDataType(FieldType.fromExternalName(element.getDataType()));
 			dsf.setFieldName(element.getName());
-			dsf.setIsArray(element.isIsArray());
+			// dsf.setIsArray(element.isIsArray() == null ? false : element.isIsArray());
 			dsf.setPosition(element.getPosition());
 			fields.add(dsf);
 		}
@@ -98,9 +99,9 @@ public class DataSchemaTypeConverter {
 		result.setName(ds.getName());
 		for (DataSchemaField f : ds.getFields()) {
 			org.enquery.encryptedquery.xml.schema.DataSchema.Field e = new org.enquery.encryptedquery.xml.schema.DataSchema.Field();
-			e.setIsArray(f.getIsArray());
+			// e.setIsArray(f.getIsArray());
 			e.setName(f.getFieldName());
-			e.setDataType(f.getDataType());
+			e.setDataType(f.getDataType().toString());
 			e.setPosition(f.getPosition());
 			result.getField().add(e);
 		}
@@ -118,8 +119,8 @@ public class DataSchemaTypeConverter {
 		for (DataSchemaField field : fields) {
 			org.enquery.encryptedquery.xml.schema.DataSchema.Field xmlField = new org.enquery.encryptedquery.xml.schema.DataSchema.Field();
 			xmlField.setName(field.getFieldName());
-			xmlField.setDataType(field.getDataType());
-			xmlField.setIsArray(field.getIsArray());
+			xmlField.setDataType(field.getDataType().toString());
+			// xmlField.setIsArray(field.getIsArray());
 			xmlField.setPosition(field.getPosition());
 			result.add(xmlField);
 		}
@@ -140,8 +141,8 @@ public class DataSchemaTypeConverter {
 			for (DataSchemaField field : jpa.getFields()) {
 				org.enquery.encryptedquery.querier.data.entity.json.DataSchemaField dse = new org.enquery.encryptedquery.querier.data.entity.json.DataSchemaField();
 				dse.setName(field.getFieldName());
-				dse.setDataType(field.getDataType());
-				dse.setIsArray(field.getIsArray());
+				dse.setDataType(field.getDataType().toString());
+				// dse.setIsArray(field.getIsArray());
 				dse.setPosition(field.getPosition());
 				fields.add(dse);
 			}

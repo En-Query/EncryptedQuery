@@ -80,7 +80,11 @@
 			</script>
 			
 			<bean ref="retrievalRepo" method="add"/>
-			<inOnly uri="seda:download-single-result-from-responder"/>
+			
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+				<inOnly uri="seda:download-single-result-from-responder"/>
+			</filter>
 
 			<bean ref="retrievalConverter" method="toJSONResponse"/>
 

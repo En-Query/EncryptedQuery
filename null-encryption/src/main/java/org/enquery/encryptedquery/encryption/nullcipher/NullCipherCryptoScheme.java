@@ -175,7 +175,6 @@ public class NullCipherCryptoScheme extends AbstractCryptoScheme implements Cryp
 	@Override
 	public List<PlainText> decrypt(KeyPair keyPair, List<CipherText> c) {
 		return c.stream().map(ct -> decrypt(keyPair, ct)).collect(Collectors.toList());
-
 	}
 
 	/*

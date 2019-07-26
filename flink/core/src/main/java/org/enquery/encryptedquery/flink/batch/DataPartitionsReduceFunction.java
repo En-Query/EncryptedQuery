@@ -30,17 +30,16 @@ import org.apache.flink.api.common.functions.RichGroupReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
-import org.enquery.encryptedquery.core.FieldTypes;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
-import org.enquery.encryptedquery.responder.QueueRecord;
+import org.enquery.encryptedquery.flink.QueueRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataPartitionsReduceFunction extends RichGroupReduceFunction<QueueRecord, Tuple2<Integer, CipherText>> implements FieldTypes {
+public class DataPartitionsReduceFunction extends RichGroupReduceFunction<QueueRecord, Tuple2<Integer, CipherText>> {
 
 	private static final long serialVersionUID = -2249924018671569475L;
 	private static final Logger log = LoggerFactory.getLogger(DataPartitionsReduceFunction.class);
@@ -114,7 +113,6 @@ public class DataPartitionsReduceFunction extends RichGroupReduceFunction<QueueR
 			addDataElement(entry);
 			recordCount++;
 			if (recordCount % computeThreshold == 0) {
-
 				log.info("Process {} Compute threshold {} reached, will pause to encrypt/reduce value.  ", processId, numFormat.format(computeThreshold));
 				processColumns();
 				log.info("Process {} Compute finished, resuming data processing. Total records processed so far {}", processId, numFormat.format(recordCount));
