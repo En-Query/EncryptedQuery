@@ -25,6 +25,10 @@ public interface FieldTypeUntypedValueConverterVisitor {
 	Byte visitByte(Object value);
 
 	List<Byte> visitByteList(Object value);
+	
+	Boolean visitBoolean(Object value);
+
+	List<Boolean> visitBooleanList(Object value);
 
 	String visitISO8601Date(Object value);
 

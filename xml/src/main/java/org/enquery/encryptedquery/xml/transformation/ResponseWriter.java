@@ -40,25 +40,29 @@ public class ResponseWriter implements Closeable {
 
 	private final XMLEventFactory eventFactory = XMLEventFactory.newInstance();
 
-	private BufferedWriter bufferedWriter;
-	private OutputStreamWriter streamWriter;
 	private XMLEventWriter writer;
-	private boolean ownWriter;
+	private boolean closeStream = true;
+
+	public ResponseWriter(OutputStream out, boolean closeStream) throws XMLStreamException {
+		this(out);
+		this.closeStream = closeStream;
+	}
+
 
 	public ResponseWriter(OutputStream out) throws XMLStreamException {
 		Validate.notNull(out);
 
-		streamWriter = new OutputStreamWriter(out, StandardCharsets.UTF_8);
-		bufferedWriter = new BufferedWriter(streamWriter);
-		writer = XMLFactories.xmlOutputFactory.createXMLEventWriter(bufferedWriter);
+		writer = XMLFactories.xmlOutputFactory.createXMLEventWriter(
+				new BufferedWriter(
+						new OutputStreamWriter(out, StandardCharsets.UTF_8)));
+
 		writer.setPrefix("resp", RESPONSE_NS);
-		// writer.setDefaultNamespace(RESPONSE_NS);
-		ownWriter = true;
 	}
 
 	public ResponseWriter(XMLEventWriter writer) throws XMLStreamException {
 		Validate.notNull(writer);
 		this.writer = writer;
+		closeStream = false;
 	}
 
 	/*
@@ -68,28 +72,15 @@ public class ResponseWriter implements Closeable {
 	 */
 	@Override
 	public void close() throws IOException {
-		if (!ownWriter) return;
-
-		Exception error = null;
-
 		if (writer != null) try {
 			writer.flush();
-			writer.close();
+			if (closeStream) {
+				writer.close();
+			}
+			writer = null;
 		} catch (XMLStreamException e) {
-			error = e;
+			throw new IOException("Error during close.", e);
 		}
-		try {
-			if (bufferedWriter != null) bufferedWriter.close();
-		} catch (Exception e) {
-			if (error == null) error = e;
-		}
-		try {
-			if (streamWriter != null) streamWriter.close();
-		} catch (Exception e) {
-			if (error == null) error = e;
-		}
-
-		if (error != null) throw new IOException("Error during close", error);
 	}
 
 	public void writeBeginResponse() throws XMLStreamException, IOException {
@@ -221,11 +212,6 @@ public class ResponseWriter implements Closeable {
 	 */
 	public void writeEndResultSet() throws XMLStreamException {
 		writer.add(eventFactory.createEndElement(RESULT_SET, null));
-	}
-
-	private void writeElement(QName element, Boolean value) throws XMLStreamException {
-		if (value == null) return;
-		writeElement(element, Boolean.toString(value));
 	}
 
 	private void writeQuerySchemaElements(List<QuerySchemaElement> elements) throws XMLStreamException {

@@ -426,5 +426,35 @@ public class FieldEncoder implements FieldTypeValueConverterVisitor<Void> {
 		encodeList(value, v -> visitString(v));
 		return null;
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBoolean(java.lang.
+	 * Boolean)
+	 */
+	@Override
+	public Void visitBoolean(Boolean value) {
+		if (value == null)
+			buffer.put((byte) -1);
+		else if (value)
+			buffer.put((byte) 1);
+		else
+			buffer.put((byte) 0);
+		return null;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBooleanList(java.util.
+	 * List)
+	 */
+	@Override
+	public Void visitBooleanList(List<Boolean> value) {
+		encodeList(value, v -> visitBoolean(v));
+		return null;
+	}
 
 }

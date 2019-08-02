@@ -46,6 +46,9 @@ public class JSONStringConverterTest {
 	private String json = "{"
 			+ "\"string\":\"string value\","
 			+ "\"byte\": \"1\","
+			+ "\"booleanTrue\": true,"
+			+ "\"booleanFalse\": false,"
+			+ "\"booleanNull\": null,"
 			+ "\"null\":null,"
 			+ "\"int\": 12345,"
 			+ "\"double\": 1547215054.479078000,"
@@ -53,6 +56,7 @@ public class JSONStringConverterTest {
 			+ "\"object1\":{"
 			+ "		\"string\":\"string value\","
 			+ "		\"byte\":\"1\","
+			+ "		\"booleanTrue\": true,"
 			+ "		\"null\":null,"
 			+ "		\"int\": 12345,"
 			+ "		\"double\": 1547215054.479078000,"
@@ -60,6 +64,7 @@ public class JSONStringConverterTest {
 			+ "		\"object2\":{"
 			+ "			\"string\":\"string value\","
 			+ "			\"byte\":\"1\","
+			+ "			\"booleanTrue\": true,"
 			+ "			\"null\":null,"
 			+ "			\"int\": 12345,"
 			+ "			\"double\": 1547215054.479078000,"
@@ -97,6 +102,24 @@ public class JSONStringConverterTest {
 		element = new DataSchemaElement();
 		element.setDataType(FieldType.BYTE);
 		element.setName("byte");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BOOLEAN);
+		element.setName("booleanTrue");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BOOLEAN);
+		element.setName("booleanFalse");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BOOLEAN);
+		element.setName("booleanNull");
 		element.setPosition(pos++);
 		ds.addElement(element);
 
@@ -214,6 +237,19 @@ public class JSONStringConverterTest {
 		assertTrue("Actual type=" + value.getClass(), value instanceof Byte);
 		assertEquals((byte) 1, value);
 
+		value = flat.get("booleanTrue");
+		assertNotNull(value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Boolean);
+		assertEquals(Boolean.TRUE, value);
+
+		value = flat.get("booleanFalse");
+		assertNotNull(value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Boolean);
+		assertEquals(Boolean.FALSE, value);
+
+		value = flat.get("booleanNull");
+		assertNull(value);
+
 		value = flat.get("null");
 		assertNull(value);
 
@@ -308,7 +344,7 @@ public class JSONStringConverterTest {
 
 		String json = "{"
 				+ "\"string\":\"string value\","
-				+ "\"boolean\":\"true\","
+				+ "\"booleanTrue\":\"true\","
 				+ "\"int\": \"12345\","
 				+ "\"long\": \"123456\"}";
 

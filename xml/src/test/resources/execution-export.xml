@@ -108,31 +108,26 @@
 							<ns6:field>
 								<ns6:name>id</ns6:name>
 								<ns6:dataType>int</ns6:dataType>
-								<ns6:isArray>false</ns6:isArray>
 								<ns6:position>0</ns6:position>
 							</ns6:field>
 							<ns6:field>
 								<ns6:name>title</ns6:name>
 								<ns6:dataType>string</ns6:dataType>
-								<ns6:isArray>false</ns6:isArray>
 								<ns6:position>1</ns6:position>
 							</ns6:field>
 							<ns6:field>
 								<ns6:name>author</ns6:name>
 								<ns6:dataType>string</ns6:dataType>
-								<ns6:isArray>false</ns6:isArray>
 								<ns6:position>2</ns6:position>
 							</ns6:field>
 							<ns6:field>
 								<ns6:name>price</ns6:name>
 								<ns6:dataType>double</ns6:dataType>
-								<ns6:isArray>false</ns6:isArray>
 								<ns6:position>3</ns6:position>
 							</ns6:field>
 							<ns6:field>
 								<ns6:name>qty</ns6:name>
 								<ns6:dataType>int</ns6:dataType>
-								<ns6:isArray>false</ns6:isArray>
 								<ns6:position>4</ns6:position>
 							</ns6:field>
 						</ns6:dataSchema>

@@ -42,27 +42,29 @@ public class DerbyBookDatabase {
 		protected final String author;
 		protected final Double price;
 		protected final Integer qty;
+		protected final Boolean isNew;
 
-		private TestEntry(Integer id, String title, String author, Double price, Integer qty) {
+		private TestEntry(Integer id, String title, String author, Double price, Integer qty, Boolean isNew) {
 			this.id = id;
 			this.title = title;
 			this.author = author;
 			this.price = price;
 			this.qty = qty;
+			this.isNew = isNew;
 		}
 	}
 
 	public static final TestEntry[] TEST_DATA = {
-			new TestEntry(1001, ("Java public for dummies"), ("Tan Ah Teck"), 11.11, 11),
-			new TestEntry(1002, ("More Java for dummies"), ("Tan Ah Teck"), 22.22, 22),
-			new TestEntry(1003, ("More Java for more dummies"), ("Mohammad Ali"), 33.33, 33),
-			new TestEntry(1004, ("A Cup of Java"), ("Kumar"), 44.44, 44),
-			new TestEntry(1005, ("A Teaspoon of Java"), ("Kevin Jones"), 55.55, 55),
-			new TestEntry(1006, ("A Teaspoon of Java 1.4"), ("Kevin Jones"), 66.66, 66),
-			new TestEntry(1007, ("A Teaspoon of Java 1.5"), ("Kevin Jones"), 77.77, 77),
-			new TestEntry(1008, ("A Teaspoon of Java 1.6"), ("Kevin Jones"), 88.88, 88),
-			new TestEntry(1009, ("A Teaspoon of Java 1.7"), ("Kevin Jones"), 99.99, 99),
-			new TestEntry(1010, ("A Teaspoon of Java 1.8"), ("Kevin Jones"), null, 1010)
+			new TestEntry(1001, ("Java public for dummies"), ("Tan Ah Teck"), 11.11, 11, true),
+			new TestEntry(1002, ("More Java for dummies"), ("Tan Ah Teck"), 22.22, 22, false),
+			new TestEntry(1003, ("More Java for more dummies"), ("Mohammad Ali"), 33.33, 33, null),
+			new TestEntry(1004, ("A Cup of Java"), ("Kumar"), 44.44, 44, true),
+			new TestEntry(1005, ("A Teaspoon of Java"), ("Kevin Jones"), 55.55, 55, false),
+			new TestEntry(1006, ("A Teaspoon of Java 1.4"), ("Kevin Jones"), 66.66, 66, true),
+			new TestEntry(1007, ("A Teaspoon of Java 1.5"), ("Kevin Jones"), 77.77, 77, false),
+			new TestEntry(1008, ("A Teaspoon of Java 1.6"), ("Kevin Jones"), 88.88, 88, true),
+			new TestEntry(1009, ("A Teaspoon of Java 1.7"), ("Kevin Jones"), 99.99, 99, true),
+			new TestEntry(1010, ("A Teaspoon of Java 1.8"), ("Kevin Jones"), null, 1010, false)
 	};
 
 	// @Configuration
@@ -111,19 +113,21 @@ public class DerbyBookDatabase {
 		sqlQueryBuilder.append("author VARCHAR(50) DEFAULT NULL,");
 		sqlQueryBuilder.append("price FLOAT DEFAULT NULL,");
 		sqlQueryBuilder.append("qty INT DEFAULT NULL,");
+		sqlQueryBuilder.append("isNew BOOLEAN DEFAULT NULL,");
 		sqlQueryBuilder.append("PRIMARY KEY (id))");
 		return sqlQueryBuilder.toString();
 	}
 
 	private static String getInsertQuery() {
-		StringBuilder sqlQueryBuilder = new StringBuilder("INSERT INTO books (id, title, author, price, qty) VALUES ");
+		StringBuilder sqlQueryBuilder = new StringBuilder("INSERT INTO books (id, title, author, price, qty, isNew) VALUES ");
 		for (int i = 0; i < TEST_DATA.length; i++) {
 			sqlQueryBuilder.append("(")
 					.append(TEST_DATA[i].id).append(",'")
 					.append(TEST_DATA[i].title).append("','")
 					.append(TEST_DATA[i].author).append("',")
 					.append(TEST_DATA[i].price).append(",")
-					.append(TEST_DATA[i].qty).append(")");
+					.append(TEST_DATA[i].qty).append(",")
+					.append(TEST_DATA[i].isNew).append(")");
 			if (i < TEST_DATA.length - 1) {
 				sqlQueryBuilder.append(",");
 			}

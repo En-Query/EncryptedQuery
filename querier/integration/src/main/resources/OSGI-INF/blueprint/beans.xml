@@ -96,6 +96,9 @@
 	<reference id="clearTextResponseConverter" interface="org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter"  ext:proxy-method="classes"/>
 	<reference id="executionExporter" interface="org.enquery.encryptedquery.querier.data.transformation.ExecutionExporter" ext:proxy-method="classes"/>
 	<reference id="retrievalUpdater" interface="org.encryptedquery.querier.business.RetrievalUpdater" ext:proxy-method="classes"/>
+	<reference id="dataSourceImporter" interface="org.encryptedquery.querier.business.DataSourceImporter" ext:proxy-method="classes"/>
+	<reference id="datSourceUploader" interface="org.encryptedquery.querier.integration.DataSourceUploader" ext:proxy-method="classes"/>
+	<reference id="resultUploader" interface="org.encryptedquery.querier.integration.ResultsUploader" ext:proxy-method="classes"/>
 	
 	<bean
 		class="org.apache.camel.component.servlet.osgi.OsgiServletRegisterer"

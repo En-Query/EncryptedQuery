@@ -55,6 +55,41 @@ public enum FieldType {
 			return visitor.visitByteList(value);
 		}
 	},
+	BOOLEAN("boolean") {
+
+		@Override
+		public <E> E convert(FieldTypeValueConverterVisitor<E> visitor, Object value) {
+			return visitor.visitBoolean((Boolean) value);
+		}
+
+		@Override
+		public Object convert(FieldTypeProducerVisitor visitor) {
+			return visitor.visitBoolean();
+		}
+
+		@Override
+		public Object convert(FieldTypeUntypedValueConverterVisitor visitor, Object value) {
+			return visitor.visitBoolean(value);
+		}
+	},
+	BOOLEAN_LIST("boolean_list") {
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public <E> E convert(FieldTypeValueConverterVisitor<E> visitor, Object value) {
+			return visitor.visitBooleanList((List<Boolean>) value);
+		}
+
+		@Override
+		public Object convert(FieldTypeProducerVisitor visitor) {
+			return visitor.visitBooleanList();
+		}
+
+		@Override
+		public Object convert(FieldTypeUntypedValueConverterVisitor visitor, Object value) {
+			return visitor.visitBooleanList(value);
+		}
+	},
 	SHORT("short") {
 
 		@Override

@@ -14,6 +14,7 @@ import ScheduleQuery from "../components/ScheduleQuery";
 import QueryResults from "../components/QueryResults";
 import QuerySchedulesStatus from "../components/QuerySchedulesStatus";
 import PageNotFound from "../components/PageNotFound";
+import OfflineMode from "../components/OfflineMode";
 import Versions from "../components/Versions";
 import Overview from "../components/Overview";
 
@@ -31,6 +32,7 @@ export default () => (
         exact
       />
       <Route path="/queryresults" component={QueryResults} exact />
+      <Route path="/offline" component={OfflineMode} exact />
       <Route path="/versions" component={Versions} exact />
       <Route path="/overview" component={Overview} />
       <Route component={PageNotFound} />

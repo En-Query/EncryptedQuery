@@ -50,14 +50,14 @@ function Versions() {
             </Table.Header>
             <Table.Body>
               <Table.Row>
-                <Table.Cell>2.1.4</Table.Cell>
+                <Table.Cell>2.2.0</Table.Cell>
                 <Table.Cell>
-                  <a href="https://github.com/En-Query/EncryptedQuery#new-features">
+                  <a href="https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md#encrypted-query-v220---release-notes">
                     Release Notes
                   </a>
                 </Table.Cell>
                 <Table.Cell>
-                  <a href="#">Documentation</a>
+                  <a href="https://github.com/En-Query/EncryptedQuery/tree/master/doc">Documentation</a>
                 </Table.Cell>
               </Table.Row>
             </Table.Body>
@@ -75,48 +75,59 @@ function Versions() {
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              <Table.Row>
-                <Table.Cell>2.1.3</Table.Cell>
-                <Table.Cell>
-                  <a href="https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md#encrypted-query-v213---release-notes">
-                    Release Notes
-                  </a>
-                </Table.Cell>
-                <Table.Cell>
-                  <a href="#">Documentation</a>
-                </Table.Cell>
-              </Table.Row>
+            <Table.Row>
+            <Table.Cell>2.1.4</Table.Cell>
+            <Table.Cell>
+              <a href="https://github.com/En-Query/EncryptedQuery/blob/v2.1.4/Release-Notes.md#encrypted-query-v214---release-notes">
+                Release Notes
+              </a>
+            </Table.Cell>
+            <Table.Cell>
+            <a href="https://github.com/En-Query/EncryptedQuery/tree/v2.1.4/doc">Documentation</a>
+            </Table.Cell>
+          </Table.Row>
+          <Table.Row>
+          <Table.Cell>2.1.3</Table.Cell>
+          <Table.Cell>
+            <a href="https://github.com/En-Query/EncryptedQuery/blob/v2.1.3/Release-Notes.md#encrypted-query-v213---release-notes">
+              Release Notes
+            </a>
+          </Table.Cell>
+          <Table.Cell>
+          <a href="https://github.com/En-Query/EncryptedQuery/tree/v2.1.3/doc">Documentation</a>
+            	</Table.Cell>
+          	  </Table.Row>
               <Table.Row>
                 <Table.Cell>2.1.2</Table.Cell>
                 <Table.Cell>
-                  <a href="https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md#encrypted-query-v212---release-notes">
+                  <a href="https://github.com/En-Query/EncryptedQuery/blob/v2.1.2/Release-Notes.md#encrypted-query-v212---release-notes">
                     Release Notes
                   </a>
                 </Table.Cell>
                 <Table.Cell>
-                  <a href="#">Documentation</a>
+                <a href="https://github.com/En-Query/EncryptedQuery/tree/v2.1.2/doc">Documentation</a>
                 </Table.Cell>
               </Table.Row>
               <Table.Row>
                 <Table.Cell>2.1.1</Table.Cell>
                 <Table.Cell>
-                  <a href="https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md#changes-in-release-211">
+                  <a href="https://github.com/En-Query/EncryptedQuery/blob/v2.1.1/Release-Notes.md#changes-in-release-211">
                     Release Notes
                   </a>
                 </Table.Cell>
                 <Table.Cell>
-                  <a href="#">Documentation</a>
+                <a href="https://github.com/En-Query/EncryptedQuery/tree/v2.1.1/doc">Documentation</a>
                 </Table.Cell>
               </Table.Row>
               <Table.Row>
                 <Table.Cell>2.1.0</Table.Cell>
                 <Table.Cell>
-                  <a href="https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md#new-with-release-210">
+                  <a href="https://github.com/En-Query/EncryptedQuery/blob/v2.1.0/Release-Notes.md#new-with-release-210">
                     Release Notes
                   </a>
                 </Table.Cell>
                 <Table.Cell>
-                  <a href="#">Documentation</a>
+                <a href="https://github.com/En-Query/EncryptedQuery/tree/v2.1.0/doc">Documentation</a>
                 </Table.Cell>
               </Table.Row>
               <Table.Row>

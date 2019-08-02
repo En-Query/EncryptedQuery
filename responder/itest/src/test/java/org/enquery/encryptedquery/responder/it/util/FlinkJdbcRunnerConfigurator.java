@@ -50,7 +50,7 @@ public class FlinkJdbcRunnerConfigurator {
 
 		properties.put(".jdbc.driver", "org.apache.derby.jdbc.ClientDriver");
 		properties.put(".jdbc.url", "jdbc:derby://localhost/data/derby-data/books");
-		properties.put(".jdbc.query", "Select id, title, author, price, qty From books");
+		properties.put(".jdbc.query", "Select id, title, author, price, qty, isNew From books");
 
 		// paths just needs to exists, no other check is done during initialization
 		properties.put(".application.jar.path", System.getProperty("flink.jdbc.app"));

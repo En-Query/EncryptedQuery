@@ -44,7 +44,6 @@ public class FlinkKafkaRunnerConfigurator {
 		properties.put("data.schema.name", dataSchemaNema);
 		properties.put(".kafka.brokers", "localhost:9092");
 		properties.put(".kafka.topic", "test");
-		properties.put(".kafka.emission.rate.per.second", "100");
 		// properties.put(".kafka.groupId", "integration-test");
 		// properties.put(".stream.window.length.seconds", "10");
 		// properties.put(".stream.runtime.seconds", "60");

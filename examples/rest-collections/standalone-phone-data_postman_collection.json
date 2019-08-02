@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "ac743310-0aca-4c04-8521-40db0c50b227",
-		"name": "Phone-Data-Query copy",
+		"_postman_id": "5d861763-3fa7-4f91-a16f-0b6cbfb1bb50",
+		"name": "Phone-Data-Query",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -15,6 +15,10 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas",
 					"protocol": "http",
@@ -47,10 +51,10 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\"\r\n            },\r\n            {\r\n                \"name\": \"Callee #\"\r\n            },\r\n            {\r\n                \"name\": \"Duration\"\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\"\r\n            }\r\n    ]\r\n}"
+					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
 				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -64,7 +68,7 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"2147483603",
 						"queryschemas"
 					]
 				}
@@ -81,8 +85,12 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/datasources",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/datasources",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -96,7 +104,7 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"3",
 						"datasources"
 					]
 				}
@@ -116,10 +124,10 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"name\":\"Q-Phone-Data\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":3\r\n     },\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n]\r\n}"
+					"raw": "{\r\n  \"name\":\"Q-Phone-Data\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":10\r\n     },\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n],\r\n  \"embedSelector\":\"true\"\r\n}"
 				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas/204/queries",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas/2147483601/queries",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -133,9 +141,9 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"2147483603",
 						"queryschemas",
-						"204",
+						"2147483601",
 						"queries"
 					]
 				}
@@ -155,10 +163,10 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"startTime\":\"2019-07-26T14:17:59.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":1000\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":404\r\n    }\r\n  \r\n}"
+					"raw": "{\r\n  \"startTime\":\"2019-01-31T19:04:59.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":1000\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483606\r\n    }\r\n  \r\n}"
 				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas/204/queries/503/schedules",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483603/queryschemas/2147483601/queries/2147483603/schedules",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -172,11 +180,11 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"2147483603",
 						"queryschemas",
-						"204",
+						"2147483601",
 						"queries",
-						"503",
+						"2147483603",
 						"schedules"
 					]
 				}
@@ -194,8 +202,12 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas/204/queries/503/schedules/604/results",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -209,13 +221,13 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"12",
 						"queryschemas",
-						"204",
+						"14",
 						"queries",
-						"503",
+						"14",
 						"schedules",
-						"604",
+						"28",
 						"results"
 					]
 				}
@@ -238,7 +250,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas/204/queries/503/schedules/604/results/703/retrievals",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results/1/retrievals",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -252,15 +264,15 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"12",
 						"queryschemas",
-						"204",
+						"14",
 						"queries",
-						"503",
+						"14",
 						"schedules",
-						"604",
+						"28",
 						"results",
-						"703",
+						"1",
 						"retrievals"
 					]
 				}
@@ -283,7 +295,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/4/queryschemas/204/queries/503/schedules/604/results/703/retrievals/803/decryptions",
+					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/12/queryschemas/14/queries/14/schedules/28/results/1/retrievals/1/decryptions",
 					"protocol": "http",
 					"host": [
 						"192",
@@ -297,17 +309,17 @@
 						"api",
 						"rest",
 						"dataschemas",
-						"4",
+						"12",
 						"queryschemas",
-						"204",
+						"14",
 						"queries",
-						"503",
+						"14",
 						"schedules",
-						"604",
+						"28",
 						"results",
-						"703",
+						"1",
 						"retrievals",
-						"803",
+						"1",
 						"decryptions"
 					]
 				}
@@ -325,6 +337,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/3/queryschemas/1/queries/1",
 					"protocol": "http",

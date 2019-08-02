@@ -27,4 +27,9 @@
 		<dataType>int</dataType>
 		<position>4</position>
 	</field>
+	<field>
+		<name>isNew</name>
+		<dataType>boolean</dataType>
+		<position>5</position>
+	</field>
 </dataSchema>

@@ -147,13 +147,13 @@ class CreateQuerySchema extends React.Component {
       this.setState({
         selectedFields: [
           ...selectedFields.map(elem =>
-            elem.name !== name
-              ? elem
-              : {
-                  ...elem,
-                  name,
-                  [e.target.name]: e.target.value
-                }
+              elem.name !== name
+                ? elem
+                : {
+                    ...elem,
+                    name,
+                    [e.target.name]: e.target.value
+                  }
           )
         ]
       });
@@ -322,7 +322,7 @@ class CreateQuerySchema extends React.Component {
                               Max Size
                             </Table.HeaderCell>
                             <Table.HeaderCell textAlign="center">
-                              Max Array Elements
+                              MaxArrayElements
                             </Table.HeaderCell>
                           </Table.Row>
                         </Table.Header>

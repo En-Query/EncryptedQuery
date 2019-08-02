@@ -99,20 +99,6 @@ public class ResponderTest {
 		crypto = new PaillierCryptoScheme();
 		crypto.initialize(config);
 
-
-		// responder = new Responder();
-		// responder.setOutputFileName(RESPONSE_FILE_NAME);
-		// responder.setInputDataFile(DATA_FILE_NAME);
-		// responder.setQueryFileName(QUERY_FILE_NAME);
-		// saveQuery(responder.getCrypto());
-		// responder.in
-
-		// crypto = new PaillierCryptoScheme();
-		// crypto.initialize(config);
-		// crypto = responder.getCrypto();
-
-
-
 		log.info("Finished initializing test.");
 	}
 

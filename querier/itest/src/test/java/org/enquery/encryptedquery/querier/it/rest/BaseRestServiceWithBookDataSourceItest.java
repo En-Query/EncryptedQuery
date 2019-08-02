@@ -43,6 +43,7 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
+import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;

@@ -5,11 +5,19 @@
 	<selectorField>title</selectorField>
 	<field>
 		<name>price</name>
-		<size>8</size>
+	</field>
+	<field>
+		<name>author</name>
+		<size>40</size>
+	</field>
+	<field>
+		<name>isNew</name>
+	</field>
+	<field>
+		<name>qty</name>
 	</field>
 	<field>
 		<name>title</name>
-		<size>40</size>
 	</field>
 	<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema">
 		<name>Books</name>
@@ -37,6 +45,11 @@
 			<name>qty</name>
 			<dataType>int</dataType>
 			<position>4</position>
+		</field>
+		<field>
+			<name>isNew</name>
+			<dataType>boolean</dataType>
+			<position>5</position>
 		</field>
 	</dataSchema>
 </querySchema>

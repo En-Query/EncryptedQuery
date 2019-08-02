@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-responder-parent</artifactId>
-		<version>2.1.4</version>
+		<version>2.2.0</version>
 	</parent>
     
     <artifactId>encryptedquery-responder-itests</artifactId>
@@ -206,6 +206,11 @@
         	<artifactId>encryptedquery-flink-kafka-runner</artifactId>
         	<version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-hadoop-mapreduce-runner</artifactId>
+			<version>${project.version}</version>
+        </dependency>
         
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
@@ -291,6 +296,21 @@
 									<outputDirectory>${project.build.directory}/flink/flink-${flink.version}/lib</outputDirectory>
 								</configuration>
 							</execution>
+							<execution>
+								<id>download-hadoop</id>
+								<phase>integration-test</phase>
+								<goals>
+									<goal>wget</goal>
+								</goals>
+								<configuration>
+									<retries>1</retries>
+									<!-- when version is changed, the url and sha512 need to be updated -->
+									<url>http://apache.mirrors.pair.com/hadoop/common/hadoop-${hadoop.version}/hadoop-${hadoop.version}.tar.gz</url>
+									<unpack>true</unpack>
+									<outputDirectory>${project.build.directory}/hadoop</outputDirectory>
+									<sha512>79676a7dadbc4740cb2ff4ae7af75f5b0a45b4748f217f4179ab64827b840eef58c63b9132260c5682cb28b6d12a27d4a4d09a15173aca158fb1fc3cdb0b1609</sha512>
+								</configuration>
+							</execution>
 						</executions>
 					</plugin>
 		            <plugin>
@@ -331,6 +351,23 @@
 		            				</artifactItems>
 		            			</configuration>
 		            		</execution>
+		            		<execution>
+		            			<!-- get the hadoop application jar so we can run it -->
+		            			<id>download-hadoop</id>
+		            			<phase>integration-test</phase>
+		            			<goals>
+		            				<goal>copy</goal>
+		            			</goals>
+		            			<configuration>
+		            				<artifactItems>
+		            					<artifactItem>
+											<groupId>org.enquery.encryptedquery</groupId>
+											<artifactId>encryptedquery-hadoop-mapreduce</artifactId>
+											<version>${project.version}</version>
+		            					</artifactItem>
+		            				</artifactItems>
+		            			</configuration>
+		            		</execution>
 		            	</executions>
 		            </plugin>
 		            <plugin>
@@ -358,8 +395,10 @@
 		            		<systemPropertyVariables>
 		            			<flink.install.dir>${project.build.directory}/flink/flink-${flink.version}</flink.install.dir>
 		            			<kafka.install.dir>${project.build.directory}/kafka/kafka_${kafka.scala.version}-${kafka.version}</kafka.install.dir>
+		            			<hadoop.install.dir>${project.build.directory}/hadoop/hadoop-${hadoop.version}</hadoop.install.dir>
 		            			<flink.jdbc.app>${project.build.directory}/dependency/encryptedquery-flink-jdbc-${project.version}.jar</flink.jdbc.app>
 		            			<flink.kafka.app>${project.build.directory}/dependency/encryptedquery-flink-kafka-${project.version}.jar</flink.kafka.app>
+		            			<hadoop.mr.app>${project.build.directory}/dependency/encryptedquery-hadoop-mapreduce-${project.version}.jar</hadoop.mr.app>
 			                	<db.engine>derbydb</db.engine>
 		            		</systemPropertyVariables>
 		            	</configuration>

@@ -64,7 +64,7 @@ The above query takes care of presenting Trade date in a ISO-8601 format so it c
 This will activate an additional Data Source that can be used in Querier UI to schedule Queries against the XETRA data set.
 
 ### Run the example using the UI.
-Connect to the Querier through a browser (Tested with Chrome)  URL: http://querier_IP:8182/querier/
+Connect to the Querier through a browser (Tested with Chrome)  URL: http://<querier IP>:8182/querier/
 Select `Create Query Schema` menu option.
 Enter a name for the Query Schema. (`QS-Xetra`) Names must be unique!
 Select the `XETRA` data schema to use from the drop down list.   If there are no entries in the list there are no data schemas defined yet.  Make sure the data schemas have been injested into the responder.

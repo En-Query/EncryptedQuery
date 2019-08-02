@@ -38,9 +38,12 @@ import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.commons.io.IOUtils;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Field;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Hits;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.Response;
-import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
 import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
@@ -93,7 +96,7 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 	@Inject
 	private QueryTypeConverter queryConverter;
 	@Inject
-	private CryptoScheme crypto;
+	private DecryptResponse decryptor;
 	@Inject
 	private CryptoSchemeRegistry cryptoSchemeRegistry;
 
@@ -262,7 +265,7 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 	}
 
 	private void validateSingleResult(ExecutionResource execution) throws Exception {
-		tryUntilTrue(40,
+		tryUntilTrue(20,
 				5_000,
 				"Timeout waiting for an execution result.",
 				uri -> retrieveResults(uri).getResultResource().size() > 0,
@@ -285,12 +288,6 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 				resultWithPayload.getWindowStart(),
 				resultWithPayload.getWindowEnd());
 
-		DecryptResponse dr = new DecryptResponse();
-		ExecutorService es = Executors.newCachedThreadPool();
-		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
-		dr.activate();
-
 		queryConverter = new QueryTypeConverter();
 		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
 		queryConverter.initialize();
@@ -301,25 +298,26 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		responseConverter.initialize();
 
 		Response response = responseConverter.toCore(resultWithPayload.getPayload());
-		ClearTextQueryResponse answer = dr.decrypt(response, querier.getQueryKey());
-		answer.forEach(sel -> {
-			log.info("Selector {}", sel);
-			assertEquals("title", sel.getName());
-			sel.forEachHits(h -> {
-				assertEquals("A Cup of Java", h.getSelectorValue());
-				assertEquals(1, h.recordCount());
-				h.forEachRecord(r -> {
-					r.forEachField(f -> {
-						log.info("Field {}.", f);
-						if (f.getName().equalsIgnoreCase("price")) {
-							assertEquals(Double.valueOf("44.44"), f.getValue());
-						} else if (f.getName().equalsIgnoreCase("release_dt")) {
-							assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
-						}
-					});
-				});
-			});
-		});
+		ClearTextQueryResponse answer = decryptor.decrypt(response, querier.getQueryKey());
+		log.info("Decrypted: {}.", answer);
+
+		assertEquals(1, answer.selectorCount());
+		Selector sel = answer.selectorByName("title");
+		assertEquals("title", sel.getName());
+		assertEquals(1, sel.hitCount());
+		Hits h = sel.hitsBySelectorValue("A Cup of Java");
+		assertEquals("A Cup of Java", h.getSelectorValue());
+		assertEquals(1, h.recordCount());
+		Record r = h.recordByIndex(0);
+		assertEquals(4, r.fieldCount());
+		Field f = r.fieldByName("price");
+		assertEquals(Double.valueOf("44.44"), f.getValue());
+		f = r.fieldByName("isNew");
+		assertEquals(Boolean.TRUE, f.getValue());
+		f = r.fieldByName("author");
+		assertEquals("Kumar", f.getValue());
+		f = r.fieldByName("qty");
+		assertEquals(44, f.getValue());
 	}
 
 	private org.enquery.encryptedquery.xml.schema.Configuration makeConfiguration(String offset) {

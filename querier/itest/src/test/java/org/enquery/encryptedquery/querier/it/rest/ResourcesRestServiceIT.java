@@ -67,5 +67,6 @@ public class ResourcesRestServiceIT extends BaseRestServiceItest {
 			map.put(ep.getId(), ep.getSelfUri());
 		}
 		assertEquals("/querier/api/rest/dataschemas", map.get("dataschema"));
+		assertEquals("/querier/api/rest/offline", map.get("offline"));
 	}
 }

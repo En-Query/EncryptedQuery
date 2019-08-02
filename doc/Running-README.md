@@ -1,20 +1,23 @@
-# Running Encrypted Query
+# Running Encrypted Query  (Online Mode)
 
-This document assumes that both Querier and Responder have been properly installed and started.  It may take a few minutes 
-for the responder to ingest the configured data schemas.
+This document assumes that both Querier and Responder have been properly installed and started.  It may take a few minutes for the responder to ingest the configured data schemas.   Online mode is when the Querier and Responder can talk to each other over the network.  Offline mode is used when there is no network connection and data is moved back and forth between the querier and responder through file import/exports.
 
 The basics of creating and runnning an Encrypted Query job are as follows:
 * Create a Data-Source.cfg file which defines the data source.
 * Create a Data-Schema.xml file which defines the fields in the Data source.
-* Load these two files into the Responder to enable running a query against the Data Source.
+* The Data-Source and Data-Schema files are loaded into the Responder to enable running a query against the Data Source.
+* The Data-Source and Data-Schema information is then transferred (Online or Offline) to the Querier.
+* On the Querier A Query-Schema is created from a specific Data-Schema by selecting which fields are to be returned, which field to select results on, etc.
+* Data is then entered to create the actual Query.   A specific Data-Schema and Query-Schema are selected as well as selector values are input to generate an Encrypted Query which will be used by the responder to search a data source.
+* Once the Query has been Encrypted the Data Source to run against is selected as well as the Scheduled time to execute the job.  In the online mode the encrypted query and schedule information is transferred to the responder over the network and the job is scheduled to run at the specified time.  If in offline mode, the query schedule needs to be exported to a file, copied to the responder server, then imported into the responder to be executed.
 
 
 ### Create a DataSource Configuration File
 Create a configuration file for the Data Source (This is the data you want to query against.)
-This configuration file tells the responder where the data is located, what format it is in, which method to use to execute the 
+This configuration file tells the responder where the data is located, what format it is in, which method to use to execute the
 query and other performance parameters set based on the ability of the responder server.
 
-Sample Flink JDBC Data Source Configuration file(lines starting with a # are comment lines):
+Sample Flink JDBC Data Source Configuration file (lines starting with a # are comment lines):
 ```
 # Configuration for a Flink-JDBC Runner on a MariaDB Business Articles table
 name=Flink-JDBC-MariaDB-Business-Articles
@@ -91,7 +94,9 @@ Standalone data source file names need to be unique and start with
 
 
 ###### Apache Flink against JDBC DataSources
-This option allows you to run an encrypted query against a JDBC data source on a Flink cluster.  The JDBC driver jar needs to be installed in the Flink lib directory. Data source file names need to be unique and start with `org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner-` and end with `.cfg`
+This option allows you to run an encrypted query against a JDBC data source on a Flink cluster.  The JDBC driver jar needs to be 
+installed in the Flink lib directory. Data source file names need to be unique and start with
+`org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner-` and end with `.cfg`
 
 
 |Name      |Description|
@@ -201,10 +206,10 @@ Each field in the datasource must be described in the data schema.
 The dataType, and the position in the data source.  The position is used for data 
 formats that do not support access fields by name, for example CSV files, etc.
 
-Note: The position starts at position 0.
-Note: If the data source is a JDBC query, then the position element in the data schema must match the position in the select query. i.e the above data schema references a JDBC data source with the following query:
+** Note: The position starts at position 0.
+** Note: If the data source is a JDBC query, then the position element in the data schema must match the position in the select query. i.e the above data schema references a JDBC data source with the following query:
 
-	.jdbc.query\=SELECT id, companyname, tickersymbol, articledate, articleURL, subject FROM businessarticles
+	.jdbc.query=SELECT id, companyname, tickersymbol, articledate, articleURL, subject FROM businessarticles
 
 After you create a data schema for the data source, place it in the data schema inbox directory in the Responder server: `/opt/enquery/dataschemas/inbox/`
 
@@ -215,7 +220,7 @@ The user interacts with Encrypted Query via REST interfaces or a Querier Web Int
 Substituting the querier server ip address for <querier.ip>
 
 From here, you can perform the following steps:
-
+  
 1. Create query schema
 2. Create query
 3. Schedule the execution of a query

@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "145dfa18-2e1a-4b5a-84f2-14e055ea6942",
-		"name": "Querier copy",
+		"_postman_id": "932aa2f7-544f-4b27-bc6b-48308993c144",
+		"name": "Querier",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -15,6 +15,10 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas",
 					"protocol": "http",
@@ -45,6 +49,10 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602",
 					"protocol": "http",
@@ -78,7 +86,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\"\r\n            },\r\n            {\r\n                \"name\": \"Callee #\"\r\n            },\r\n            {\r\n                \"name\": \"Duration\"\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"size\":30,\r\n            }\r\n    ]\r\n}"
+					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas",
@@ -113,6 +121,10 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602",
 					"protocol": "http",
@@ -149,7 +161,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"name\":\"Q-Phone-Data-2\",\r\n  \"parameters\":{\r\n  \"dataChunkSize\":3,\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n]\r\n}"
+					"raw": "{\r\n  \"name\":\"Q-Phone-Data-2\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":3,\r\n       \"hashBitSize\":15,\r\n       \"paillierBitSize\":3072,\r\n       \"bitSet\":32,\r\n       \"certainty\":128},\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n],\r\n  \"embedSelector\":\"true\"\r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries",
@@ -186,6 +198,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604",
 					"protocol": "http",
@@ -220,6 +236,10 @@
 						"value": "application/vnd.encryptedquery.enclave+json; version=1"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/datasources",
 					"protocol": "http",
@@ -255,7 +275,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"startTime\":\"2019-03-01T14:30:33.000Z\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":2500\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483603\r\n    }\r\n  \r\n}"
+					"raw": "{\r\n  \"startTime\":\"2018-11-21T14:53:59.000E\",\r\n  \"parameters\":{\r\n       \"maxHitsPerSelector\":2500\r\n       },\r\n  \"dataSource\":{\r\n    \"id\":2147483603\r\n    }\r\n  \r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483606/schedules",
@@ -293,6 +313,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results",
 					"protocol": "http",
@@ -331,6 +355,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results/2147483606/retrievals",
 					"protocol": "http",
@@ -371,6 +399,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries/2147483604/schedules/2147483605/results/2147483606/retrievals/2147483607/decryptions",
 					"protocol": "http",

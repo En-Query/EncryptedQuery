@@ -1,6 +1,10 @@
-# Encrypted Query v2.1.4 - Release Notes
+# Encrypted Query v2.2.0 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
+
+#### Changes in release 2.2.0
+* Added support for processing Hadoop data in the responder.  
+* Added offline mode to allow Querier and Responder to function without a direct connection.  Through Karaf Admin commands the user can export data sources, data schemas, and result files from the Responder for import into the querier.  Through the UI and/or Karaf Admin commands the user can import data files from the responder and also export query files to be run on the responder.
 
 #### Changes in release 2.1.4
 * Updated Algorithm used for processing a query on the responder.   The new algorithm changes the processing of data in chunks (Compute Threshold) to procssing individual columns.   This improved performance on standalone processing by ~40%.  
@@ -9,12 +13,12 @@ Encrypted query has been updated to make it more Enterprise ready.   The Querier
   * .algorithm.version=v2  is a new parameter in standalone configuration files.  The default is `v2` if the parameter is not given.
 
 * Updated Field Types to more intuitivly handle arrays.   New field types are ( string, byte, byteArray, char, short, int, long, double, float, ip4, ip6, ISO8601Date )  If a field is an array of one of the prior field types just append `_list` to the end of the data type.
-* When creating a Query Schema the Size is only applicable for String and ByteArray field types.  This parameter is optional but if a value is given that will be the max size for each element of that field to be processed. (i.e. if the Size is set to 20 only the first 20 characters of the field value are processed.  If no size is given then the full field value is processed.
-* When creating a Query Schema the MaxArrayElement field is optional and only available for Array Field Types (those with a "_list" suffix).  If a value is not given then all array elements are processed.  If a value is given then only up to that number of array elements are processed.
+* When creating a Query Schema Size and MaxArrayElement fields are not optional.
+  * If the size value is null then the string or byte array length will be the actual length of the string or byte array value. 
+  * If the MaxArrayElements is null then if the field type is of a `_list` type then all array elements will be processed.  Otherwise only the maxArrayElements designated will be processed.
+
 * Null values are now properly handled in json records
-* Selector values are always embedded in the response and therfore the reference in the UI has been removed.   In prior versions embedding the selector was optional.  
-* When processing in a Flink environment (JDBC or Kafka Streaming) the .flink.parallelism parameter is how many parallel tasks will be used to run the job.  
-* When processing using the GPU column processor in the Flink environment all Flink nodes must have an Nvidia GPU installed. 
+* Selector values are always embedded in the response and therfore the reference in the UI has been removed.   In prior versions embedding the selector was optional.   
 
 #### Changes in release 2.1.3
 * Added GPU processing support for Paillier encryption scheme.  Support is only available for Nvidia GPU's.   To enable GPU support will require an Nvidia video card, Nvidia drivers, and Nvidia CUDA 10.1+ installed on the server.  The software will need to be built on a platform that includes an Nvidia Card, Nvidia drivers, and Nvidia CUDA 10.1+ development tools.  Refer to the Build documentation  [Building-README.md][PlDb] to build with GPU support.
@@ -29,6 +33,7 @@ Encrypted query has been updated to make it more Enterprise ready.   The Querier
    GPUNow           <-- Running thread will immediately begin to use the GPU, oversubscribing GPUs if necessary 
    ```  
    * To enable GPU support on the querier for decryption set the `paillier.decrypt.response.method=GPU` property.    (Default is CPU)
+
 #### Changes in release 2.1.2
 * Fixed bug with ISO8601Date format.
 * Modified Paillier Encryption to enhance decryption performance.
@@ -104,7 +109,3 @@ query.execution.results.path=/opt/enquery/nfsshare-folder
   ```
 * System has not been tested with versions of Java above 1.8
 * The build process will sometimes fail.  Try repeating the build command.   Timing of integration tests and unit tests can be touchy.
-
-[//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
-
-   [PlDb]: <https://github.com/En-Query/EncryptedQuery/blob/master/doc/Building-README.md>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- EncryptedQuery is an open source project allowing user to query databases with queries under homomorphic encryption to securing the query and results set from database owner inspection. 
+	Copyright (C) 2018 EnQuery LLC This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free 
+	Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+	without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details. You should have received a copy 
+	of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. -->
+<xs:schema targetNamespace="http://enquery.net/encryptedquery/execution-export" 
+	xmlns="http://enquery.net/encryptedquery/execution-export"
+	xmlns:ex="http://enquery.net/encryptedquery/execution"
+	xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+
+	<xs:annotation>
+		<xs:documentation>
+			This is the XML format that is generated in the Querier for import into the Responder.
+			It contains full information about a Query Execution for offline mode
+			transmission to Responder.
+		</xs:documentation>
+	</xs:annotation>
+
+	<xs:import namespace="http://enquery.net/encryptedquery/execution" schemaLocation="execution.xsd" />
+
+	<xs:element name="executionExport" type="ExecutionExport" />
+
+	<xs:complexType name="ExecutionExport">
+		<xs:sequence>
+			<xs:element name="item" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="dataSchemaName" type="xs:string" />
+						<xs:element name="dataSourceName" type="xs:string" />
+						<xs:element xmlns="http://enquery.net/encryptedquery/execution" ref="ex:execution" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>

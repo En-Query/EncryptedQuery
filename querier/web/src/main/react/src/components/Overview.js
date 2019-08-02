@@ -66,6 +66,9 @@ const Docs = () => (
           <List.Item>View Results</List.Item>
         </List.List>
       </List.Item>
+      <List.Item>
+        <Link to="overview#offline">Offline Mode</Link>
+      </List.Item>
     </List>
     <Header id="motivation" style={{ padding: "10px 0", fontSize: "2rem" }}>
       Motivation
@@ -129,6 +132,10 @@ const Docs = () => (
     </Header>
     <Header id="query-results" style={{ fontSize: "2rem" }}>
       Query Results
+      <Header.Subheader style={{ fontSize: "1rem" }} />
+    </Header>
+    <Header id="offline-mode" style={{ fontSize: "2rem" }}>
+      Offline Mode
       <Header.Subheader style={{ fontSize: "1rem" }} />
     </Header>
   </React.Fragment>
@@ -230,6 +237,11 @@ export default class Overview extends Component {
                               </Link>
                             </List.Item>
                           </List.List>
+                        </List.Item>
+                        <List.Item>
+                          <Link smooth to="overview#offline-mode">
+                            Offline Mode
+                          </Link>
                         </List.Item>
                       </List>
                     </Sticky>

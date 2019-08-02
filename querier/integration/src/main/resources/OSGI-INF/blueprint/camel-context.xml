@@ -34,6 +34,7 @@
 		<routeContextRef ref="result-routes"/>
 		<routeContextRef ref="retrieval-routes"/>
 		<routeContextRef ref="decryption-routes"/>
+		<routeContextRef ref="offline-routes"/>
 		
 		<!-- Data format to unmarshal DataSources XML returned from Responder  -->
 		<dataFormats>
@@ -65,6 +66,10 @@
 				 contextPath="org.enquery.encryptedquery.xml.schema"
 				 schema="classpath:/org/enquery/encryptedquery/xml/schema/response.xsd"
 			/>
+			
+			<json id="offlineExecutionExportRequest" 
+				library="Jackson" 
+				unmarshalTypeName="org.enquery.encryptedquery.querier.data.entity.json.OfflineExecutionExportRequest"/> 
 				
 		</dataFormats>
 
@@ -635,6 +640,22 @@
 				
 				<to uri="direct:create-decryption"/>
 			</post>
+		</rest>
+		
+		<rest path="/offline" bindingMode="off">
+			
+			<put uri="/datasources">
+				<to uri="direct:/offline/datasources"/>
+			</put>
+			
+ 			<post uri="/executions">
+ 				<to uri="direct:/offline/executions"/>
+			</post>
+			
+			<put uri="/results">
+				<to uri="direct:/offline/results"/>
+			</put>
+			
 		</rest>
 		
 		<route id="resources">

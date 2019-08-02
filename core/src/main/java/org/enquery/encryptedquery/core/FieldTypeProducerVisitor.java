@@ -22,6 +22,10 @@ public interface FieldTypeProducerVisitor {
 	Byte visitByte();
 
 	List<Byte> visitByteList();
+	
+	Boolean visitBoolean();
+
+	List<Boolean> visitBooleanList();
 
 	String visitISO8601Date();
 

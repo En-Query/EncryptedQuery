@@ -21,7 +21,8 @@ export default class TableRowWithSlider extends React.Component {
     super(props);
     const { initialState } = this.props;
     this.state = {
-      fieldCheckbox: initialState
+      fieldCheckbox: initialState,
+      lengthType: ""
     };
   }
 
@@ -57,31 +58,31 @@ export default class TableRowWithSlider extends React.Component {
               {this.props.dataType &&
               (this.props.dataType === "string" ||
                 this.props.dataType === "byteArray") ? (
-                <Input
-                  onChange={e => handleChange(e, name)}
-                  value={this.state.size}
-                  type="number"
-                  name="size"
-                  min="1"
-                  placeholder="1"
-                  disabled={!this.state.fieldCheckbox}
-                />
+            <Input
+              onChange={e => handleChange(e, name)}
+              value={this.state.size}
+              type="number"
+              name="size"
+              min="1"
+              placeholder="1"
+              disabled={!this.state.fieldCheckbox}
+            />
               ) : null}
             </div>
           </Table.Cell>
           <Table.Cell style={{ textAlign: "center" }}>
             <div>
               {listTypes.includes(this.props.dataType) ? (
-                <Input
-                  onChange={e => handleChange(e, name)}
-                  value={this.state.maxArrayElements}
-                  type="number"
-                  name="maxArrayElements"
-                  placeholder="1"
-                  min="1"
-                  max="100"
-                  disabled={!this.state.fieldCheckbox}
-                />
+            <Input
+              onChange={e => handleChange(e, name)}
+              value={this.state.maxArrayElements}
+              type="number"
+              name="maxArrayElements"
+              placeholder="1"
+              min="1"
+              max="100"
+              disabled={!this.state.fieldCheckbox}
+            />
               ) : null}
             </div>
           </Table.Cell>

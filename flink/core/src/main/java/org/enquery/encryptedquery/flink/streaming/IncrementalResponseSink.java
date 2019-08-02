@@ -173,22 +173,20 @@ public class IncrementalResponseSink extends RichSinkFunction<CipherTextAndColum
 	private void append(Path file, CipherTextAndColumnNumber data) throws FileNotFoundException, IOException, XMLStreamException {
 		final boolean newFile = !anyColumsReceived(file);
 
-		if (newFile) {
-			try (OutputStream output = new FileOutputStream(file.toFile(), true);
-					ResponseWriter rw = new ResponseWriter(output);) {
-				rw.writeBeginDocument();
-				rw.writeBeginResponse();
-				rw.write(queryInfo);
-			}
-		}
-
-		if (data.cipherText == null) return;
-
 		try (OutputStream output = new FileOutputStream(file.toFile(), true);
 				PrintWriter pw = new PrintWriter(output);) {
+
 			if (newFile) {
+				try (ResponseWriter rw = new ResponseWriter(output, false);) {
+					rw.writeBeginDocument();
+					rw.writeBeginResponse();
+					rw.write(queryInfo);
+				}
 				pw.println("<resultSet xmlns=\"http://enquery.net/encryptedquery/response\">");
 			}
+
+			if (data.cipherText == null) return;
+
 			pw.print("<result column=\"");
 			pw.print((int) data.col);
 			pw.print("\" value=\"");

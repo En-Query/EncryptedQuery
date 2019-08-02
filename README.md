@@ -1,7 +1,7 @@
-
 # EncryptedQuery
 
-[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.1.4
+[![N|Solid](https://enquery.net/wp-content/uploads/2018/03/EnQuery-logo-400x100.jpg)](https://enquery.net) v2.2.0
+
 
 ## Overview
 
@@ -10,7 +10,10 @@ Encrypted Query is designed to allow a user to query a remote database without r
 Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
-
+2.2.0
+ - Added support for Hadoop processing
+ - Added Offline Mode.  This allows the Querier and Responder to function without direct communication.   Users will import/export files from the servers to perform queries.
+ 
 2.1.4
  - Updated Algorithm for Standalone and Flink JDBC processing methods.   This change improved performance by ~40%.  
  - Updated FieldTypes and UI to simplify creating encrypting queries.
@@ -22,7 +25,7 @@ Full service Integration and Support are available from EnQuery (https://enquery
 2.1.2
  - Fixed bug with ISO8601Date formatting.
  - Change to Paillier Encryption/Decryption to increase performance.   (Note:  This version will no be able to decrypt queries encrypted by prior versions !)
- 
+
 2.1.1
  - Added start/end times for result files in the UI.  Better handling of multiple result files from streaming queries.
  - Reduced logging on Querier side.
@@ -94,3 +97,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
    [PlGd]: https://github.com/En-Query/EncryptedQuery/blob/master/examples/Examples-README.md
    [PlLs]: <https://github.com/En-Query/EncryptedQuery/blob/master/LICENSE>
    [PlRn]: https://github.com/En-Query/EncryptedQuery/blob/master/Release-Notes.md
+   

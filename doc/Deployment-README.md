@@ -5,11 +5,13 @@ Encrypted Query has been developed and tested on Centos 7 OS.  The application i
 Encrypted Query is separated into two pieces (Querier and Responder)  The Querier configures and Encrypts the query.   It is also used to Decrypt the result.   The Responder will run the query to generate a result file.
 The system is designed for the Querier and Responder to run on separate servers.  For testing they can be configured to run on the same server.   Using Apache Flink users can also query against a JDBC database or a Kafka stream.   
 
+(Note: in the steps below substitute the version number 2.x.x with the current version number)
+
 #### Supported Datasets
 * JSON flat file
 * MariaDB/MySQL Databases
 * Kafka Stream of JSON Records
-
+* Hadoop files of JSON Records
 
 ### Building the Project
 
@@ -22,6 +24,8 @@ Apache Flink (https://flink.apache.org/) for distributed processing.   Installat
 MariaDB (https://mariadb.org/) for processing of JDBC data sources.   Installation of MariaDB is beyond the scope of this document.  Refer to the TechMint article for installing MariaDB on Centos 7 (https://www.tecmint.com/install-mariadb-in-centos-7/)
 
 Apache Kafka (https://kafka.apache.org/) for Streaming.   Installation of Apache Kafka is beyond the scope of this document.  Refer to the Apache Kafka Quickstart (https://kafka.apache.org/quickstart/) 
+
+Apache Hadoop (https://hadoop.apache.org/) for Hadoop processing.  Installation of Apache Hadoop is beyond the scope of this document.  Refer to the Apache Hadoop "Getting Started" link from the Hadoop home page.
 
 ### Setup
 The querier and responder are designed to be run on seperate servers but can be configured to run on the same server for testing.  For the setup below it is assumed you downloaded or cloned the application into your `/home` folder.  If the application has been downloaded somewhere else use that location in the below commands.  
@@ -50,6 +54,7 @@ Update the `/opt/enquery/querier/etc/encrypted.query.querier.rest.cfg` file and 
 context.path=/querier
 responder.host=192.168.200.57
 responder.port=8181
+responder.offline=false             <-- Set to true if running in offline mode
 ```
 Update/add the `org.encryptedquery.querier.business.QueryCipher.cfg` file and set the hash bit size for the encryption:
 ```
@@ -72,6 +77,8 @@ paillier.mod.pow.class.name=org.enquery.encryptedquery.encryption.impl.ModPowAbs
 paillier.decrypt.response.method=CPU
 
 ```
+*Increasing Task Count will increase performance.   Recommended to set to 1/2 of the number of cores available on the server.
+*query encryption methods are: (Default, Fast, and FastWithJNI) FastWithJNI uses C native libraries which speeds up encryption and is the recommended setting.
 
 Update the `/opt/enquery/querier/etc/encrypted.query.querier.data.cfg` file and add/update the following to change the storage location of data generated:
 ```
@@ -80,8 +87,6 @@ blob.storage.root.url=file:///opt/enquery/blob-storage/
 ```
 Note: If you set the above locations, be sure to create the folders before running.  Default location for these files are: `/opt/enquery/querier/data/`
 
-*Increasing Task Count will increase performance.   Recommended to set to 1/2 of the number of cores available on the server.
-*query encryption methods are: (Default, Fast, and FastWithJNI) FastWithJNI uses C native libraries which speeds up encryption and is the recommended setting.
 
 If you are using MariaDB as your datastore also update the /opt/enquery/querier/etc/org.ops4j.datasource-querier.cfg file and add/update the following with the specifics of your installation(database server ip, database user/password, database name):
 ```
@@ -103,6 +108,7 @@ $ mkdir -p /opt/enquery/                      <- Parent folder
 $ mkdir -p /opt/enquery/jobs/                 <- Parent folder for job execution configuration 
 $ mkdir -p /opt/enquery/jobs/standalone/      <- Standalone Job Configuration folder
 $ mkdir -p /opt/enquery/jobs/flink/           <- Flink Job configuration folder
+$ mkdir -p /opt/enquery/jobs/hadoop/          <- Hadoop Job configuration folder
 $ mkdir -p /opt/enquery/app-libs/             <- Application Libraries (Standalone, Flink-JDBC, etc)
 $ mkdir -p /opt/enquery/results/              <- Temp folder to hold results as they are generated
 $ mkdir -p /opt/enquery/dataschemas/inbox     <- Inbox for Data Schemas
@@ -116,6 +122,7 @@ $ # Copy over the Application library files
 $ cp /home/encryptedquery/standalone/app/target/encryptedquery-standalone-app-2.x.x.jar /opt/enquery/app-libs/.
 $ cp /home/encryptedquery/flink/jdbc/target/encryptedquery-flink-jdbc-2.x.x.jar /opt/enquery/app-libs/.
 $ cp /home/encryptedquery/flink/kafka/target/encryptedquery-flink-kafka-2.x.x.jar /opt/enquery/app-libs/.
+$ cp /home/encryptedquery/hadoop/mapreduce/target/encryptedquery-hadoop-mapreduce-2.x.x.jar /opt/enquery/app-libs/.
 ```
 **Note: If you are installing both the querier and responder on the same server add another folder for separation (/opt/enquery/responder-app/) and modify the softlink accordingly.
 **Note: If you would like to use MariaDB to store execution information substitute the mariadb responder file (`encryptedquery-responder-dist-mariadb-2.x.x.tar.gz`) for the derby file
@@ -178,6 +185,11 @@ $ cp /home/encryptedquery/examples/standalone/phone-data.tar.gz /opt/enquery/sam
 $ tar -xvf /opt/enquery/sampledata/phone-data.tar.gz
 $ cp /home/encryptedquery/examples/pcap-kafka/pcap-data.tar.gz /opt/enquery/sampledata/.
 $ tar -xvf /opt/enquery/sampledata/pcap-data.tar.gz
+# To run the hadoop examples, create a working folder within hadoop to execute the example
+$ hdfs dfs -mkdir -p /user/enquery/phone-data/data
+$ hdfs dfs -put /opt/enquery/sampledata/phone-data-5K.json /user/enquery/phone-data/data/
+# Set the owner of the HDFS folders/files to enquery
+$ hdfs dfs -chown -R enquery /user/enquery
 ```
 
 #### Starting the Applications

@@ -96,6 +96,7 @@ class DesktopContainer extends Component {
           <Sticky>
             <Menu inverted style={{ margin: 0 }} size="large">
               <Container>
+
                 <Menu.Item
                   className="menu_color_white"
                   as={Link}
@@ -152,6 +153,17 @@ class DesktopContainer extends Component {
                   <Menu.Item
                     className="menu_color_white"
                     as={Link}
+                    to="/offline"
+                    name="offline"
+                    active={activeItem === "offline"}
+                    onClick={this.handleItemClick}
+                    position="right"
+                  >
+                    Offline Mode
+                  </Menu.Item>
+                  <Menu.Item
+                    className="menu_color_white"
+                    as={Link}
                     to="/versions"
                     name="versions"
                     active={activeItem === "versions"}
@@ -159,7 +171,7 @@ class DesktopContainer extends Component {
                     position="right"
                     style={{ textDecoration: "underline" }}
                   >
-                    2.1.4
+                    2.2.0
                   </Menu.Item>
                   <Menu.Item
                     className="menu_color_white"
@@ -386,6 +398,14 @@ const HomepageLayout = () => (
               <List.Content>
                 <List.Description>
                   Status page for scheduled queries
+                </List.Description>
+              </List.Content>
+            </List.Item>
+            <List.Item as={Link} to="/offline">
+              Offline Mode
+              <List.Content>
+                <List.Description>
+                  Ability to do this process while not connected to the responder
                 </List.Description>
               </List.Content>
             </List.Item>

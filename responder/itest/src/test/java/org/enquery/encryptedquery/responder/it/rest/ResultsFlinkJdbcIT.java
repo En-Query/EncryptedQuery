@@ -18,6 +18,7 @@ package org.enquery.encryptedquery.responder.it.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,18 +27,30 @@ import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.karaf.shell.api.console.SessionFactory;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Field;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Hits;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.QuerySchema;
+import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.loader.SchemaLoader;
+import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.it.util.DerbyBookDatabase;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
+import org.enquery.encryptedquery.responder.it.util.KarafController;
+import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
@@ -48,6 +61,7 @@ import org.enquery.encryptedquery.xml.schema.Query;
 import org.enquery.encryptedquery.xml.schema.ResultResource;
 import org.enquery.encryptedquery.xml.schema.ResultResources;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
+import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,6 +86,10 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 	private QueryTypeConverter queryConverter;
 	@Inject
 	protected SessionFactory sessionFactory;
+	@Inject
+	private CryptoSchemeRegistry cryptoSchemeRegistry;
+	@Inject
+	private DecryptResponse decryptor;
 
 	private static final String DATA_SOURCE_NAME = "test-name";
 	private static final Integer DATA_CHUNK_SIZE = 1;
@@ -83,6 +101,7 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 	private FlinkDriver flinkDriver = new FlinkDriver();
 	private DerbyBookDatabase derbyDatabase = new DerbyBookDatabase();
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
+	private KarafController kafkaController;
 
 	@Configuration
 	public Option[] configuration() {
@@ -117,6 +136,7 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 
 		flinkDriver.init();
 		derbyDatabase.init();
+		kafkaController = new KarafController(sessionFactory);
 	}
 
 	@After
@@ -158,9 +178,86 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		ResultResource resultWithPayload = retrieveResult(resource.getSelfUri());
 		assertEquals(resource.getCreatedOn(), resultWithPayload.getCreatedOn());
 		assertNotNull(resultWithPayload.getPayload());
-		// TODO: download and decrypt the response
+
+		validateWithResultCommand(booksDataSchema.getDataSchema().getName(), dataSourceResource.getDataSource().getName(), execution.getId(), resource);
+		validateDecryptedResults(querier, resultWithPayload.getPayload());
 	}
 
+
+	private void validateDecryptedResults(Querier querier, org.enquery.encryptedquery.xml.schema.Response xmlResponse) throws ClassNotFoundException, InstantiationException, IllegalAccessException, InterruptedException, PIRException {
+		queryConverter = new QueryTypeConverter();
+		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
+		queryConverter.initialize();
+
+		ResponseTypeConverter responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoSchemeRegistry);
+		responseConverter.initialize();
+
+		Response response = responseConverter.toCore(xmlResponse);
+		ClearTextQueryResponse answer = decryptor.decrypt(response, querier.getQueryKey());
+		log.info("Decrypted: {}.", answer);
+
+		assertEquals(1, answer.selectorCount());
+		Selector sel = answer.selectorByName("title");
+		assertEquals("title", sel.getName());
+		assertEquals(1, sel.hitCount());
+		Hits h = sel.hitsBySelectorValue("A Cup of Java");
+		assertEquals("A Cup of Java", h.getSelectorValue());
+		assertEquals(1, h.recordCount());
+		Record r = h.recordByIndex(0);
+		assertEquals(4, r.fieldCount());
+		Field f = r.fieldByName("price");
+		assertEquals(Double.valueOf("44.44"), f.getValue());
+		f = r.fieldByName("isNew");
+		assertEquals(Boolean.TRUE, f.getValue());
+		f = r.fieldByName("author");
+		assertEquals("Kumar", f.getValue());
+		f = r.fieldByName("qty");
+		assertEquals(44, f.getValue());
+	}
+
+	/**
+	 * @param dataSchemaId
+	 * @param dataSourceId
+	 * @param executionId
+	 * @throws TimeoutException
+	 */
+	private void validateWithResultCommand(String dataSchemaName, String dataSourceName, int executionId, ResultResource result) throws TimeoutException {
+		String pipe = "|";
+		final String regex = "^" + result.getId() + "\\s*" + pipe + " " + executionId + "\\s*" + pipe;
+		final Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE | Pattern.UNIX_LINES);
+
+		String output = kafkaController.executeCommand("result:list");
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --dataschema \"" + dataSchemaName + "\"");
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --datasource \"" + dataSourceName + "\"");
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --execution " + executionId);
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --dataschema \"" + dataSchemaName + "\" --datasource \"" + dataSourceName + "\"");
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --dataschema \"" + dataSchemaName + "\" --datasource \"" + dataSourceName + "\" --execution " + executionId);
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list --dataschema \"" + dataSchemaName + "\" --execution " + executionId);
+		assertTrue(find(pattern, output));
+
+		output = kafkaController.executeCommand("result:list  --datasource \"" + dataSourceName + "\" --execution " + executionId);
+		assertTrue(find(pattern, output));
+	}
+
+	private boolean find(Pattern pattern, String output) {
+		boolean result = pattern.matcher(output).find(0);
+		log.info("RegEx: '{}' matched: {}.", pattern, result);
+		return result;
+	}
 
 	@Test
 	public void fileAlreadyExistsError() throws Exception {

@@ -55,7 +55,7 @@
 	</field>
 	<field>
 		<name>_source|layers|ip|ip.dst</name>
-		<dataType>ip4</dataType>
+		<dataType>string</dataType>
 		<position>10</position>
 	</field>
 	<field>

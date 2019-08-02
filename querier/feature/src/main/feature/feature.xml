@@ -20,7 +20,7 @@
 		
 	<feature name='encryptedquery-jackson'>
 		<bundle>mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
-		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson-databind.version}</bundle>
 		<bundle>mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.version}</bundle>
 		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
 	</feature>
@@ -155,6 +155,7 @@
         <bundle>mvn:${project.groupId}/encryptedquery-querier-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-data/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-integration/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-querier-admin/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-querier-web/${project.version}</bundle>
         
         <bundle>mvn:commons-fileupload/commons-fileupload/1.4</bundle>

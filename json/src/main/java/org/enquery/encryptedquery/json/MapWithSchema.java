@@ -62,7 +62,8 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 			elementName = key;
 		}
 
-		// log.info("put '{}'='{}' of type {}", elementName, value, (value != null) ? value.getClass().getName() : "null");
+		// log.info("put '{}'='{}' of type {}", elementName, value, (value != null) ?
+		// value.getClass().getName() : "null");
 		// nulls are not added to the map
 		if (value == null) return null;
 
@@ -516,5 +517,29 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	@Override
 	public List<String> visitStringList(Object value) {
 		return convertList(value, v -> visitString(v));
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor#visitBoolean(java.lang.
+	 * Object)
+	 */
+	@Override
+	public Boolean visitBoolean(Object value) {
+		return (value instanceof String) ? Boolean.valueOf((String) value) : (Boolean) value;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor#visitBooleanList(java.
+	 * lang.Object)
+	 */
+	@Override
+	public List<Boolean> visitBooleanList(Object value) {
+		return convertList(value, v -> visitBoolean(v));
 	}
 }

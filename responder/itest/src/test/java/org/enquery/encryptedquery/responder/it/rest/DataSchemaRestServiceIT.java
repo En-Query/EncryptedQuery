@@ -18,16 +18,26 @@ package org.enquery.encryptedquery.responder.it.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.karaf.shell.api.console.SessionFactory;
 import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.responder.data.entity.DataSchema;
 import org.enquery.encryptedquery.responder.data.entity.DataSchemaField;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
+import org.enquery.encryptedquery.responder.it.util.KarafController;
 import org.enquery.encryptedquery.xml.schema.DataSchema.Field;
+import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResources;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,6 +54,8 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 
 	@Inject
 	private DataSchemaService dataSchemaRegistry;
+	@Inject
+	private SessionFactory sessionFactory;
 
 	@Before
 	@Override
@@ -54,6 +66,28 @@ public class DataSchemaRestServiceIT extends BaseRestServiceItest {
 	@Configuration
 	public Option[] configuration() {
 		return super.baseOptions();
+	}
+
+	@Test
+	public void importCommand() throws IOException, TimeoutException, InterruptedException {
+
+		DataSchemaResources dataSchemas = retrieveDataSchemas("/responder/api/rest/dataschemas");
+		assertEquals(0, dataSchemas.getDataSchemaResource().size());
+
+		Path dsfile = Paths.get("data/books-data-schema.xml");
+		IOUtils.copy(
+				this.getClass().getClassLoader().getResourceAsStream("/schemas/books-data-schema.xml"),
+				Files.newOutputStream(dsfile));
+
+		KarafController kc = new KarafController(sessionFactory);
+		String output = kc.executeCommand("dataschema:import -i " + dsfile.toAbsolutePath().toString());
+		assertTrue(output.contains("'Books' data schema added"));
+
+		dataSchemas = retrieveDataSchemas("/responder/api/rest/dataschemas");
+		assertEquals(1, dataSchemas.getDataSchemaResource().size());
+
+		DataSchemaResource resource = dataSchemas.getDataSchemaResource().get(0);
+		assertEquals("Books", resource.getDataSchema().getName());
 	}
 
 	@Test

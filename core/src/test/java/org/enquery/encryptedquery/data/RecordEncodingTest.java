@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.FieldType;
@@ -85,10 +86,11 @@ public class RecordEncodingTest {
 	 * @return
 	 */
 	private boolean equals(Object value1, Object value2) {
+		if (value1 == null && value2 == null) return true;
 		if (value1 instanceof byte[]) {
 			return Arrays.equals((byte[]) value1, (byte[]) value2);
 		}
-		return value1.equals(value2);
+		return Objects.equals(value1, value2);
 	}
 
 	@Test
@@ -250,6 +252,82 @@ public class RecordEncodingTest {
 		}
 	}
 
+	@Test
+	public void testSingleBoolean() throws PIRException {
+		String fieldName = "booleanField";
+		final QuerySchemaElement qsField = qSchema.getElement(fieldName);
+		Validate.notNull(qsField);
+
+		Map<String, Object> rawRecord = new HashMap<>();
+
+		// test true
+		Boolean scalarValue = true;
+		rawRecord.put(fieldName, scalarValue);
+
+		ByteBuffer encodedRecord = encoder.encode(rawRecord);
+		Map<String, Object> decoded = encoder.decode(encodedRecord);
+
+		Boolean actual = (Boolean) decoded.get(fieldName);
+		assertEquals(scalarValue, actual);
+
+		// test false
+		scalarValue = false;
+		rawRecord.put(fieldName, scalarValue);
+
+		encodedRecord = encoder.encode(rawRecord);
+		decoded = encoder.decode(encodedRecord);
+
+		actual = (Boolean) decoded.get(fieldName);
+		assertEquals(scalarValue, actual);
+
+		// test null
+		scalarValue = null;
+		rawRecord.put(fieldName, scalarValue);
+
+		encodedRecord = encoder.encode(rawRecord);
+		decoded = encoder.decode(encodedRecord);
+
+		actual = (Boolean) decoded.get(fieldName);
+		assertEquals(scalarValue, actual);
+	}
+
+	@Test
+	public void testBooleanList() throws PIRException {
+		String fieldName = "booleanListField";
+
+		Map<String, Object> rawRecord = new HashMap<>();
+		List<Boolean> values = Arrays.asList(true, false, null);
+		rawRecord.put(fieldName, values);
+
+		List<Boolean> expectedValues = Arrays.asList(true, false, null);
+
+		QuerySchemaElement qsField = qSchema.getElement(fieldName);
+		Validate.notNull(qsField);
+
+		ByteBuffer encodedRecord = encoder.encode(rawRecord);
+		assertNotNull(encodedRecord);
+		assertTrue(encodedRecord.remaining() > 0);
+
+		Map<String, Object> decoded = encoder.decode(encodedRecord);
+
+		assertEquals(expectedValues, decoded.get(fieldName));
+
+		// Now change Query Schema to return 2 array elements
+		qsField.setMaxArrayElements(2);
+		encodedRecord = encoder.encode(rawRecord);
+		decoded = encoder.decode(encodedRecord);
+
+		expectedValues = Arrays.asList(true, false);
+		assertEquals(expectedValues, decoded.get(fieldName));
+
+		// Now change Query Schema to return 1 array elements
+		qsField.setMaxArrayElements(1);
+		encodedRecord = encoder.encode(rawRecord);
+		decoded = encoder.decode(encodedRecord);
+
+		expectedValues = Arrays.asList(true);
+		assertEquals(expectedValues, decoded.get(fieldName));
+	}
 
 
 	/**
@@ -384,6 +462,16 @@ public class RecordEncodingTest {
 			public List<String> visitStringList() {
 				return Collections.EMPTY_LIST;
 			}
+			
+			@Override
+			public Boolean visitBoolean() {
+				return null;
+			}
+
+			@Override
+			public List<Boolean> visitBooleanList() {
+				return Collections.EMPTY_LIST;
+			}
 		};
 
 		return dataElement.getDataType().convert(visitor);
@@ -460,6 +548,14 @@ public class RecordEncodingTest {
 
 		field = new QuerySchemaElement();
 		field.setName("byteListField");
+		fields.add(field);
+		
+		field = new QuerySchemaElement();
+		field.setName("booleanField");
+		fields.add(field);
+
+		field = new QuerySchemaElement();
+		field.setName("booleanListField");
 		fields.add(field);
 
 		field = new QuerySchemaElement();
@@ -560,6 +656,18 @@ public class RecordEncodingTest {
 		field = new DataSchemaElement();
 		field.setName("byteListField");
 		field.setDataType(FieldType.BYTE_LIST);
+		field.setPosition(pos++);
+		fields.add(field);
+		
+		field = new DataSchemaElement();
+		field.setName("booleanField");
+		field.setDataType(FieldType.BOOLEAN);
+		field.setPosition(pos++);
+		fields.add(field);
+
+		field = new DataSchemaElement();
+		field.setName("booleanListField");
+		field.setDataType(FieldType.BOOLEAN_LIST);
 		field.setPosition(pos++);
 		fields.add(field);
 

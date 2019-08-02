@@ -273,4 +273,26 @@ public class FieldToStringConverter implements FieldTypeValueConverterVisitor<St
 		return Objects.toString(value);
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBoolean(java.lang.
+	 * Boolean)
+	 */
+	@Override
+	public String visitBoolean(Boolean value) {
+		return Objects.toString(value);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBooleanList(java.util.
+	 * List)
+	 */
+	@Override
+	public String visitBooleanList(List<Boolean> value) {
+		return Objects.toString(value);
+	}
 }

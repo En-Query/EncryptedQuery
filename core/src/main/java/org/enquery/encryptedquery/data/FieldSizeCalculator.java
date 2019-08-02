@@ -386,5 +386,29 @@ public class FieldSizeCalculator implements FieldTypeValueConverterVisitor<Integ
 	public Integer visitStringList(List<String> value) {
 		return calculateStringFieldSize(value);
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBoolean(java.lang.
+	 * Boolean)
+	 */
+	@Override
+	public Integer visitBoolean(Boolean value) {
+		return 1;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor#visitBooleanList(java.util.
+	 * List)
+	 */
+	@Override
+	public Integer visitBooleanList(List<Boolean> value) {
+		return calc(value, 1);
+	}
+
 
 }

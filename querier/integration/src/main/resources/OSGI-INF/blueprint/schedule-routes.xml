@@ -78,6 +78,8 @@
 				<simple>${body}</simple>
 			</setProperty>
 			
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
 				<!-- attempt to refresh the Schedule status from responder -->
 				<filter>
 					<simple>${body.status} != 'Complete' &amp;&amp; ${body.responderUri} != null</simple>
@@ -96,6 +98,7 @@
 							${body}
 						)"/>
 				</filter>
+			</filter>
 			
 			<bean ref="scheduleConverter" method="toJSONResponse"/>
 			<to uri="direct:success"/>
@@ -108,7 +111,10 @@
 			
 			<bean ref="scheduleUpdater" method="create(${body}, ${header.query})"/>
 			
-			<inOnly uri="seda:send-schedule-to-responder"/>
+			<filter>
+				<simple>${properties:responder.offline} == false</simple>
+				<inOnly uri="seda:send-schedule-to-responder"/>
+			</filter>
 			
 			<bean ref="scheduleConverter" method="toJSONResponse"/>
 

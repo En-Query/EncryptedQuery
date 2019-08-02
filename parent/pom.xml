@@ -24,7 +24,7 @@
 
 	<groupId>org.enquery.encryptedquery</groupId>
 	<artifactId>encryptedquery-parent</artifactId>
-	<version>2.1.4</version>
+	<version>2.2.0</version>
 	<packaging>pom</packaging>
 
 	<name>EncryptedQuery</name>
@@ -50,7 +50,7 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 
-		<karaf.version>4.2.4</karaf.version>
+		<karaf.version>4.2.6</karaf.version>
 		<osgi.version>6.0.0</osgi.version>
 
 		<scala.version>2.10.4</scala.version>
@@ -77,9 +77,10 @@
 		<jna.version>4.5.1</jna.version>
 		<gmp.version>6.1.1</gmp.version>
 		<jackson.version>2.9.9</jackson.version>
+		<jackson-databind.version>2.9.9.2</jackson-databind.version>
 
 		<pax-exam.version>4.13.1</pax-exam.version>
-		<camel.version>2.23.1</camel.version>
+		<camel.version>2.24.1</camel.version>
 		<java.version>1.8</java.version>
 		<quartz.version>2.2.3</quartz.version>
 
@@ -109,6 +110,8 @@
 		
 		<derby.plugin.version>1.10</derby.plugin.version>
 		<pmd.version>6.9.0</pmd.version>
+		<pmd.rules.dir>${project.basedir}</pmd.rules.dir>
+		<skip.pmd.check>true</skip.pmd.check> 
 	</properties>
 	
 	<dependencyManagement>
@@ -590,7 +593,7 @@
 			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
-				<version>${jackson.version}</version>
+				<version>${jackson-databind.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.jackson.module</groupId>
@@ -626,9 +629,15 @@
                    </dependency>
 				</dependencies>
 				<configuration>
+					<linkXRef>false</linkXRef>
 					<failOnViolation>false</failOnViolation>
 					<printFailingErrors>true</printFailingErrors>
-				</configuration>
+					<verbose>false</verbose>
+					<rulesets>
+						<ruleset>file:///${pmd.rules.dir}/pmd-rules.xml</ruleset>
+        			</rulesets>
+        			<skip>${skip.pmd.check}</skip>
+ 				</configuration>
 				<executions>
 					<execution>
 						<goals>
@@ -790,7 +799,9 @@
 		<module>../health-status</module>
 		<module>../xml</module>
 		<module>../json</module>
+<!--  	<module>../pig</module> -->
 		<module>../flink</module>
+		<module>../hadoop</module>
 		<module>../standalone</module>
 		<module>../querier</module>
 		<module>../responder</module>

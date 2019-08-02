@@ -143,7 +143,7 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		final RowHashMapFunction rowHash = new RowHashMapFunction(queryInfo);
 		final Dispatcher dispatcher = new Dispatcher(bufferSize, query.getQueryInfo().getHashBitSize());
 		final ColumnReduceFunctionV2 columnProcessor = new ColumnReduceFunctionV2(query, config);
-		final FileOutputFormat<Tuple2<Integer, CipherText>> outputFormat = new ResponseFileOutputFormat(queryInfo, config);
+		final FileOutputFormat<Tuple2<Integer, CipherText>> outputFormat = new ResponseFileOutputFormat(queryInfo);
 
 		final String sfn = selectorFieldName;
 

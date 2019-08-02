@@ -18,6 +18,8 @@ package org.enquery.encryptedquery.flink.streaming;
 
 import java.io.Serializable;
 
+import org.enquery.encryptedquery.flink.Buffer;
+
 /**
  * Result of processing a window keyed by the row hash
  */

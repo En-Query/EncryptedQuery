@@ -41,6 +41,19 @@ const offsetOptions = [
   }
 ];
 
+const submissionOptions = [
+  {
+    text: "Save for Export",
+    value: "saveForExport",
+    description: "Schedule will not be exectued immediately"
+  },
+  {
+    text: "Submit Online",
+    value: "submitOnline",
+    description: "Schedule will execute at given time"
+  }
+];
+
 class StreamingParams extends React.Component {
   constructor(props) {
     super(props);
@@ -170,7 +183,8 @@ class ScheduleQuery extends React.Component {
       runTimeSeconds: 1,
       submissionValue: "",
       date: new Date(),
-      checked: false
+      checked: false,
+      submissionRadioValue: "online"
     };
 
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -402,6 +416,49 @@ class ScheduleQuery extends React.Component {
     }
   };
 
+  handleSave = e => {
+    //handle save for export button functionality. The rest service is the same from online submission.
+    // state de-structure
+    const {
+      maxHitsPerSelector,
+      date,
+      dataSourceId,
+      dataSourceSelfUri,
+      schedulesUri
+    } = this.state;
+    axios({
+      method: "post",
+      url: schedulesUri,
+      headers: {
+        Accept: "application/vnd.encryptedquery.enclave+json; version=1",
+        "Content-Type": "application/json"
+      },
+      data: JSON.stringify({
+        startTime: date,
+        parameters: {
+          maxHitsPerSelector: maxHitsPerSelector
+        },
+        dataSource: {
+          id: dataSourceId,
+          selfUri: dataSourceSelfUri
+        }
+      })
+    })
+      .then(response => {
+        console.log(response);
+      })
+      .catch(error => console.log(error.response));
+  };
+
+  handleRadio = (e, { value }) => {
+    this.setState({ submissionRadioValue: value }, () => {
+      console.log(
+        "Submission value from radio group -->",
+        this.state.submissionRadioValue
+      );
+    });
+  };
+
   render() {
     const {
       queryName,
@@ -527,12 +584,49 @@ class ScheduleQuery extends React.Component {
                   </Container>
                 </Segment>
 
-                <Form.Button
-                  positive
-                  fluid
-                  content="Submit Schedule"
-                  style={{ marginTop: "50px" }}
-                />
+                <Segment style={{ padding: "5em 1em" }} vertical>
+                  <Form.Field>
+                    <div style={{ display: "flex" }}>
+                      <label>Submission Choice:</label>
+                      <Popup
+                        trigger={
+                          <Button
+                            icon="info"
+                            type="button"
+                            circular
+                            style={{ marginLeft: "10px", padding: "5px" }}
+                          />
+                        }
+                        content="Online does this, Offline does this.."
+                      />
+                    </div>
+                  </Form.Field>
+                  <Form.Field>
+                    <Radio
+                      label="Online (default)"
+                      name="radioGroup"
+                      value="online"
+                      defaultChecked={true}
+                      checked={submissionRadioValue === "online"}
+                      onChange={this.handleRadio}
+                    />
+                  </Form.Field>
+                  <Form.Field>
+                    <Radio
+                      label="Offline"
+                      name="radioGroup"
+                      value="offline"
+                      checked={submissionRadioValue === "offline"}
+                      onChange={this.handleRadio}
+                    />
+                  </Form.Field>
+                  <Form.Button
+                    positive
+                    fluid
+                    content="Submit Schedule"
+                    style={{ marginTop: "50px" }}
+                  />
+                </Segment>
               </Form>
             </div>
           </div>

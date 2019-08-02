@@ -170,7 +170,7 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 				}
 
 				ingestRecords(ctx, consumerRecords);
-				// consumer.commitAsync();
+				consumer.commitAsync();
 
 				if (log.isDebugEnabled() && consumerRecords.count() > 0) {
 					log.debug("Emitted {} records.", consumerRecords.count());
@@ -197,7 +197,6 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 				// final long timestamp = calcEventTimestamp();
 				synchronized (ctx.getCheckpointLock()) {
 					collect(ctx, record.value(), System.currentTimeMillis());
-					consumer.commitSync();
 				}
 				recordCount++;
 			} catch (Exception e) {

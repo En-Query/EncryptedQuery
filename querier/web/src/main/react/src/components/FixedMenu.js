@@ -61,7 +61,7 @@ class DesktopContainer extends Component {
                 onClick={this.handleItemClick}
                 style={{ textDecoration: "underline" }}
               >
-                2.1.4
+                2.2.0
               </Menu.Item>
 
               <Menu.Menu position="right">
@@ -74,6 +74,16 @@ class DesktopContainer extends Component {
                   position="right"
                 >
                   Docs
+                </Menu.Item>
+                <Menu.Item
+                  as={Link}
+                  to="/offline"
+                  name="offline"
+                  active={activeItem === "admin"}
+                  onClick={this.handleItemClick}
+                  position="right"
+                >
+                  Offline Mode
                 </Menu.Item>
                 <Menu.Item
                   className="menu_color_white"

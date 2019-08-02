@@ -1,0 +1,45 @@
+<!-- EncryptedQuery is an open source project allowing user to query databases 
+     	with queries under homomorphic encryption to securing the query and results 
+	set from database owner inspection. Copyright (C) 2018 EnQuery LLC This program 
+	is free software: you can redistribute it and/or modify it under the terms 
+	of the GNU Affero General Public License as published by the Free Software 
+	Foundation, either version 3 of the License, or (at your option) any later 
+	version. This program is distributed in the hope that it will be useful, 
+	but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+	or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License 
+	for more details. You should have received a copy of the GNU Affero General 
+	Public License along with this program. If not, see <https://www.gnu.org/licenses/>. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.enquery.encryptedquery</groupId>
+		<artifactId>encryptedquery-parent</artifactId>
+		<version>2.2.0</version>
+		<relativePath>../parent</relativePath>
+	</parent>
+
+	<artifactId>encryptedquery-hadoop-parent</artifactId>
+	<packaging>pom</packaging>
+
+	<name>EncryptedQuery :: Hadoop</name>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>biz.aQute.bnd</groupId>
+				<artifactId>bnd-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+	<modules>
+		<module>core</module>
+		<module>mapreduce</module>
+		<module>mapreduce-runner</module>
+	</modules>
+
+</project>
+

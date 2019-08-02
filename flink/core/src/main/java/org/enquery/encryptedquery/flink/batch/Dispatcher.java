@@ -23,8 +23,9 @@ import org.apache.flink.api.common.functions.RichGroupReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
+import org.enquery.encryptedquery.flink.Buffer;
+import org.enquery.encryptedquery.flink.Buffer.Column;
 import org.enquery.encryptedquery.flink.QueueRecord;
-import org.enquery.encryptedquery.flink.batch.Buffer.Column;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,10 +54,10 @@ public class Dispatcher extends RichGroupReduceFunction<QueueRecord, Tuple2<Long
 	public void open(Configuration parameters) throws Exception {
 		buffer = new Buffer(bufferSize, hashBitSize);
 	}
-	
+
 	@Override
 	public void close() throws Exception {
-       log.info("Dispatched {} columns", columnCount);
+		log.info("Dispatched {} columns", columnCount);
 	}
 
 	@Override
@@ -68,7 +69,7 @@ public class Dispatcher extends RichGroupReduceFunction<QueueRecord, Tuple2<Long
 
 		for (QueueRecord entry : values) {
 			try {
-                processRecord(entry, out);
+				processRecord(entry, out);
 			} catch (Exception e) {
 				throw new RuntimeException(String.format("Exception processing record %s.", entry), e);
 			}
@@ -117,7 +118,7 @@ public class Dispatcher extends RichGroupReduceFunction<QueueRecord, Tuple2<Long
 	private void flushRemaining(Collector<Tuple2<Long, Buffer.Column>> out) throws InterruptedException {
 		Column column;
 		while ((column = buffer.peek()) != null) {
-            out.collect(Tuple2.of(column.getColumnNumber(), column));
+			out.collect(Tuple2.of(column.getColumnNumber(), column));
 			buffer.pop();
 			++columnCount;
 		}

@@ -19,7 +19,7 @@
 
 	<feature name='encryptedquery-jackson'>
 		<bundle>mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
-		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson.version}</bundle>
+		<bundle>mvn:com.fasterxml.jackson.core/jackson-databind/${jackson-databind.version}</bundle>
 		<bundle>mvn:com.fasterxml.jackson.core/jackson-annotations/${jackson.version}</bundle>
 		<bundle>mvn:com.fasterxml.jackson.module/jackson-module-jaxb-annotations/${jackson.version}</bundle>
 	</feature>
@@ -59,7 +59,8 @@
      			"org.enquery.encryptedquery.encryption.impl.ModPowAbstractionGMPImpl", \
      			"org.enquery.encryptedquery.responder.flink.jdbc.runner.FlinkJdbcQueryRunner", \
      			"org.enquery.encryptedquery.responder.standalone.runner.StandaloneQueryRunner", \
-     			"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner" \
+     			"org.enquery.encryptedquery.responder.flink.kafka.runner.FlinkKafkaQueryRunner", \
+     			"org.enquery.encryptedquery.responder.hadoop.mapreduce.runner.HadoopMapReduceRunner" \  
      			]
      	</config>
      	
@@ -169,11 +170,13 @@
         <bundle>mvn:${project.groupId}/encryptedquery-responder-business/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-responder-data/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-responder-integration/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-responder-admin/${project.version}</bundle>
 	
 		<!-- the query runners -->
         <bundle>mvn:${project.groupId}/encryptedquery-flink-jdbc-runner/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-standalone-runner/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-flink-kafka-runner/${project.version}</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-hadoop-mapreduce-runner/${project.version}</bundle>  
 	</feature>    	
     	
     <feature name="encryptedquery-responder-mariadb" version="${project.version}"

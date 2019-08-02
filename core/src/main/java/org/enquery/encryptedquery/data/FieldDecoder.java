@@ -341,5 +341,32 @@ public class FieldDecoder implements FieldTypeProducerVisitor {
 	public List<String> visitStringList() {
 		return decodeList(() -> visitString());
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.core.FieldTypeProducerVisitor#visitBoolean()
+	 */
+	@Override
+	public Boolean visitBoolean() {
+		byte value = buffer.get();
+		if (value == -1)
+			return null;
+		else if (value == 0)
+			return Boolean.FALSE;
+		else
+			return Boolean.TRUE;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.core.FieldTypeProducerVisitor#visitBooleanList()
+	 */
+	@Override
+	public List<Boolean> visitBooleanList() {
+		return decodeList(() -> visitBoolean());
+	}
+
 
 }

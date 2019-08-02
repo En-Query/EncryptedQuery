@@ -27,6 +27,10 @@ public interface FieldTypeValueConverterVisitor<E> {
 	E visitByte(Byte value);
 
 	E visitByteList(List<Byte> value);
+	
+	E visitBoolean(Boolean value);
+
+	E visitBooleanList(List<Boolean> value);
 
 	E visitISO8601Date(String value);
 

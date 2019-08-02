@@ -161,7 +161,18 @@ class DesktopContainer extends Component {
                     position="right"
                     style={{ textDecoration: "underline" }}
                   >
-                    2.1.4
+                    2.1.2
+                  </Menu.Item>
+                  <Menu.Item
+                    className="menu_color_white"
+                    as={Link}
+                    to="/offline"
+                    name="offline"
+                    active={activeItem === "offline"}
+                    onClick={this.handleItemClick}
+                    position="right"
+                  >
+                    Offline Mode
                   </Menu.Item>
                 </Menu.Menu>
               </Container>
