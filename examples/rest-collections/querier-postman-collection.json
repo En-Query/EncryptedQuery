@@ -86,7 +86,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"lengthType\":\"variable\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
+					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n               \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n               \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas",
@@ -161,7 +161,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"name\":\"Q-Phone-Data-2\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":3,\r\n       \"hashBitSize\":15,\r\n       \"paillierBitSize\":3072,\r\n       \"bitSet\":32,\r\n       \"certainty\":128},\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n                   \r\n],\r\n  \"embedSelector\":\"true\"\r\n}"
+					"raw": "{\r\n  \"name\":\"Q-Phone-Data-2\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":3,\r\n       \"hashBitSize\":15,\r\n       \"paillierBitSize\":3072,\r\n       \"bitSet\":32,\r\n       \"certainty\":128},\r\n  \"selectorValues\":[\r\n                    \"649-186-8058\",\r\n                    \"275-913-7889\",\r\n                    \"930-429-6348\",\r\n                    \"981-485-4656\",\r\n                    \"797-844-8761\",\r\n                    \"893-324-3654\",\r\n                    \"610-968-2867\",\r\n                    \"445-709-2345\",\r\n                    \"410-409-9985\"\r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas/2147483602/queries",

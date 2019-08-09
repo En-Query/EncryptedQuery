@@ -96,7 +96,6 @@ class DesktopContainer extends Component {
           <Sticky>
             <Menu inverted style={{ margin: 0 }} size="large">
               <Container>
-
                 <Menu.Item
                   className="menu_color_white"
                   as={Link}
@@ -171,7 +170,7 @@ class DesktopContainer extends Component {
                     position="right"
                     style={{ textDecoration: "underline" }}
                   >
-                    2.2.0
+                    2.2.1
                   </Menu.Item>
                   <Menu.Item
                     className="menu_color_white"
@@ -405,7 +404,8 @@ const HomepageLayout = () => (
               Offline Mode
               <List.Content>
                 <List.Description>
-                  Ability to do this process while not connected to the responder
+                  Ability to do this process while not connected to the
+                  responder
                 </List.Description>
               </List.Content>
             </List.Item>

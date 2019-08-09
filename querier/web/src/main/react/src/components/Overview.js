@@ -95,49 +95,6 @@ const Docs = () => (
       All records of the selected data source are scanned during query
       execution.
     </p>
-    <Header
-      id="create-query-schema"
-      style={{ padding: "30px 0", fontSize: "2rem" }}
-    >
-      Create Query Schema
-      <Header.Subheader style={{ fontSize: "1.2rem" }}>
-        BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH
-        BLAH BLAH BLAH BLAH BLAH BLAH BLAH BLAH
-      </Header.Subheader>
-    </Header>
-    <Header id="create-query" style={{ fontSize: "2rem" }}>
-      Create Query
-      <Header.Subheader style={{ fontSize: "1.2rem" }}>
-        {" "}
-        RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT
-        RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT
-        RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT
-        RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT RANDOM TEXT
-        RANDOM TEXT RANDOM TEXT{" "}
-      </Header.Subheader>
-    </Header>
-    <Header id="query-status" style={{ fontSize: "2rem" }}>
-      Query Status
-    </Header>
-    <p style={{ fontSize: "1.2rem" }}>
-      some information on query schema process
-    </p>
-    <Header id="schedule-query" style={{ fontSize: "2rem" }}>
-      Schedule Query
-      <Header.Subheader style={{ fontSize: "1.2rem" }} />
-    </Header>
-    <Header id="query-schedules-status" style={{ fontSize: "2rem" }}>
-      Query Schedules Status
-      <Header.Subheader style={{ fontSize: "1rem" }} />
-    </Header>
-    <Header id="query-results" style={{ fontSize: "2rem" }}>
-      Query Results
-      <Header.Subheader style={{ fontSize: "1rem" }} />
-    </Header>
-    <Header id="offline-mode" style={{ fontSize: "2rem" }}>
-      Offline Mode
-      <Header.Subheader style={{ fontSize: "1rem" }} />
-    </Header>
   </React.Fragment>
 );
 

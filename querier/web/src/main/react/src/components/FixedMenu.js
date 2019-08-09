@@ -61,7 +61,7 @@ class DesktopContainer extends Component {
                 onClick={this.handleItemClick}
                 style={{ textDecoration: "underline" }}
               >
-                2.2.0
+                2.2.1
               </Menu.Item>
 
               <Menu.Menu position="right">

@@ -161,7 +161,7 @@ class DesktopContainer extends Component {
                     position="right"
                     style={{ textDecoration: "underline" }}
                   >
-                    2.1.2
+                    2.2.1
                   </Menu.Item>
                   <Menu.Item
                     className="menu_color_white"
