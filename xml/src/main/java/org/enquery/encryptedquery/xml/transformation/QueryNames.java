@@ -35,5 +35,5 @@ public interface QueryNames {
 	QName NUM_BITS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numBitsPerDataElement");
 	QName DATA_CHUNK_SIZE = new QName(QUERY_NS, "dataChunkSize");
 	QName NUM_PARTITIONS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numPartitionsPerDataElement");
-	// QName EMBED_SELECTOR = new QName(QUERY_NS, "embedSelector");
+	QName FILTER_EXPRESSION = new QName(QUERY_NS, "filterExpression");
 }

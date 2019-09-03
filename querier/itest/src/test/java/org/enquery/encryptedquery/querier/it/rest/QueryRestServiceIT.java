@@ -145,6 +145,7 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		selectorValues.add("432-567-3945");
 		selectorValues.add("534-776-3672");
 		q.setSelectorValues(selectorValues);
+		q.setFilterExpression("duration > 10");
 		return q;
 	}
 
@@ -161,10 +162,12 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 
 		Integer id = Integer.valueOf(created.getData().getId());
 		assertTrue(queryRepo.isGenerated(id));
-		Query updated = queryRepo.find(id);
-		assertNotNull(updated);
-		assertNotNull(updated.getQueryUrl());
-		assertNotNull(updated.getQueryKeyUrl());
+		Query persisted = queryRepo.find(id);
+		assertNotNull(persisted);
+		assertNotNull(persisted.getQueryUrl());
+		assertNotNull(persisted.getQueryKeyUrl());
+		assertEquals(persisted.getFilterExpression(), "duration > 10");
+
 
 		byte[] bytes = IoUtils.toByteArray(queryRepo.loadQueryBytes(id));
 		assertNotNull(bytes);

@@ -71,22 +71,20 @@ public class EncryptQuery {
 			int dataChunkSize,
 			int hashBitSize) throws InterruptedException, PIRException {
 
+		return encrypt(querySchema, selectors, dataChunkSize, hashBitSize, null);
+	}
+
+	public Querier encrypt(QuerySchema querySchema, List<String> selectors, int dataChunkSize, int hashBitSize, String filterExpression) throws PIRException {
 		Validate.notNull(querySchema);
 		Validate.notNull(selectors);
 		Validate.isTrue(selectors.size() > 0);
 		Validate.noNullElements(selectors);
-		// Validate.notNull(config);
 		querySchema.validate();
-		// validateQuerierEncryptionProperties(config);
 		Validate.notNull(crypto);
 
+		logger.info("Encrypting query {} with crypto scheme {}.", querySchema, crypto.name());
+
 		int numSelectors = selectors.size();
-		// int hashBitSize = Integer.parseInt(config.getOrDefault(HASH_BIT_SIZE, "12"));
-		// int bitSet = Integer.parseInt(properties.getProperty(BIT_SET, "32"));
-		// int dataChunkSize = Integer.parseInt(config.getOrDefault(DATA_CHUNK_SIZE, "8"));
-		// int modulusBitSize = Integer.parseInt(properties.getProperty(PAILLIER_BIT_SIZE, "3072"));
-		// int certainty = Integer.parseInt(properties.getProperty(CERTAINTY, "128"));
-		// boolean embedSelector = Boolean.valueOf(config.getOrDefault(EMBEDSELECTOR, "true"));
 
 		KeyPair keyPair = crypto.generateKeyPair();
 
@@ -99,6 +97,7 @@ public class EncryptQuery {
 		queryInfo.setDataChunkSize(dataChunkSize);
 		queryInfo.setQueryName(querySchema.getName());
 		queryInfo.setQuerySchema(querySchema);
+		queryInfo.setFilterExpression(filterExpression);
 
 		// Determine the query vector mappings for the selectors; vecPosition -> selectorNum
 		Map<Integer, Integer> selectorQueryVecMapping = computeSelectorQueryVecMap(queryInfo, selectors);

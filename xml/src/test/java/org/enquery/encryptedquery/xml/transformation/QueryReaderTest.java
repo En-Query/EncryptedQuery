@@ -39,7 +39,7 @@ public class QueryReaderTest {
 			assertEquals(0, (int) queryInfo.getNumBitsPerDataElement());
 			assertEquals(1, queryInfo.getDataChunkSize());
 			assertEquals(0, (int) queryInfo.getNumPartitionsPerDataElement());
-			// assertTrue(queryInfo.isEmbedSelector());
+			assertEquals("price > 10", queryInfo.getFilterExpression());
 
 			QuerySchema querySchema = queryInfo.getQuerySchema();
 			assertNotNull(querySchema);

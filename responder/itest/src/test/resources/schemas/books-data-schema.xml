@@ -32,4 +32,9 @@
 		<dataType>boolean</dataType>
 		<position>5</position>
 	</field>
+	<field>
+		<name>release date</name>
+		<dataType>ISO8601Date</dataType>
+		<position>6</position>
+	</field>
 </dataSchema>

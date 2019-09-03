@@ -280,9 +280,6 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 			// TODO refactor the JPA Execution entity to have field for maxHitsPerSelector, move
 			// away from generic maps
 			Map<String, String> parameters = JSONStringConverter.toMap(execution.getParameters());
-            // Added this for Hadoop execution.  Instead of copying the Query file from one spot to another
-			// then copy it into Hadoop simply pass the location to the Hadoop runner so it is only copied once.
-			parameters.put("queryLocation", execution.getQueryLocation());
 			final Path outputFileName = outputPath.resolve("response-" + execution.getId().toString() + ".xml");
 
 			byte[] handle = null;

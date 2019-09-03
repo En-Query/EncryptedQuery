@@ -17,26 +17,24 @@
 package org.enquery.encryptedquery.hadoop.core;
 
 import org.apache.hadoop.io.IntWritable;
+
 /**
- *  Represents a serializable pair of type {@code <IntWritable,
+ * Represents a serializable pair of type {@code <IntWritable,
  *  IntWritable>}.
  */
-public class IntPairWritable extends PairWritable<IntWritable, IntWritable>
-{
+public class IntPairWritable extends PairWritable<IntWritable, IntWritable> {
 
-  /**
-   *  Creates a pair with newly initialized storage.
-   */
-  public IntPairWritable()
-  {
-    super(new IntWritable(), new IntWritable());
-  }
+	/**
+	 * Creates a pair with newly initialized storage.
+	 */
+	public IntPairWritable() {
+		super(new IntWritable(), new IntWritable());
+	}
 
-  /**
-   *  Creates a pair initialized with the given storage objects.
-   */
-  public IntPairWritable(IntWritable first, IntWritable second)
-  {
-    super(first, second);
-  }
+	/**
+	 * Creates a pair initialized with the given storage objects.
+	 */
+	public IntPairWritable(IntWritable first, IntWritable second) {
+		super(first, second);
+	}
 }

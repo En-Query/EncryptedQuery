@@ -14,34 +14,26 @@
  * You should have received a copy of the GNU Affero General Public License along with this program.
  * If not, see <https://www.gnu.org/licenses/>.
  */
-package org.enquery.encryptedquery.hadoop.core;
+package org.enquery.encryptedquery.filter.eval;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
 /**
- * Ability to read and write objects to/from a stream.
+ *
  */
-public abstract class SerializationService
-{
-  public abstract <T> T read(InputStream stream, Class<T> type) throws IOException;
+public class ErrorListener extends BaseErrorListener {
 
-  public abstract void write(OutputStream w, Storable obj) throws IOException;
-
-  public byte[] toBytes(Storable obj)
-  {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-    try
-    {
-      write(bos, obj);
-    } catch (IOException e)
-    {
-      throw new RuntimeException(e);
-    }
-
-    return bos.toByteArray();
-  }
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.antlr.v4.runtime.ANTLRErrorListener#syntaxError(org.antlr.v4.runtime.Recognizer,
+	 * java.lang.Object, int, int, java.lang.String, org.antlr.v4.runtime.RecognitionException)
+	 */
+	@Override
+	public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+		throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+	}
 }

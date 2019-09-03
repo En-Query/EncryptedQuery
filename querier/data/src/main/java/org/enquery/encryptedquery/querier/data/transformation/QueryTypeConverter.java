@@ -60,6 +60,7 @@ public class QueryTypeConverter {
 		result.setSelectorValues(JSONConverter.toList(jpaQuery.getSelectorValues()));
 		result.setQuerySchema(querySchemaConverter.toResourceIdentifier(jpaQuery.getQuerySchema()));
 		result.setSchedulesUri(registry.schedulesUri(jpaQuery));
+		result.setFilterExpression(jpaQuery.getFilterExpression());
 
 		return queryStatusResolver.resolve(result);
 	}
@@ -77,6 +78,7 @@ public class QueryTypeConverter {
 		result.setParameters(JSONConverter.toString(jsonQuery.getParameters()));
 		result.setSelectorValues(JSONConverter.toString(jsonQuery.getSelectorValues()));
 		result.setQuerySchema(querySchema);
+		result.setFilterExpression(jsonQuery.getFilterExpression());
 
 		return result;
 	}

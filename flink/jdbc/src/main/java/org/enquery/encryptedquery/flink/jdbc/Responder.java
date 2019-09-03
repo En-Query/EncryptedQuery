@@ -28,8 +28,6 @@ public class Responder extends BaseQueryExecutor {
 	private String driverClassName;
 	private String connectionUrl;
 	private String sqlQuery;
-	// private final PirToFlinkTypeConverter pirToFlinkTypeConverter = new
-	// PirToFlinkTypeConverter();
 
 	private Integer fetchSize;
 
@@ -67,6 +65,7 @@ public class Responder extends BaseQueryExecutor {
 		initializeCommon();
 		initializeBatch();
 
+		log.info("Running with query: " + sqlQuery);
 		JDBCSource source = new JDBCSource(sqlQuery,
 				driverClassName,
 				connectionUrl,

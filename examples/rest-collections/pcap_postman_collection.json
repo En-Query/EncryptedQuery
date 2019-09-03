@@ -126,7 +126,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"name\":\"Q-Pcap\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":5\r\n     },\r\n  \"selectorValues\":[\r\n                    \"eth:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:ssh\"\r\n],\r\n  }"
+					"raw": "{\r\n  \"name\":\"Q-Pcap\",\r\n  \"parameters\":{\r\n       \"dataChunkSize\":5\r\n     },\r\n  \"selectorValues\":[\r\n                    \"eth:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:mysql\",\r\n                    \"sll:ethertype:ip:tcp:ssh\"\r\n],\r\n "
 				},
 				"url": {
 					"raw": "http://192.168.200.58:8182/querier/api/rest/dataschemas/2147483601/queryschemas/2147483603/queries",

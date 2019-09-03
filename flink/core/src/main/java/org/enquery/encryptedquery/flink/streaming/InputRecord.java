@@ -17,6 +17,8 @@
 package org.enquery.encryptedquery.flink.streaming;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -24,10 +26,34 @@ import java.util.Map;
  */
 public class InputRecord implements Serializable {
 	private static final long serialVersionUID = 1L;
-	public Object rawData;
 	public Map<String, Object> data;
 	public boolean eof;
 	public long windowMinTimestamp;
 	public long windowMaxTimestamp;
 	public long windowSize;
+
+	@Override
+	public String toString() {
+		final int maxLen = 10;
+		StringBuilder builder = new StringBuilder();
+		builder.append("InputRecord [data=").append(data != null ? toString(data.entrySet(), maxLen) : null)
+				.append(", eof=").append(eof)
+				.append(", windowMinTimestamp=").append(windowMinTimestamp)
+				.append(", windowMaxTimestamp=").append(windowMaxTimestamp)
+				.append(", windowSize=").append(windowSize).append("]");
+		return builder.toString();
+	}
+
+	private String toString(Collection<?> collection, int maxLen) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("[");
+		int i = 0;
+		for (Iterator<?> iterator = collection.iterator(); iterator.hasNext() && i < maxLen; i++) {
+			if (i > 0) builder.append(", ");
+			builder.append(iterator.next());
+		}
+		builder.append("]");
+		return builder.toString();
+	}
+
 }

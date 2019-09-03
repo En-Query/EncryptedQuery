@@ -16,100 +16,52 @@
  */
 package org.enquery.encryptedquery.hadoop.mapreduce;
 
-import java.util.Map;
+import java.nio.file.Path;
 
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.apache.hadoop.mapreduce.Job;
-import org.enquery.encryptedquery.data.QueryInfo;
-import org.enquery.encryptedquery.hadoop.core.HadoopConfigurationProperties;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.enquery.encryptedquery.hadoop.core.IntPairWritable;
 import org.enquery.encryptedquery.hadoop.core.SortDataIntoRowsMapper_v1;
 import org.enquery.encryptedquery.hadoop.core.SortDataIntoRowsReducer_v1;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SortDataIntoRows {
-	
-	public static boolean run(Path inputFile, QueryInfo queryInfo, Map<String, String> jobConfig, FileSystem hdfs, 
-			Path outputPath) throws Exception
-	{
-    	final Logger log = LoggerFactory.getLogger(SortDataIntoRowsMapper_v1.class);
 
-		boolean success = false;
-		
-	    Job job = Job.getInstance(hdfs.getConf(), "EQ-MR-Sort");
-	    job.setSpeculativeExecution(false);
-		String jobName = "EQ-" + queryInfo.getQueryName() + "_Phase-1";
-		job.setJobName(jobName);
-	    
-	    // Set the memory and heap options
-	    if (jobConfig.containsKey(HadoopConfigurationProperties.MR_MAP_MEMORY_MB)) {
-	    	log.info("SortDataIntoRowsMapper Map Memory: {}",jobConfig.get(HadoopConfigurationProperties.MR_MAP_MEMORY_MB) );
-	    	job.getConfiguration().set(HadoopConfigurationProperties.MR_MAP_MEMORY_MB, jobConfig.get(HadoopConfigurationProperties.MR_MAP_MEMORY_MB));
-	    }
-	    if (jobConfig.containsKey(HadoopConfigurationProperties.MR_REDUCE_MEMORY_MB)) {
-	    	log.info("SortDataIntoRowsMapper Reduce Memory: {}",jobConfig.get(HadoopConfigurationProperties.MR_REDUCE_MEMORY_MB) );
-	    	job.getConfiguration().set(HadoopConfigurationProperties.MR_REDUCE_MEMORY_MB, jobConfig.get(HadoopConfigurationProperties.MR_REDUCE_MEMORY_MB));
-	    }
-	    if (jobConfig.containsKey(HadoopConfigurationProperties.MR_MAP_JAVA_OPTS)) {
-	    	log.info("SortDataIntoRowsMapper Map Java Opts: {}",jobConfig.get(HadoopConfigurationProperties.MR_MAP_JAVA_OPTS) );
-	    	job.getConfiguration().set(HadoopConfigurationProperties.MR_MAP_JAVA_OPTS, jobConfig.get(HadoopConfigurationProperties.MR_MAP_JAVA_OPTS));
-	    }
-	    if (jobConfig.containsKey(HadoopConfigurationProperties.MR_REDUCE_JAVA_OPTS)) {
-	    	log.info("SortDataIntoRowsMapper Reduce Java Opts: {}",jobConfig.get(HadoopConfigurationProperties.MR_REDUCE_JAVA_OPTS) );
-	    	job.getConfiguration().set(HadoopConfigurationProperties.MR_REDUCE_JAVA_OPTS, jobConfig.get(HadoopConfigurationProperties.MR_REDUCE_JAVA_OPTS));
-	    }
-	    job.getConfiguration().set("mapreduce.map.speculative", "false");
-	    job.getConfiguration().set("mapreduce.reduce.speculative", "false");
+	public static boolean run(Configuration conf,
+			String inputFiles,
+			Path outputPath) throws Exception {
+		final Logger log = LoggerFactory.getLogger(SortDataIntoRowsMapper_v1.class);
 
-	    job.getConfiguration().set(ResponderProperties.MAX_HITS_PER_SELECTOR, jobConfig.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
-	    job.getConfiguration().setBoolean(ResponderProperties.LIMIT_HITS_PER_SELECTOR, Boolean.valueOf(jobConfig.get(ResponderProperties.LIMIT_HITS_PER_SELECTOR)));
-	    job.getConfiguration().set("dataChunkSize", Integer.toString(queryInfo.getDataChunkSize()));
-	    job.getConfiguration().set(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE, jobConfig.get(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE));
-        job.getConfiguration().set(HadoopConfigurationProperties.HDFSWORKINGFOLDER, jobConfig.get(HadoopConfigurationProperties.HDFSWORKINGFOLDER));
-        
-         job.setInputFormatClass(TextInputFormat.class);
-        FileInputFormat.setInputPaths(job, inputFile);
-        
-	    job.setJarByClass(SortDataIntoRowsMapper_v1.class);
-	    job.setMapperClass(SortDataIntoRowsMapper_v1.class);
+		Job job = Job.getInstance(conf, "EQ-MR-Sort");
 
-	    // mapper outputs (hash, dataElement)
-	    job.setMapOutputKeyClass(IntWritable.class);
-	    job.setMapOutputValueClass(BytesWritable.class);
+		job.setInputFormatClass(TextInputFormat.class);
+		FileInputFormat.setInputPaths(job, inputFiles);
 
-	    // Set the reducer and output params
-	    job.setNumReduceTasks(Integer.valueOf(jobConfig.get(HadoopConfigurationProperties.HADOOP_REDUCE_TASKS)));
+		job.setJarByClass(SortDataIntoRowsMapper_v1.class);
+		job.setMapperClass(SortDataIntoRowsMapper_v1.class);
 
-	    job.setReducerClass(SortDataIntoRowsReducer_v1.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(BytesWritable.class);
 
-	    // reducer outputs ((hash, col), dataBytes)
-	    job.setOutputKeyClass(IntPairWritable.class);
-	    job.setOutputValueClass(BytesWritable.class);
+		job.setReducerClass(SortDataIntoRowsReducer_v1.class);
 
-		// Delete the output directory if it exists
-		if (hdfs.exists(outputPath)) {
-			hdfs.delete(outputPath, true);
-		}
-	    
-	    FileOutputFormat.setOutputPath(job, outputPath);
-	    MultipleOutputs.addNamedOutput(job, HadoopConfigurationProperties.EQ, SequenceFileOutputFormat.class, IntPairWritable.class, BytesWritable.class);
-		// Delete the output directory if it exists
+		// reducer outputs ((hash, col), dataBytes)
+		job.setOutputKeyClass(IntPairWritable.class);
+		job.setOutputValueClass(BytesWritable.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		FileOutputFormat.setOutputPath(job, new org.apache.hadoop.fs.Path(outputPath.toString()));
 
-	    log.info("Starting SortDataIntoRows MapReduce processing.");
-	    // Submit job, wait for completion
-	    success = job.waitForCompletion(true);
+		log.info("Starting SortDataIntoRows MapReduce processing.");
 
-	    return success;
+		// Submit job, wait for completion
+		return job.waitForCompletion(true);
 	}
 
 }

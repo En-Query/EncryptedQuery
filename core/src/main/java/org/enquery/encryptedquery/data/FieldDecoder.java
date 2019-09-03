@@ -20,11 +20,11 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.enquery.encryptedquery.core.FieldTypeProducerVisitor;
-import org.enquery.encryptedquery.utils.ISO8601DateParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,8 +103,8 @@ public class FieldDecoder implements FieldTypeProducerVisitor {
 	 * @see org.enquery.encryptedquery.core.FieldTypeProducerVisitor#visitISO8601Date()
 	 */
 	@Override
-	public String visitISO8601Date() {
-		return ISO8601DateParser.fromLongDate(buffer.getLong());
+	public Instant visitISO8601Date() {
+		return Instant.ofEpochMilli(buffer.getLong());
 	}
 
 	/*
@@ -113,7 +113,7 @@ public class FieldDecoder implements FieldTypeProducerVisitor {
 	 * @see org.enquery.encryptedquery.core.FieldTypeProducerVisitor#visitISO8601DateList()
 	 */
 	@Override
-	public List<String> visitISO8601DateList() {
+	public List<Instant> visitISO8601DateList() {
 		return decodeList(() -> visitISO8601Date());
 	}
 
@@ -341,7 +341,7 @@ public class FieldDecoder implements FieldTypeProducerVisitor {
 	public List<String> visitStringList() {
 		return decodeList(() -> visitString());
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 

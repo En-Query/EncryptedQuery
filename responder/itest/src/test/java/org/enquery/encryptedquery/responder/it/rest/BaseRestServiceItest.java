@@ -70,7 +70,6 @@ public class BaseRestServiceItest extends AbstractResponderItest {
 	protected DefaultCamelContext itCamelContext;
 	protected ProducerTemplate testProducer;
 
-	// protected String dataSchemasUri;
 	protected DataSchema bookCatalogDataSchema;
 	protected DataSchema phoneRecordDataSchema;
 

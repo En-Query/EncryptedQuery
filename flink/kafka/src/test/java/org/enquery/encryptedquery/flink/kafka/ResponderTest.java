@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
+import javax.xml.bind.JAXBException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.configuration.AkkaOptions;
@@ -33,6 +36,7 @@ import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
 import org.enquery.encryptedquery.data.Response;
@@ -45,6 +49,7 @@ import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.utils.FileIOUtils;
+import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.utils.RandomProvider;
 import org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
@@ -113,9 +118,8 @@ public class ResponderTest implements FlinkTypes {
 		responseConverter.initialize();
 
 		decryptor = new DecryptResponse();
-		decryptor.setCrypto(crypto);
+		decryptor.setCryptoRegistry(cryptoRegistry);
 		decryptor.setExecutionService(Executors.newCachedThreadPool());
-		decryptor.activate();
 
 		clearTextResponseConverter = new ClearTextResponseTypeConverter();
 	}
@@ -135,7 +139,7 @@ public class ResponderTest implements FlinkTypes {
 		log.info("Running Kafka Twitter Test");
 		QuerySchema querySchema = createTwitterQuerySchema();
 		Querier querier = createQuerier(Collections.singletonList("Apple"), querySchema);
-		runJob(TWITTER_NO_DELAY_FILE_NAME, querySchema, 10, null);
+		runJob(TWITTER_NO_DELAY_FILE_NAME, querySchema, 10, null, querier.getQuery());
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
 		assertEquals(1, responses.size());
@@ -160,13 +164,79 @@ public class ResponderTest implements FlinkTypes {
 	}
 
 	@Test
+	public void twitterAllRecordsFiltered() throws Exception {
+
+		// no delay between records, they all fit in the same window
+		QuerySchema querySchema = createTwitterQuerySchema();
+		Querier querier = createQuerier(Collections.singletonList("Apple"), querySchema, "timestamp_ms > 1545153625284");
+		runJob(TWITTER_NO_DELAY_FILE_NAME, querySchema, 10, null, querier.getQuery());
+
+		List<ClearTextQueryResponse> responses = decryptResponses(querier);
+		assertEquals(1, responses.size());
+
+		ClearTextQueryResponse answer = responses.get(0);
+		log.info(answer.toString());
+		assertEquals(1, answer.selectorCount());
+		Selector selector = answer.selectorByName("text");
+		assertNotNull(selector);
+		Hits hits = selector.hitsBySelectorValue("Apple");
+		assertNotNull(hits);
+		assertEquals(0, hits.recordCount());
+	}
+
+	@Test
+	public void twitterFilteredAllButOne() throws Exception {
+
+		// no delay between records, they all fit in the same window
+		QuerySchema querySchema = createTwitterQuerySchema();
+		Querier querier = createQuerier(Collections.singletonList("Pear"), querySchema, "timestamp_ms > 1545153625283");
+		runJob(TWITTER_NO_DELAY_FILE_NAME, querySchema, 10, null, querier.getQuery());
+
+		List<ClearTextQueryResponse> responses = decryptResponses(querier);
+		assertEquals(1, responses.size());
+
+		ClearTextQueryResponse answer = responses.get(0);
+		log.info(answer.toString());
+		assertEquals(1, answer.selectorCount());
+		Selector selector = answer.selectorByName("text");
+		assertNotNull(selector);
+		Hits hits = selector.hitsBySelectorValue("Pear");
+		assertNotNull(hits);
+		assertEquals(1, hits.recordCount());
+	}
+
+	/**
+	 * @param singletonList
+	 * @param querySchema
+	 * @param string
+	 * @return
+	 * @throws PIRException
+	 * @throws InterruptedException
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 * @throws JAXBException
+	 */
+	private Querier createQuerier(List<String> selectors, QuerySchema querySchema, String filter) throws InterruptedException, PIRException, FileNotFoundException, IOException, JAXBException {
+		RandomProvider randomProvider = new RandomProvider();
+		EncryptQuery queryEnc = new EncryptQuery();
+		queryEnc.setCrypto(crypto);
+		queryEnc.setRandomProvider(randomProvider);
+		Querier result = queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE, filter);
+
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(result.getQuery()), os);
+		}
+		return result;
+	}
+
+	@Test
 	public void twitterTwoWindows() throws Exception {
 
 		// no delay between records, they all fit in the same window
 		log.info("Running Kafka Twitter Test");
 		QuerySchema querySchema = createTwitterQuerySchema();
 		Querier querier = createQuerier(Collections.singletonList("Apple"), querySchema);
-		runJob(TWITTER_TWO_WINDOWS_FILE_NAME, querySchema, 10, null);
+		runJob(TWITTER_TWO_WINDOWS_FILE_NAME, querySchema, 10, null, querier.getQuery());
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
 		assertEquals(2, responses.size());
@@ -213,7 +283,7 @@ public class ResponderTest implements FlinkTypes {
 		Querier querier = createQuerier(selectors, querySchema);
 
 		// run for max 1 minute with 10s windows
-		runJob(PCAP_TWO_WINDOWS_FILE_NAME, querySchema, 10, 60);
+		runJob(PCAP_TWO_WINDOWS_FILE_NAME, querySchema, 10, 60, querier.getQuery());
 		// runJob(Paths.get("/Users/asoto/pcap-data-12k.json"), querySchema, 10, 60);
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
@@ -264,7 +334,7 @@ public class ResponderTest implements FlinkTypes {
 		Querier querier = createQuerier(Collections.singletonList("eth:ethertype:ip:tcp:mysql"), querySchema);
 
 		// run for max 100s, no delay reading the file, all records go into a single response
-		runJob(PCAP_NO_DELAY_FILE_NAME, querySchema, 10, 30);
+		runJob(PCAP_NO_DELAY_FILE_NAME, querySchema, 10, 30, querier.getQuery());
 
 		List<ClearTextQueryResponse> responses = decryptResponses(querier);
 		assertEquals(1, responses.size());
@@ -291,7 +361,7 @@ public class ResponderTest implements FlinkTypes {
 		}
 	}
 
-	private void runJob(Path fileName, QuerySchema querySchema, int windowSize, Integer maxRuntime) throws Exception {
+	private void runJob(Path fileName, QuerySchema querySchema, int windowSize, Integer maxRuntime, Query query) throws Exception {
 
 		config.put(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS, Integer.toString(windowSize));
 		if (maxRuntime == null) {
@@ -313,7 +383,8 @@ public class ResponderTest implements FlinkTypes {
 			FileTestSource source = new FileTestSource(fileName,
 					RESPONSE_FILE_NAME,
 					responder.getMaxTimestamp(),
-					Time.seconds(windowSize));
+					Time.seconds(windowSize),
+					query);
 
 			Configuration cfg = new Configuration();
 			cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
@@ -343,16 +414,7 @@ public class ResponderTest implements FlinkTypes {
 
 
 	private Querier createQuerier(List<String> selectors, QuerySchema querySchema) throws Exception {
-		RandomProvider randomProvider = new RandomProvider();
-		EncryptQuery queryEnc = new EncryptQuery();
-		queryEnc.setCrypto(crypto);
-		queryEnc.setRandomProvider(randomProvider);
-		Querier result = queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
-
-		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(result.getQuery()), os);
-		}
-		return result;
+		return createQuerier(selectors, querySchema, null);
 	}
 
 	private QuerySchema createTwitterQuerySchema() {

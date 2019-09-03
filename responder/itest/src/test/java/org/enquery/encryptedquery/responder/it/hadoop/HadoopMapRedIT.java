@@ -18,7 +18,6 @@ package org.enquery.encryptedquery.responder.it.hadoop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.io.IOException;
@@ -114,9 +113,8 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 		installBooksDataSchema();
 		booksDataSchema = retrieveDataSchemaByName("Books");
 
-		querier = createQuerier();
 		hadoopDriver.init();
-		hadoopDriver.copyLocalFileToHDFS(System.getProperty("books.test.data.file"), "/user/enquery/data/books.json");
+		hadoopDriver.copyLocalFileToHDFS(System.getProperty("books.test.data.file"), "/user/enquery/sampledata/books.json");
 	}
 
 	@After
@@ -125,27 +123,42 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 	}
 
 	@Test
+	public void happyPathV1() throws Exception {
+		querier = createQuerier();
+		installHadoopDataSource(true);
+		ExecutionResource execution = runQuery();
+		validateSingleResult(execution);
+	}
+
+	@Test
 	public void happyPathV2() throws Exception {
+		querier = createQuerier();
 		installHadoopDataSource(false);
 		ExecutionResource execution = runQuery();
 		validateSingleResult(execution);
 	}
 
 	@Test
-	public void happyPathV1() throws Exception {
-		installHadoopDataSource(true);
+	public void withFilterV2() throws Exception {
+		querier = createQuerier("qty > 100");
+		installHadoopDataSource(false);
 		ExecutionResource execution = runQuery();
-		validateSingleResult(execution);
+		validateNoResult(execution);
 	}
-
 
 	/**
 	 * @param execution
 	 * @throws Exception
 	 */
-	@SuppressWarnings("unused")
 	private void validateNoResult(ExecutionResource execution) throws Exception {
-		assertTrue(retrieveResults(execution.getSelfUri()).getResultResource().size() == 0);
+		ClearTextQueryResponse answer = decryptResult(execution);
+		assertEquals(1, answer.selectorCount());
+		Selector sel = answer.selectorByName("title");
+		assertEquals("title", sel.getName());
+		assertEquals(1, sel.hitCount());
+		Hits h = sel.hitsBySelectorValue(SELECTOR);
+		assertEquals(SELECTOR, h.getSelectorValue());
+		assertEquals(0, h.recordCount());
 	}
 
 	private ExecutionResource runQuery() throws DatatypeConfigurationException, Exception {
@@ -173,21 +186,15 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 		return execution;
 	}
 
-	// private Boolean executionFinished(ExecutionResource execution) {
-	// try {
-	// tryUntilTrue(30,
-	// 5_000,
-	// "Timeout waiting for an execution to finish.",
-	// uri -> retrieveExecution(uri).getExecution().getCompletedOn() != null,
-	// execution.getSelfUri());
-	// return true;
-	// } catch (Exception e) {
-	// e.printStackTrace();
-	// return false;
-	// }
-	// }
-
+	/**
+	 * @param execution
+	 * @throws Exception
+	 */
 	private void validateSingleResult(ExecutionResource execution) throws Exception {
+		validateSingleResult(decryptResult(execution));
+	}
+
+	private ClearTextQueryResponse decryptResult(ExecutionResource execution) throws Exception {
 		tryUntilTrue(20,
 				5_000,
 				"Timeout waiting for an execution result.",
@@ -207,7 +214,7 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 		assertNotNull(resultWithPayload.getWindowStart());
 		assertNotNull(resultWithPayload.getWindowEnd());
 
-		log.info("Result window.start= {}, window.end={}",
+		log.info("Result window.start={}, window.end={}",
 				resultWithPayload.getWindowStart(),
 				resultWithPayload.getWindowEnd());
 
@@ -224,13 +231,16 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 		Response response = responseConverter.toCore(resultWithPayload.getPayload());
 		ClearTextQueryResponse answer = decryptor.decrypt(response, querier.getQueryKey());
 		log.info("Decrypted: {}.", answer);
+		return answer;
+	}
 
+	private void validateSingleResult(ClearTextQueryResponse answer) {
 		assertEquals(1, answer.selectorCount());
 		Selector sel = answer.selectorByName("title");
 		assertEquals("title", sel.getName());
 		assertEquals(1, sel.hitCount());
-		Hits h = sel.hitsBySelectorValue("A Cup of Java");
-		assertEquals("A Cup of Java", h.getSelectorValue());
+		Hits h = sel.hitsBySelectorValue(SELECTOR);
+		assertEquals(SELECTOR, h.getSelectorValue());
 		assertEquals(1, h.recordCount());
 		Record r = h.recordByIndex(0);
 		assertEquals(4, r.fieldCount());
@@ -246,13 +256,17 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 
 
 	private Querier createQuerier() throws Exception {
+		return createQuerier(null);
+	}
+
+	private Querier createQuerier(String filter) throws Exception {
 		byte[] bytes = IOUtils.resourceToByteArray("/schemas/get-price-query-schema.xml",
 				this.getClass().getClassLoader());
 
 		SchemaLoader loader = new SchemaLoader();
 		QuerySchema querySchema = loader.loadQuerySchema(bytes);
 
-		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE, filter);
 	}
 
 
@@ -264,8 +278,9 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 		HadoopJsonRunnerConfigurator runnerConfigurator = new HadoopJsonRunnerConfigurator(confAdmin);
 		runnerConfigurator.create(dataSourceName,
 				dataSchemaName,
-				"Books Json on Hadoop Mapreduce",
-				useVersion1);
+				useVersion1,
+				null,
+				null);
 
 		// give enough time for the QueryRunner to be registered
 		waitUntilQueryRunnerRegistered(dataSourceName);
@@ -277,5 +292,4 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 						.findFirst()
 						.orElse(null);
 	}
-
 }

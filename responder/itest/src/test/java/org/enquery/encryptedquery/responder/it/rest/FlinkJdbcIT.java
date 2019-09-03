@@ -31,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 import javax.inject.Inject;
+import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 
 import org.apache.commons.io.IOUtils;
@@ -50,7 +51,6 @@ import org.enquery.encryptedquery.querier.encrypt.Querier;
 import org.enquery.encryptedquery.responder.it.util.DerbyBookDatabase;
 import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
 import org.enquery.encryptedquery.responder.it.util.KarafController;
-import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.xml.Versions;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
@@ -77,7 +77,7 @@ import org.ops4j.pax.exam.util.Filter;
 
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
-public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
+public class FlinkJdbcIT extends BaseRestServiceItest {
 
 	@Inject
 	@Filter(timeout = 60_000)
@@ -94,14 +94,15 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 	private static final String DATA_SOURCE_NAME = "test-name";
 	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 9;
-	private static final String SELECTOR = "A Cup of Java";
 
 	private DataSchemaResource booksDataSchema;
 	private DataSourceResource dataSourceResource;
 	private FlinkDriver flinkDriver = new FlinkDriver();
 	private DerbyBookDatabase derbyDatabase = new DerbyBookDatabase();
-	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 	private KarafController kafkaController;
+	private Querier querier;
+	private ResponseTypeConverter responseConverter;
+	private int resultId;
 
 	@Configuration
 	public Option[] configuration() {
@@ -137,6 +138,14 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		flinkDriver.init();
 		derbyDatabase.init();
 		kafkaController = new KarafController(sessionFactory);
+
+		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
+		queryConverter.initialize();
+
+		responseConverter = new ResponseTypeConverter();
+		responseConverter.setQueryConverter(queryConverter);
+		responseConverter.setSchemeRegistry(cryptoSchemeRegistry);
+		responseConverter.initialize();
 	}
 
 	@After
@@ -146,58 +155,143 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 
 	@Test
 	public void happyPath() throws Exception {
-		// Add an execution for current time
-		DatatypeFactory dtf = DatatypeFactory.newInstance();
-		Execution ex = new Execution();
-		ex.setSchemaVersion(Versions.EXECUTION_BI);
+
+		ExecutionResource execution = runQuery("/schemas/get-price-query-schema.xml",
+				null,
+				Arrays.asList(new String[] {"A Cup of Java"}));
+
+		ClearTextQueryResponse response = waitAndGetResult(execution);
+
+		validateWithResultCommand(booksDataSchema.getDataSchema().getName(), dataSourceResource.getDataSource().getName(), execution.getId(), resultId);
+		validateDecryptedResults(response);
+	}
+
+	@Test
+	public void filtered() throws Exception {
+
+		// this will return no matched, since author of 'A Cup of Java' is not Kevin Jones, but
+		// Kumar
+		ExecutionResource execution = runQuery("/schemas/get-price-query-schema.xml",
+				"author = 'Kevin Jones'",
+				Arrays.asList(new String[] {"A Cup of Java"}));
+
+		ClearTextQueryResponse answer = waitAndGetResult(execution);
+
+		validateWithResultCommand(booksDataSchema.getDataSchema().getName(), dataSourceResource.getDataSource().getName(), execution.getId(), resultId);
+
+		assertEquals(1, answer.selectorCount());
+		Selector sel = answer.selectorByName("title");
+		assertEquals("title", sel.getName());
+		assertEquals(1, sel.hitCount());
+		Hits h = sel.hitsBySelectorValue("A Cup of Java");
+		assertEquals("A Cup of Java", h.getSelectorValue());
+		assertEquals(0, h.recordCount());
+	}
+
+	@Test
+	public void fileAlreadyExistsError() throws Exception {
 		GregorianCalendar cal = new GregorianCalendar();
-		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
-		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
-		log.info("Schedule job: " + ex);
+		cal.add(GregorianCalendar.MINUTE, 1);
 
-		Querier querier = createQuerier();
-		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
-		ex.setQuery(xmlQuery);
+		ExecutionResource execution = submitExecution("/schemas/get-price-query-schema.xml",
+				null,
+				Arrays.asList(new String[] {"A Cup of Java"}),
+				cal);
 
-		ExecutionResource execution = createExecution(dataSourceResource.getExecutionsUri(), ex);
+		Files.createFile(Paths.get("data", "responses", "response-" + execution.getId() + ".xml"));
 
 		tryUntilTrue(100,
 				3_000,
+				"Timeout waiting for an execution to have error message.",
+				uri -> retrieveExecution(execution.getSelfUri()).getExecution().getErrorMessage() != null,
+				null);
+	}
+
+	private ExecutionResource runQuery(String schemaFileName, String filter, List<String> selectors) throws Exception {
+		ExecutionResource execution = submitExecution(schemaFileName, filter, selectors);
+		assertTrue(executionFinished(execution));
+		return execution;
+	}
+
+	private ExecutionResource submitExecution(String schemaFileName, String filter, List<String> selectors) throws DatatypeConfigurationException, Exception {
+		GregorianCalendar time = new GregorianCalendar();
+		return submitExecution(schemaFileName, filter, selectors, time);
+	}
+
+	private ExecutionResource submitExecution(String schemaFileName, String filter, List<String> selectors, GregorianCalendar time) throws DatatypeConfigurationException, Exception {
+		// Add an execution for current time
+		Execution schedule = new Execution();
+		schedule.setSchemaVersion(Versions.EXECUTION_BI);
+		schedule.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
+		schedule.setScheduledFor(DatatypeFactory.newInstance().newXMLGregorianCalendar(time));
+
+		querier = createQuerier(schemaFileName, filter, selectors);
+
+		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
+		schedule.setQuery(xmlQuery);
+		ExecutionResource execution = createExecution(dataSourceResource.getExecutionsUri(), schedule);
+		log.info("Submitted execution {}", execution);
+		return execution;
+	}
+
+	private Boolean executionFinished(ExecutionResource execution) {
+		try {
+			tryUntilTrue(40,
+					5_000,
+					"Timeout waiting for an execution to finish.",
+					uri -> retrieveExecution(uri).getExecution().getCompletedOn() != null,
+					execution.getSelfUri());
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	private ClearTextQueryResponse waitAndGetResult(ExecutionResource execution) throws Exception {
+		tryUntilTrue(20,
+				5_000,
 				"Timeout waiting for an execution result.",
 				uri -> retrieveResults(uri).getResultResource().size() > 0,
 				execution.getResultsUri());
 
-
 		ResultResources results = retrieveResults(execution.getResultsUri());
 		assertEquals(1, results.getResultResource().size());
-
 		ResultResource resource = results.getResultResource().get(0);
+		resultId = resource.getId();
 		assertNotNull(resource.getId());
 		assertNotNull(resource.getSelfUri());
 
 		ResultResource resultWithPayload = retrieveResult(resource.getSelfUri());
 		assertEquals(resource.getCreatedOn(), resultWithPayload.getCreatedOn());
 		assertNotNull(resultWithPayload.getPayload());
+		assertNotNull(resultWithPayload.getWindowStart());
+		assertNotNull(resultWithPayload.getWindowEnd());
 
-		validateWithResultCommand(booksDataSchema.getDataSchema().getName(), dataSourceResource.getDataSource().getName(), execution.getId(), resource);
-		validateDecryptedResults(querier, resultWithPayload.getPayload());
-	}
+		log.info("Result window.start= {}, window.end={}",
+				resultWithPayload.getWindowStart(),
+				resultWithPayload.getWindowEnd());
 
 
-	private void validateDecryptedResults(Querier querier, org.enquery.encryptedquery.xml.schema.Response xmlResponse) throws ClassNotFoundException, InstantiationException, IllegalAccessException, InterruptedException, PIRException {
-		queryConverter = new QueryTypeConverter();
-		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
-		queryConverter.initialize();
-
-		ResponseTypeConverter responseConverter = new ResponseTypeConverter();
-		responseConverter.setQueryConverter(queryConverter);
-		responseConverter.setSchemeRegistry(cryptoSchemeRegistry);
-		responseConverter.initialize();
-
-		Response response = responseConverter.toCore(xmlResponse);
+		Response response = responseConverter.toCore(resultWithPayload.getPayload());
 		ClearTextQueryResponse answer = decryptor.decrypt(response, querier.getQueryKey());
 		log.info("Decrypted: {}.", answer);
 
+		return answer;
+	}
+
+	private Querier createQuerier(String schemaFileName, String filterExp, List<String> selectors) throws Exception {
+		byte[] bytes = IOUtils.resourceToByteArray(schemaFileName,
+				this.getClass().getClassLoader());
+
+		SchemaLoader loader = new SchemaLoader();
+		QuerySchema querySchema = loader.loadQuerySchema(bytes);
+
+		return querierFactory.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE, filterExp);
+	}
+
+
+	private void validateDecryptedResults(ClearTextQueryResponse answer) throws Exception {
 		assertEquals(1, answer.selectorCount());
 		Selector sel = answer.selectorByName("title");
 		assertEquals("title", sel.getName());
@@ -223,9 +317,9 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 	 * @param executionId
 	 * @throws TimeoutException
 	 */
-	private void validateWithResultCommand(String dataSchemaName, String dataSourceName, int executionId, ResultResource result) throws TimeoutException {
+	private void validateWithResultCommand(String dataSchemaName, String dataSourceName, int executionId, int resultId) throws TimeoutException {
 		String pipe = "|";
-		final String regex = "^" + result.getId() + "\\s*" + pipe + " " + executionId + "\\s*" + pipe;
+		final String regex = "^" + resultId + "\\s*" + pipe + " " + executionId + "\\s*" + pipe;
 		final Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE | Pattern.UNIX_LINES);
 
 		String output = kafkaController.executeCommand("result:list");
@@ -257,43 +351,5 @@ public class ResultsFlinkJdbcIT extends BaseRestServiceItest {
 		boolean result = pattern.matcher(output).find(0);
 		log.info("RegEx: '{}' matched: {}.", pattern, result);
 		return result;
-	}
-
-	@Test
-	public void fileAlreadyExistsError() throws Exception {
-		Querier querier = createQuerier();
-		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
-
-
-		// schedule for next minute so we have time to create the file to force error
-		DatatypeFactory dtf = DatatypeFactory.newInstance();
-		GregorianCalendar cal = new GregorianCalendar();
-		cal.add(GregorianCalendar.MINUTE, 1);
-
-		// Now add an execution and test its retrieval
-		Execution ex = new Execution();
-		ex.setSchemaVersion(Versions.EXECUTION_BI);
-		ex.setScheduledFor(dtf.newXMLGregorianCalendar(cal));
-		ex.setUuid(UUID.randomUUID().toString().replaceAll("-", ""));
-		ex.setQuery(xmlQuery);
-		ExecutionResource created = createExecution(dataSourceResource.getExecutionsUri(), ex);
-
-		Files.createFile(Paths.get("data", "responses", "response-" + created.getId() + ".xml"));
-
-		tryUntilTrue(100,
-				3_000,
-				"Timeout waiting for an execution to have error message.",
-				uri -> retrieveExecution(created.getSelfUri()).getExecution().getErrorMessage() != null,
-				null);
-	}
-
-	private Querier createQuerier() throws Exception {
-		byte[] bytes = IOUtils.resourceToByteArray("/schemas/get-price-query-schema.xml",
-				this.getClass().getClassLoader());
-
-		SchemaLoader loader = new SchemaLoader();
-		QuerySchema querySchema = loader.loadQuerySchema(bytes);
-
-		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
 }

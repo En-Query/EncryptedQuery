@@ -16,12 +16,18 @@
  */
 package org.enquery.encryptedquery.utils;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.TimeZone;
+
 /**
  * Class to parse a date in ISO86091 format
  * 
@@ -35,8 +41,11 @@ public class ISO8601DateParser {
 	private static TimeZone utc = TimeZone.getTimeZone("UTC");
 
 	private static final DateTimeFormatter inputFormat = new DateTimeFormatterBuilder()
+			// just the date with no time
+			.append(DateTimeFormatter.ISO_LOCAL_DATE)
+			.optionalStart().appendLiteral('T').append(DateTimeFormatter.ISO_LOCAL_TIME).optionalEnd()
 			// date/time
-			.append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+			// .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 			// offset (hh:mm - "+00:00" when it's zero)
 			.optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
 			// offset (hhmm - "+0000" when it's zero)
@@ -48,18 +57,36 @@ public class ISO8601DateParser {
 			// create formatter
 			.toFormatter();
 
+	public static Date getDate() {
+		return Date.from(Clock.systemUTC().instant());
+	}
+
+	public static Instant getInstant(String isoDate) {
+		TemporalAccessor dt = inputFormat.parseBest(isoDate, ZonedDateTime::from, LocalDateTime::from, LocalDate::from);
+		if (dt instanceof ZonedDateTime) {
+			return ((ZonedDateTime) dt).toInstant();
+		} else if (dt instanceof LocalDateTime) {
+			return ((LocalDateTime) dt).toInstant(ZoneOffset.UTC);
+		}
+		return ((LocalDate) dt).atStartOfDay(utc.toZoneId()).toInstant();
+	}
+
 	public static Date getDate(String isoDate) {
-		return Date.from(ZonedDateTime.parse(isoDate, inputFormat).toInstant());
+		return Date.from(getInstant(isoDate));
 	}
 
 	public static long getLongDate(String isoDate) {
-		return getDate(isoDate).getTime();
+		return getInstant(isoDate).toEpochMilli();
 	}
 
-	public static String fromLongDate(long dateLongFormat) {
-		Instant instant = Instant.ofEpochMilli(dateLongFormat);
+	public static String fromLongDate(long dateLong) {
+		return fromInstant(Instant.ofEpochMilli(dateLong));
+	}
+
+	public static String fromInstant(Instant instant) {
 		ZonedDateTime zonedDateTime = instant.atZone(utc.toZoneId());
 		return zonedDateTime.format(DateTimeFormatter.ISO_INSTANT);
 	}
+
 }
 

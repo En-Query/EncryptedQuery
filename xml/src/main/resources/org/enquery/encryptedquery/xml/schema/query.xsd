@@ -39,6 +39,7 @@
 			<xs:element name="numBitsPerDataElement" type="xs:int" minOccurs="0" />
 			<xs:element name="dataChunkSize" type="xs:int" />
 			<xs:element name="numPartitionsPerDataElement" type="xs:int" minOccurs="0" />
+			<xs:element name="filterExpression" type="xs:string" minOccurs="0" />
 			<xs:element ref="qschema:querySchema" />
 		</xs:sequence>
 	</xs:complexType>

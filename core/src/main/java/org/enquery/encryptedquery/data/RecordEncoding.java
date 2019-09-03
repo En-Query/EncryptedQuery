@@ -98,16 +98,13 @@ public class RecordEncoding {
 		// write the record size (encoded)
 		int recordSize = calculateRecordSize(recordData);
 		if (log.isDebugEnabled()) {
-//			log.debug("Encoding record size as: {} bytes.", recordSize);
+			log.debug("Encoding record size as: {} bytes.", recordSize);
 		}
 
 		// encode the record size, allocate buffer and store it
 		byte[] recordSizeBytes = varIntEncoder.encodeNonnegative64(recordSize);
 		final ByteBuffer buffer = ByteBuffer.allocate(recordSize + recordSizeBytes.length);
 		buffer.put(recordSizeBytes);
-
-		// ByteBuffer fieldBuffer = buffer.slice();
-		// fieldBuffer.limit(recordSize);
 
 		// Add the embedded selector
 		writeSelector(recordData, buffer);
@@ -129,7 +126,8 @@ public class RecordEncoding {
 			Validate.notNull(dse, "Field '%s' not found in data schema.", qse.getName());
 
 			if (debugging) {
-//				log.debug("Before writing field '{}' offset is {}.", qse.getName(), buffer.position());
+				log.debug("Before writing field '{}' offset is {}.", qse.getName(),
+						buffer.position());
 			}
 
 			fieldEncoder.setFieldName(dse.getName());
@@ -141,7 +139,8 @@ public class RecordEncoding {
 
 			dataType.convert(fieldEncoder, fieldValue);
 			if (debugging) {
-	//			log.debug("After writing field '{}' offset is {}.", qse.getName(), buffer.position());
+				log.debug("After writing field '{}' offset is {}.", qse.getName(),
+						buffer.position());
 			}
 		}
 	}
@@ -182,7 +181,8 @@ public class RecordEncoding {
 		int result = calculateFieldSize(dse, qse, data);
 
 		if (log.isDebugEnabled()) {
-//			log.debug("Size of field '{}' of type '{}' is {}", fieldName, dse.getDataType(), result);
+			log.debug("Size of field '{}' of type '{}' is {}", fieldName, dse.getDataType(),
+					result);
 		}
 
 		return result;
@@ -206,16 +206,17 @@ public class RecordEncoding {
 		final boolean debugging = log.isDebugEnabled();
 
 		Map<String, Object> result = new HashMap<>();
+		// first must read record length
 		int recordLength = (int) varIntEncoder.decodeNonnegative64(recordBuffer);
 
 		if (debugging) {
-//			log.debug("Decoded record size as: {} bytes.", recordLength);
+			log.debug("Decoded record size as: {} bytes.", recordLength);
 		}
 
 		embeddedSelector = readEmbeddedSelector(recordBuffer);
 
 		if (debugging) {
-//			log.debug("Read embedded selector: {}.", embeddedSelector);
+			log.debug("Read embedded selector: {}.", embeddedSelector);
 		}
 
 		result.putAll(readFields(recordBuffer));
@@ -247,7 +248,8 @@ public class RecordEncoding {
 			Validate.notNull(dse, "Field '%s' not found in data schema.", qse.getName());
 
 			if (debugging) {
-//				log.debug("Before reading field '{}' offset is {}.", qse.getName(), buffer.position());
+				log.debug("Before reading field '{}' offset is {}.", qse.getName(),
+						buffer.position());
 			}
 
 			fieldDecoder.setFieldName(dse.getName());
@@ -255,7 +257,8 @@ public class RecordEncoding {
 			Object value = dataType.convert(fieldDecoder);
 			result.put(dse.getName(), value);
 			if (debugging) {
-//				log.debug("After reading field '{}' = {} offset is {}.", qse.getName(), value, buffer.position());
+				log.debug("After reading field '{}' = {} offset is {}.", qse.getName(), value,
+						buffer.position());
 			}
 		}
 

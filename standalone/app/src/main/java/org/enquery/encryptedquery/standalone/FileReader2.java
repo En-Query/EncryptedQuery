@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.RecordEncoding;
+import org.enquery.encryptedquery.filter.RecordFilter;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
@@ -50,6 +51,7 @@ public class FileReader2 implements Callable<Long> {
 	private final Integer maxHitsPerSelector;
 	private final AtomicLong globalRecordsRead;
 	private AtomicLong lineNumber = new AtomicLong(0);
+	private long skippedCount;
 
 	// keeps track of how many hits a given
 	// selector has
@@ -62,6 +64,7 @@ public class FileReader2 implements Callable<Long> {
 	private final BlockingQueue<Record> outputQueue;
 	private final RecordEncoding recordEncoding;
 	private final JSONStringConverter jsonConverter;
+	private final RecordFilter recordFilter;
 
 	/**
 	 * 
@@ -81,6 +84,14 @@ public class FileReader2 implements Callable<Long> {
 
 		recordEncoding = new RecordEncoding(queryInfo);
 		jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
+
+		String filterExpr = queryInfo.getFilterExpression();
+		if (filterExpr != null) {
+			recordFilter = new RecordFilter(filterExpr);
+			log.info("Initialized using filter expression: '{}'", filterExpr);
+		} else {
+			recordFilter = null;
+		}
 	}
 
 	/*
@@ -94,6 +105,7 @@ public class FileReader2 implements Callable<Long> {
 
 		lineNumber.set(0);
 		globalRecordsRead.set(0);
+		skippedCount = 0;
 
 		try (Stream<String> lines = Files.lines(inputDataFile)) {
 			lines.forEach(line -> {
@@ -102,6 +114,7 @@ public class FileReader2 implements Callable<Long> {
 				} catch (PIRException | InterruptedException e) {
 					throw new RuntimeException("Error in file '" + inputDataFile + "' line number: " + lineNumber.get(), e);
 				}
+				lineNumber.incrementAndGet();
 			});
 			sendEof();
 		}
@@ -113,7 +126,11 @@ public class FileReader2 implements Callable<Long> {
 		}
 
 		if (log.isInfoEnabled()) {
-			log.info("Read {} records for processing", numFormat.format(lineNumber.get()));
+			log.info("Read {}, processed {}, and skipped {} records.",
+					numFormat.format(lineNumber.get()),
+					numFormat.format(globalRecordsRead.get()),
+					numFormat.format(skippedCount));
+
 			if (rowIndexOverflowCounter.size() > 0) {
 				log.warn("{} Row Hashs overflowed because of MaxHitsPerSelector.  Increase MaxHitsPerSelector to reduce this if resources allow.", rowIndexOverflowCounter.size());
 				if (log.isDebugEnabled()) {
@@ -139,23 +156,19 @@ public class FileReader2 implements Callable<Long> {
 	}
 
 	private void processLine(String line) throws PIRException, InterruptedException {
-		Map<String, Object> jsonData = null;
+		Map<String, Object> record = null;
 		try {
-			jsonData = jsonConverter.toStringObjectFlatMap(line);
+			record = jsonConverter.toStringObjectFlatMap(line);
 		} catch (Exception e) {
+			skippedCount++;
 			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
 			return;
 		}
 
-		if (jsonData != null && jsonData.size() > 0) {
-			processRow(jsonData);
-			lineNumber.incrementAndGet();
-		} else if (jsonData.size() < 1) {
-			log.warn("jsonData has no data, input line: {}", line);
-			return;
+		if (recordFilter == null || recordFilter.satisfiesFilter(record)) {
+			processRow(record);
 		} else {
-			log.warn("jsonData is null, input line: {}", line);
-			return;
+			skippedCount++;
 		}
 	}
 
@@ -168,7 +181,6 @@ public class FileReader2 implements Callable<Long> {
 			return;
 		}
 
-		// try {
 		final int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
 
 		if (maxHitsPerSelector == null) {

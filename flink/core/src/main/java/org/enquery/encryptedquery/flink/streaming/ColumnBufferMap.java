@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.flink.streaming;
 
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -85,7 +86,17 @@ public class ColumnBufferMap extends RichFlatMapFunction<QueueRecord, WindowAndC
 	public void flatMap(QueueRecord record, Collector<WindowAndColumn> out) throws Exception {
 		final String windowInfo = WindowInfo.windowInfo(record.getWindowMinTimestamp(), record.getWindowMaxTimestamp());
 		final String file = ResponseFileNameBuilder.makeBaseFileName(record.getWindowMinTimestamp(), record.getWindowMaxTimestamp());
+		final Buffer buffer = getOrCreateBuffer(record, windowInfo, file);
 
+		if (record.isEndOfFile()) {
+			handleEofRecord(record, out, windowInfo, file, buffer);
+		} else {
+			handleRegularRecord(record, out, windowInfo, file, buffer);
+		}
+	}
+
+
+	private Buffer getOrCreateBuffer(QueueRecord record, final String windowInfo, final String file) throws IOException {
 		Buffer buffer = buffersPerFile.get(file);
 		if (buffer == null) {
 			buffer = new Buffer(bufferSize, hashBitSize);
@@ -93,28 +104,32 @@ public class ColumnBufferMap extends RichFlatMapFunction<QueueRecord, WindowAndC
 			log.info("First record of window {} received.", windowInfo);
 			ResponseFileNameBuilder.createEmptyInProgressFile(responseFilePath, record.getWindowMinTimestamp(), record.getWindowMaxTimestamp());
 		}
+		return buffer;
+	}
 
-		if (record.isEndOfFile()) {
-			eofSignalsPerFile.put(file, record);
-			if (buffer.getRecordCount() < record.getTotalRecordCount()) {
-				log.info("EOF signal received for window {} but only {} records out of {} received.",
-						windowInfo,
-						buffer.getRecordCount(),
-						record.getTotalRecordCount());
-			} else {
-				flush(record, out, file, buffer, windowInfo);
-			}
+
+	private void handleRegularRecord(QueueRecord record, Collector<WindowAndColumn> out, final String windowInfo, final String file, Buffer buffer) throws PIRException, InterruptedException {
+		processRecord(buffer, record, out);
+		if (log.isDebugEnabled()) {
+			log.debug("Processed {} columns for window {}.", buffer.getNextColumnNumber(), windowInfo);
+		}
+
+		QueueRecord eof = eofSignalsPerFile.get(file);
+		if (eof != null && buffer.getRecordCount() == eof.getTotalRecordCount()) {
+			flush(eof, out, file, buffer, windowInfo);
+		}
+	}
+
+
+	private void handleEofRecord(QueueRecord record, Collector<WindowAndColumn> out, final String windowInfo, final String file, Buffer buffer) {
+		eofSignalsPerFile.put(file, record);
+		if (buffer.getRecordCount() < record.getTotalRecordCount()) {
+			log.info("EOF signal received for window {} but only {} records out of {} received.",
+					windowInfo,
+					buffer.getRecordCount(),
+					record.getTotalRecordCount());
 		} else {
-			processRecord(buffer, record, out);
-			if (log.isDebugEnabled()) {
-				log.debug("Processed {} columns for window {}.", buffer.getNextColumnNumber(), windowInfo);
-			}
-
-			QueueRecord eof = eofSignalsPerFile.get(file);
-			if (eof != null && buffer.getRecordCount() == eof.getTotalRecordCount()) {
-				flush(eof, out, file, buffer, windowInfo);
-			}
-
+			flush(record, out, file, buffer, windowInfo);
 		}
 	}
 

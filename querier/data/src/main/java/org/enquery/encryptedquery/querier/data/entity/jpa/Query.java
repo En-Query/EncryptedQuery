@@ -80,6 +80,9 @@ public class Query {
 	@Column(name = "error_msg")
 	private String errorMessage;
 
+	@Column(name = "filter_expression")
+	private String filterExpression;
+
 	public Query() {}
 
 	public Integer getId() {
@@ -146,6 +149,14 @@ public class Query {
 		this.errorMessage = errorMessage;
 	}
 
+	public String getFilterExpression() {
+		return filterExpression;
+	}
+
+	public void setFilterExpression(String filterExpression) {
+		this.filterExpression = filterExpression;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -179,7 +190,8 @@ public class Query {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Query [id=").append(id).append(", name=").append(name).append("]");
+		builder.append("Query [id=").append(id)
+				.append(", name=").append(name).append("]");
 		return builder.toString();
 	}
 

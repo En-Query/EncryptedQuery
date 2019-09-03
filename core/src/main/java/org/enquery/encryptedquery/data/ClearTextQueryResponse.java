@@ -85,7 +85,6 @@ public class ClearTextQueryResponse extends AbstractIndentedToString {
 
 		public void add(String fieldName, Object fieldValue) {
 			Validate.notNull(fieldName);
-			Validate.notNull(fieldValue);
 
 			Field field = new Field(fieldName, fieldValue);
 			add(field);

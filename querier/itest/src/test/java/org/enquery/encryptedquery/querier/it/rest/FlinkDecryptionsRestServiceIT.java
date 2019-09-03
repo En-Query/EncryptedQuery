@@ -21,6 +21,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+
+import org.apache.commons.io.IOUtils;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSource;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
@@ -31,6 +35,9 @@ import org.enquery.encryptedquery.querier.data.entity.json.DecryptionCollectionR
 import org.enquery.encryptedquery.querier.data.entity.json.DecryptionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.DecryptionStatus;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
+import org.enquery.encryptedquery.xml.schema.ClearTextResponse;
+import org.enquery.encryptedquery.xml.schema.Selector;
+import org.enquery.encryptedquery.xml.transformation.ClearTextResponseTypeConverter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.junit.PaxExam;
@@ -41,7 +48,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
-// @Ignore
 public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 
 	@Test
@@ -80,7 +86,7 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 	}
 
 	@Test
-	public void create() throws Exception {
+	public void runFlinkQuery() throws Exception {
 		Retrieval fullRetrieval = submitQueryAndRetrieveResult();
 		DecryptionResponse decryptionResponse = createDecryption(fullRetrieval.getDecryptionsUri());
 		Decryption created = decryptionResponse.getData();
@@ -104,15 +110,47 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 				uri -> retrieveDecryption(uri).getData().getStatus() == DecryptionStatus.Complete,
 				created.getSelfUri());
 
-		Decryption retrieved = retrieveDecryption(created.getSelfUri()).getData();
-		assertEquals(created.getId(), retrieved.getId());
-		assertEquals(created.getSelfUri(), retrieved.getSelfUri());
-		assertEquals(created.getRetrieval().getId(), retrieved.getRetrieval().getId());
-		assertEquals(created.getRetrieval().getSelfUri(), retrieved.getRetrieval().getSelfUri());
-		assertEquals(DecryptionStatus.Complete, retrieved.getStatus());
-		
+		Decryption decryptionJson = retrieveDecryption(created.getSelfUri()).getData();
+		assertEquals(created.getId(), decryptionJson.getId());
+		assertEquals(created.getSelfUri(), decryptionJson.getSelfUri());
+		assertEquals(created.getRetrieval().getId(), decryptionJson.getRetrieval().getId());
+		assertEquals(created.getRetrieval().getSelfUri(), decryptionJson.getRetrieval().getSelfUri());
+		assertEquals(DecryptionStatus.Complete, decryptionJson.getStatus());
 
-		validateClearTextResponse(retrieved, "title", "A Cup of Java", "author", "Kumar");
+
+		validateClearTextResponse(decryptionJson, "title", "A Cup of Java", "author", "Kumar");
+
+		// this will return no data since the book has qty = 44
+		fullRetrieval = submitQueryAndRetrieveResult("WHERE qty > 100");
+		decryptionResponse = createDecryption(fullRetrieval.getDecryptionsUri());
+
+		tryUntilTrue(90,
+				2_000,
+				"Timed out waiting for DecryptionStatus.Complete",
+				uri -> retrieveDecryption(uri).getData().getStatus() == DecryptionStatus.Complete,
+				decryptionResponse.getData().getSelfUri());
+
+		decryptionJson = retrieveDecryption(decryptionResponse.getData().getSelfUri()).getData();
+		assertEquals(DecryptionStatus.Complete, decryptionJson.getStatus());
+
+		try (InputStream is = decryptionRepo.payloadInputStream(decryptionRepo.find(Integer.valueOf(decryptionJson.getId())));
+				ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			IOUtils.copy(is, out);
+			log.info("Decrypted: {}", out.toString());
+		}
+
+		ClearTextResponseTypeConverter converter = new ClearTextResponseTypeConverter();
+		ClearTextResponse response = null;
+		try (InputStream is = decryptionRepo.payloadInputStream(decryptionRepo.find(Integer.valueOf(decryptionJson.getId())))) {
+			response = converter.unmarshal(is);
+		}
+		assertNotNull(response);
+		assertNotNull(response.getSelector());
+		assertTrue(response.getSelector().size() > 0);
+
+		// response.getSelector()
+		Selector selector = response.getSelector().get(0);
+		assertEquals("title", selector.getSelectorName());
+		assertEquals(0, selector.getHits().size());
 	}
-
 }

@@ -18,10 +18,10 @@ package org.enquery.encryptedquery.hadoop.core;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +30,10 @@ import org.slf4j.LoggerFactory;
  * Reducer class for the SortDataIntoRows job
  *
  * <p>
- * Each call to {@code reducer()} receives the data parts corresponding to the
- * data elements belonging to a single row. The stream of parts are grouped and
- * re-emited in fixed-size chunks, which are assigned successively increasing
- * column numbers. The reducer emits key-value pairs {@code ((row,col), chunk)}.
+ * Each call to {@code reducer()} receives the data parts corresponding to the data elements
+ * belonging to a single row. The stream of parts are grouped and re-emited in fixed-size chunks,
+ * which are assigned successively increasing column numbers. The reducer emits key-value pairs
+ * {@code ((row,col), chunk)}.
  */
 public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritable, IntPairWritable, BytesWritable> {
 	private static final Logger log = LoggerFactory.getLogger(SortDataIntoRowsReducer_v1.class);
@@ -46,38 +46,37 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 	private int partsInBuffer;
 
 	private int currentRowIndex = -1;
-	private long rowIndexCounter = 0;
-	private IntWritable _rowW = null;
-	private IntWritable _colW = null;
-	private IntPairWritable outputKey = null;
-	private BytesWritable outputValue = null;
-	private MultipleOutputs<IntPairWritable, BytesWritable> mos = null;
-
-	private boolean limitHitsPerSelector = false;
+	private long rowIndexCounter;
+	private IntWritable _rowW;
+	private IntWritable _colW;
+	private IntPairWritable outputKey;
+	private BytesWritable outputValue;
 	private int maxHitsPerSelector = -1;
 
 	@Override
 	public void setup(Context ctx) throws IOException, InterruptedException {
 		super.setup(ctx);
+		try {
+			final Configuration cfg = ctx.getConfiguration();
+			DistCacheLoader loader = new DistCacheLoader();
 
-		bytesPerPart = Integer.valueOf(ctx.getConfiguration().get("dataChunkSize"));
-		chunkingByteSize = Integer
-				.valueOf(ctx.getConfiguration().get(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE));
-		partsPerChunk = Math.max(chunkingByteSize / bytesPerPart, 1);
-		bytesPerChunk = partsPerChunk * bytesPerPart;
-		buffer = new byte[bytesPerChunk];
-		partsInBuffer = 0;
+			bytesPerPart = loader.loadQueryInfo().getDataChunkSize();
+			chunkingByteSize = Integer.valueOf(cfg.get(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE));
+			partsPerChunk = Math.max(chunkingByteSize / bytesPerPart, 1);
+			bytesPerChunk = partsPerChunk * bytesPerPart;
+			buffer = new byte[bytesPerChunk];
+			partsInBuffer = 0;
 
-		_rowW = new IntWritable();
-		_colW = new IntWritable();
-		outputKey = new IntPairWritable(_rowW, _colW);
-		outputValue = new BytesWritable();
-		mos = new MultipleOutputs<>(ctx);
+			_rowW = new IntWritable();
+			_colW = new IntWritable();
+			outputKey = new IntPairWritable(_rowW, _colW);
+			outputValue = new BytesWritable();
 
-		if (ctx.getConfiguration().getBoolean(ResponderProperties.LIMIT_HITS_PER_SELECTOR, true)) {
-			limitHitsPerSelector = true;
+			maxHitsPerSelector = cfg.getInt(ResponderProperties.MAX_HITS_PER_SELECTOR, -1);
+
+		} catch (Exception e) {
+			throw new IOException("Exception initializing SortDataIntoRowsReducer_v1.", e);
 		}
-		maxHitsPerSelector = Integer.parseInt(ctx.getConfiguration().get(ResponderProperties.MAX_HITS_PER_SELECTOR));
 	}
 
 	@Override
@@ -91,7 +90,7 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 		log.info("Reducing rowIndex {}", rowIndex);
 		outputKey.getFirst().set(rowIndex);
 		for (BytesWritable dataElement : dataElements) {
-			if (limitHitsPerSelector && hitCount >= maxHitsPerSelector) {
+			if (maxHitsPerSelector > 0 && hitCount >= maxHitsPerSelector) {
 				if (log.isDebugEnabled()) {
 					log.debug("maxHitsPerSelector limit ({}) reached for rowIndex = {}", maxHitsPerSelector, rowIndex);
 				}
@@ -100,8 +99,8 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 			}
 
 			/*
-			 * Extract data element bytes. We assume this has already been padded to be a
-			 * multiple of bytesPerPart bytes
+			 * Extract data element bytes. We assume this has already been padded to be a multiple
+			 * of bytesPerPart bytes
 			 */
 			byte[] dataElementBytes = dataElement.copyBytes();
 			int current = 0;
@@ -123,9 +122,7 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 				if (partsInBuffer == partsPerChunk) {
 					outputKey.getSecond().set(chunkCol);
 					outputValue.set(buffer, 0, bytesPerChunk);
-					mos.write(HadoopConfigurationProperties.EQ, outputKey, outputValue);
-					// log.info("Reduce write column ({}) value ({})", chunkCol,
-					// ConversionUtils.byteArrayToHexString(buffer));
+					ctx.write(outputKey, outputValue);
 					chunkCol += 1;
 					partsInBuffer = 0;
 				}
@@ -154,7 +151,8 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 		if (partsInBuffer > 0) {
 			outputKey.getSecond().set(chunkCol);
 			outputValue.set(buffer, 0, partsInBuffer * bytesPerPart);
-			mos.write(HadoopConfigurationProperties.EQ, outputKey, outputValue);
+			ctx.write(outputKey, outputValue);
+
 			chunkCol += 1;
 			partsInBuffer = 0;
 
@@ -166,6 +164,5 @@ public class SortDataIntoRowsReducer_v1 extends Reducer<IntWritable, BytesWritab
 		if (log.isDebugEnabled()) {
 			log.debug("RowIndex {} counter {}", currentRowIndex, rowIndexCounter);
 		}
-		mos.close();
 	}
 }

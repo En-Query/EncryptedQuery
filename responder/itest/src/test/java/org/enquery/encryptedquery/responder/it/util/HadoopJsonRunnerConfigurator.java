@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Hashtable;
 
-import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.osgi.service.cm.ConfigurationAdmin;
 
 
@@ -35,21 +34,24 @@ public class HadoopJsonRunnerConfigurator {
 	}
 
 
-	public void create(String name, String dataSchemaNema, String description, boolean useVersion1) throws IOException {
+	public void create(String name, String dataSchemaName, boolean useVersion1, String hadoopConf, String userAccount) throws IOException {
 		conf = confAdmin.createFactoryConfiguration(org.enquery.encryptedquery.responder.hadoop.mapreduce.runner.HadoopMapReduceRunner.class.getName(), "?");
 
 		Hashtable<String, String> properties = new Hashtable<>();
 		properties.put("name", name);
-		properties.put("description", description);
-		properties.put("type", DataSourceType.Batch.toString());
-		properties.put("data.schema.name", dataSchemaNema);
-		properties.put("data.source.file", "/user/enquery/data/books.json");
+		properties.put("description", name + "-" + dataSchemaName);
+		properties.put("data.schema.name", dataSchemaName);
+		properties.put("data.source.file", "/user/enquery/sampledata/books.json");
 		properties.put("data.source.record.type", "json");
-
-		properties.put(".hadoop.server.uri", "hdfs://localhost:9000");
+		if (hadoopConf != null) {
+			properties.put(".hadoop.config.file", hadoopConf);
+		}
+		if (userAccount != null) {
+			properties.put(".hadoop.username", userAccount);
+		}
 		properties.put(".hdfs.run.directory", "/user/enquery/data");
-		properties.put(".application.jar.path", System.getProperty("hadoop.mr.app"));
 		properties.put(".hadoop.install.dir", System.getProperty("hadoop.install.dir"));
+		properties.put(".application.jar.path", System.getProperty("hadoop.mr.app"));
 		properties.put(".run.directory", tempDir.getAbsolutePath());
 		if (useVersion1) {
 			properties.put(".hadoop.processing.method", "v1");

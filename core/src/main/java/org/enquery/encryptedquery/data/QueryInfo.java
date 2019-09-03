@@ -60,11 +60,8 @@ public class QueryInfo implements Serializable {
 	// number of partitions of size dataPartitionBitSize per data element
 	private int numPartitionsPerDataElement;
 
-	// whether or not to embed the selector in the results -
-	// results in a very low
-	// false positive rate for variable length selectors and a zero false positive rate
-	// for selectors of fixed size < 32 bits
-	// private boolean embedSelector;
+	// optional SQL-like filter expression to filter out records
+	private String filterExpression;
 
 	private QuerySchema querySchema;
 
@@ -104,10 +101,6 @@ public class QueryInfo implements Serializable {
 		return dataChunkSize;
 	}
 
-	// public boolean getEmbedSelector() {
-	// return embedSelector;
-	// }
-
 	public Map<String, Object> toMap() {
 		Map<String, Object> queryInfo = new HashMap<>();
 		queryInfo.put("uuid", identifier.toString());
@@ -118,7 +111,7 @@ public class QueryInfo implements Serializable {
 		queryInfo.put("numBitsPerDataElement", numBitsPerDataElement);
 		queryInfo.put("numPartitionsPerDataElement", numPartitionsPerDataElement);
 		queryInfo.put("dataChunkSize", dataChunkSize);
-		// queryInfo.put("embedSelector", embedSelector);
+		queryInfo.put("filterExpression", filterExpression);
 		return queryInfo;
 	}
 
@@ -144,16 +137,6 @@ public class QueryInfo implements Serializable {
 		// builder.append("\n embedSelector (" + embedSelector + ")");
 		logger.info(builder.toString());
 	}
-
-	// @Override
-	// public QueryInfo clone() {
-	// try {
-	// return (QueryInfo) super.clone();
-	// } catch (CloneNotSupportedException e) {
-	// throw new RuntimeException(e);
-	// }
-	// }
-
 
 	public void setNumBitsPerDataElement(int numBitsPerDataElement) {
 		this.numBitsPerDataElement = numBitsPerDataElement;
@@ -188,24 +171,6 @@ public class QueryInfo implements Serializable {
 		this.dataChunkSize = dataChunkSize;
 	}
 
-	/**
-	 * Whether or not to embed the selector in the results results in a very low false positive rate
-	 * for variable length selectors and a zero false positive rate for selectors of fixed size < 32
-	 * bits
-	 * 
-	 * @return the embedSelector
-	 */
-	// public boolean isEmbedSelector() {
-	// return embedSelector;
-	// }
-	//
-	// /**
-	// * @param embedSelector the embedSelector to set
-	// */
-	// public void setEmbedSelector(boolean embedSelector) {
-	// this.embedSelector = embedSelector;
-	// }
-
 	public String getCryptoSchemeId() {
 		return cryptoSchemeId;
 	}
@@ -222,6 +187,15 @@ public class QueryInfo implements Serializable {
 		this.publicKey = publicKey;
 	}
 
+	public String getFilterExpression() {
+		return filterExpression;
+	}
+
+	public void setFilterExpression(String filterExpression) {
+		this.filterExpression = filterExpression;
+	}
+
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -237,6 +211,7 @@ public class QueryInfo implements Serializable {
 		result = prime * result + numSelectors;
 		result = prime * result + ((queryName == null) ? 0 : queryName.hashCode());
 		result = prime * result + ((querySchema == null) ? 0 : querySchema.hashCode());
+		result = prime * result + ((filterExpression == null) ? 0 : filterExpression.hashCode());
 		return result;
 	}
 
@@ -262,9 +237,6 @@ public class QueryInfo implements Serializable {
 		if (dataChunkSize != other.dataChunkSize) {
 			return false;
 		}
-		// if (embedSelector != other.embedSelector) {
-		// return false;
-		// }
 		if (hashBitSize != other.hashBitSize) {
 			return false;
 		}
@@ -308,6 +280,13 @@ public class QueryInfo implements Serializable {
 		if (!publicKeysEquals(publicKey, other.publicKey)) {
 			return false;
 		}
+		if (cryptoSchemeId == null) {
+			if (other.cryptoSchemeId != null) {
+				return false;
+			}
+		} else if (!cryptoSchemeId.equals(cryptoSchemeId)) {
+			return false;
+		}
 		return true;
 	}
 
@@ -332,6 +311,5 @@ public class QueryInfo implements Serializable {
 				Objects.equals(pk1.getAlgorithm(), pk2.getAlgorithm()) &&
 				Objects.equals(pk1.getFormat(), pk2.getFormat());
 	}
-
 
 }

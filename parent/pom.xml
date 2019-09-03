@@ -24,7 +24,7 @@
 
 	<groupId>org.enquery.encryptedquery</groupId>
 	<artifactId>encryptedquery-parent</artifactId>
-	<version>2.2.0</version>
+	<version>2.2.2</version>
 	<packaging>pom</packaging>
 
 	<name>EncryptedQuery</name>
@@ -106,12 +106,14 @@
 		<!-- Google Guava version -->
 		<guava.version>27.0.1-jre</guava.version>
 		
-		<pig.version>0.17.0</pig.version>
+		<!-- Filter predicate evaluation -->
+		<libra.version>2.1.0</libra.version>
+		<antlr.version>4.7</antlr.version>
 		
 		<derby.plugin.version>1.10</derby.plugin.version>
 		<pmd.version>6.9.0</pmd.version>
 		<pmd.rules.dir>${project.basedir}</pmd.rules.dir>
-		<skip.pmd.check>true</skip.pmd.check> 
+		<skip.pmd.check>true</skip.pmd.check>
 	</properties>
 	
 	<dependencyManagement>
@@ -547,36 +549,21 @@
 				<version>${flink.version}</version>
 			</dependency>
 			
-			<!-- Pig -->
-			<dependency>
-				<groupId>org.apache.pig</groupId>
-				<artifactId>pig</artifactId>
-				<version>${pig.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.datafu</groupId>
-				<artifactId>datafu-pig</artifactId>
-				<version>1.4.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.pig</groupId>
-				<artifactId>pigunit</artifactId>
-				<version>${pig.version}</version>
-				<scope>test</scope>
-			</dependency>
-			<dependency>
-				<!-- will be able to remove this dependency for the next version of pig -->
-				<groupId>org.python</groupId>
-				<artifactId>jython-standalone</artifactId>
-				<version>2.7.0</version>
-				<scope>test</scope>
-			</dependency>
-			
 			<!-- Misc -->
 			<dependency>
 				<groupId>org.quartz-scheduler</groupId>
 				<artifactId>quartz</artifactId>
 				<version>${quartz.version}</version>
+			</dependency>
+			<dependency>
+			    <groupId>org.dungba</groupId>
+			    <artifactId>joo-libra</artifactId>
+			    <version>${libra.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.antlr</groupId>
+				<artifactId>antlr4-runtime</artifactId>
+				<version>${antlr.version}</version>
 			</dependency>
 			
 			<!-- JSON -->
@@ -795,11 +782,11 @@
 	</build>
 	<modules>
 		<module>../core</module>
+		<module>../filter</module>
 		<module>../jpa</module>
 		<module>../health-status</module>
 		<module>../xml</module>
 		<module>../json</module>
-<!--  	<module>../pig</module> -->
 		<module>../flink</module>
 		<module>../hadoop</module>
 		<module>../standalone</module>

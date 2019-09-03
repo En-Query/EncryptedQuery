@@ -14,6 +14,7 @@
 		<numBitsPerDataElement>0</numBitsPerDataElement>
 		<dataChunkSize>1</dataChunkSize>
 		<numPartitionsPerDataElement>0</numPartitionsPerDataElement>
+		<filterExpression>price > 10</filterExpression>
 		<qsch:querySchema>
 			<qsch:name>Books</qsch:name>
 			<qsch:selectorField>title</qsch:selectorField>

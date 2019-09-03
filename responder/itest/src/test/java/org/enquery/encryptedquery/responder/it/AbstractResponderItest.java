@@ -301,17 +301,6 @@ public abstract class AbstractResponderItest {
 		Thread.sleep(500);
 		assertTrue(!Files.exists(Paths.get(DATASCHEMAS_INBOX_DIR, ".failed", fileName)));
 		assertTrue(Files.exists(Paths.get(DATASCHEMAS_INBOX_DIR, ".processed", fileName)));
-		//
-		// DataSchema lastInserted = dataSchemaService
-		// .list()
-		// .stream()
-		// .max((a, b) -> a.getId() - b.getId())
-		// .get();
-		//
-		// Path dataSourceDir = Paths.get(DATASCHEMAS_INBOX_DIR, lastInserted.getId().toString());
-		// assertTrue(Files.exists(dataSourceDir) && Files.isDirectory(dataSourceDir));
-		// Path body = Paths.get(dataSourceDir.toString(), "body.xml");
-		// assertTrue(Files.exists(body) && Files.isRegularFile(body));
 	}
 
 	private static final String DATA_SOURCE_DESCRIPTION = "test-desc";

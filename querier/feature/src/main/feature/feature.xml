@@ -101,13 +101,15 @@
 			paillier.decrypt.response.method=CPU
      	</config>
 
-		<!--
 		<config name="org.enquery.encryptedquery.encryption.nullcipher.NullCipherCryptoScheme">
-		nullcipher.plaintext.byte.size=383
-		nullcipher.padding.byte.size=385
+			nullcipher.plaintext.byte.size=383
+			nullcipher.padding.byte.size=385
 		</config>
-		-->
      	
+     	<config name="org.enquery.encryptedquery.querier.encrypt.EncryptQuery">
+     		crypto.target=(name=Paillier)
+     	</config>
+    	
   		<!-- needed for XML generation see data-schema module -->
   	    <bundle>mvn:com.sun.xml.bind/jaxb-core/2.3.0</bundle>
   	
@@ -138,16 +140,21 @@
 		
         <bundle>mvn:org.liquibase/liquibase-core/${liquibase.version}</bundle>
  		<bundle>mvn:org.yaml/snakeyaml/${snakeyaml.version}</bundle>
-
+ 		
+ 		<!-- Filtering -->
+		<bundle>wrap:mvn:org.dungba/joo-libra/${libra.version}</bundle>
+		<bundle>mvn:org.antlr/antlr4-runtime/4.7</bundle>
+		<bundle>mvn:commons-beanutils/commons-beanutils/1.9.3</bundle>
+		<bundle>mvn:commons-collections/commons-collections/3.2.2</bundle>
+        <bundle>mvn:${project.groupId}/encryptedquery-filter/${project.version}</bundle>
+  
         <bundle>mvn:${project.groupId}/encryptedquery-health-status/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-jpa/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-core/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-xml/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
 		<bundle>mvn:${project.groupId}/encryptedquery-paillier-encryption/${project.version}</bundle>
-		<!--
 		<bundle>mvn:${project.groupId}/encryptedquery-null-encryption/${project.version}</bundle>
-		-->
 
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}$Bundle-SymbolicName=JnaGmp&amp;Bundle-Version=${jnagmp.version}&amp;Import-Package=com.sun.jna,com.sun.jna.ptr,com.sun.jna.win32</bundle>

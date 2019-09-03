@@ -16,10 +16,12 @@
  */
 package org.enquery.encryptedquery.flink.kafka;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -36,8 +38,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
+import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,13 +63,16 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 	private final String topic;
 	private final StartOffset startOffset;
 	private final Integer emissionRatePerSecond;
+	private final DataSchema dataSchema;
+
 	private Properties properties;
 	private Consumer<Long, String> consumer;
+	private transient JSONStringConverter jsonConverter;
+
 
 
 	// The semaphore for limiting database load.
 	private transient TimedSemaphore emissionSemaphore;
-	private transient int recordCount = 0;
 
 
 	public TimedKafkaConsumer(String topic,
@@ -74,10 +82,12 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 			Long maxTimestamp,
 			Path outputPath,
 			Integer emissionRatePerSecond,
-			Time windowSize) {
+			Time windowSize,
+			Query query) {
 
-		super(maxTimestamp, outputPath, windowSize);
+		super(maxTimestamp, outputPath, windowSize, query);
 
+		this.dataSchema = query.getQueryInfo().getQuerySchema().getDataSchema();
 		this.bootstrap_servers = bootstrapServers;
 		this.groupId = groupId;
 		this.topic = topic;
@@ -158,6 +168,12 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 
 
 	@Override
+	protected void beginRun() throws IOException {
+		jsonConverter = new JSONStringConverter(dataSchema);
+		super.beginRun();
+	}
+
+	@Override
 	public void run(SourceContext<InputRecord> ctx) throws Exception {
 		beginRun();
 		try {
@@ -176,8 +192,6 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 					log.debug("Emitted {} records.", consumerRecords.count());
 				}
 			}
-
-			log.info("Emitted a total of {} records.", recordCount);
 		} catch (Exception e) {
 			log.error("Unexpected error encountered", e);
 			setAsFailed();
@@ -190,15 +204,14 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 	private void ingestRecords(SourceContext<InputRecord> ctx, ConsumerRecords<Long, String> consumerRecords) throws Exception {
 		Iterator<ConsumerRecord<Long, String>> iterator = consumerRecords.iterator();
 		while (canRun() && iterator.hasNext()) {
-			ConsumerRecord<Long, String> record = iterator.next();
+			final ConsumerRecord<Long, String> consumerRecord = iterator.next();
+			final Map<String, Object> record = jsonConverter.toStringObjectFlatMap(consumerRecord.value());
 			try {
 				if (emissionSemaphore != null) emissionSemaphore.acquire();
 
-				// final long timestamp = calcEventTimestamp();
 				synchronized (ctx.getCheckpointLock()) {
-					collect(ctx, record.value(), System.currentTimeMillis());
+					collect(ctx, record, System.currentTimeMillis());
 				}
-				recordCount++;
 			} catch (Exception e) {
 				// records may be malformed, so skip to the next record
 				if (log.isWarnEnabled()) {
@@ -208,10 +221,10 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 							+ "Record offset: {}\n"
 							+ "Record value:  {}\n"
 							+ "Exception: ",
-							record.key(),
-							record.partition(),
-							record.offset(),
-							record.value(),
+							consumerRecord.key(),
+							consumerRecord.partition(),
+							consumerRecord.offset(),
+							consumerRecord.value(),
 							e);
 				}
 			}

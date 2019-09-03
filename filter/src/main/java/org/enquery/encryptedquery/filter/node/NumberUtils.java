@@ -14,30 +14,21 @@
  * You should have received a copy of the GNU Affero General Public License along with this program.
  * If not, see <https://www.gnu.org/licenses/>.
  */
-package org.enquery.encryptedquery.hadoop.core;
-
+package org.enquery.encryptedquery.filter.node;
 
 /**
- * Common supertype for types that can store objects using serialization.
+ *
  */
-abstract class StorageService
-{
-  SerializationService serializer;
+public class NumberUtils {
 
-  StorageService()
-  {
-    
-      this.setSerializer(new JavaSerializer());
-   
-  }
-
-  StorageService(SerializationService service)
-  {
-    this.setSerializer(service);
-  }
-
-  public void setSerializer(SerializationService service)
-  {
-    serializer = service;
-  }
+	/**
+	 * @param right
+	 * @return
+	 */
+	static public boolean isOrdinal(Number number) {
+		return (number instanceof Integer)
+				|| (number instanceof Long)
+				|| (number instanceof Byte)
+				|| (number instanceof Short);
+	}
 }

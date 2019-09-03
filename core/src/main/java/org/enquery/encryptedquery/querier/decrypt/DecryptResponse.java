@@ -30,8 +30,8 @@ import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
+import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.utils.PIRException;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -44,17 +44,10 @@ import org.slf4j.LoggerFactory;
 public class DecryptResponse {
 	private static final Logger log = LoggerFactory.getLogger(DecryptResponse.class);
 
-	// private ModPowAbstraction modPowAbstraction;
-	// private PrimeGenerator primeGenerator;
-	// private RandomProvider randomProvider;
-	// private String modPowAbstractionClassName;
-	// private String primeGeneratorClassName;
-	// private String randomProviderClassName;
-
 	@Reference
 	private ExecutorService executionService;
 	@Reference
-	private CryptoScheme crypto;
+	private CryptoSchemeRegistry cryptoRegistry;
 
 	public ExecutorService getExecutionService() {
 		return executionService;
@@ -64,76 +57,14 @@ public class DecryptResponse {
 		this.executionService = executionService;
 	}
 
-	public CryptoScheme getCrypto() {
-		return crypto;
+	public CryptoSchemeRegistry getCryptoRegistry() {
+		return cryptoRegistry;
 	}
 
-	public void setCrypto(CryptoScheme crypto) {
-		this.crypto = crypto;
+	public void setCryptoRegistry(CryptoSchemeRegistry cryptoRegistry) {
+		this.cryptoRegistry = cryptoRegistry;
 	}
 
-	@Activate
-	public void activate() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-		Validate.notNull(executionService);
-
-		// modPowAbstractionClassName =
-		// "org.enquery.encryptedquery.encryption.impl.ModPowAbstractionJavaImpl";
-		// log.info("Mod Power Clsas {}", modPowAbstractionClassName);
-		//
-		// Class<ModPowAbstraction> modPowClass = (Class<ModPowAbstraction>)
-		// Class.forName(modPowAbstractionClassName);
-		// modPowAbstraction = modPowClass.newInstance();
-		//
-		// randomProviderClassName = "org.enquery.encryptedquery.utils.RandomProvider";
-		// log.info("Random Provider Clsas {}", randomProviderClassName);
-		//
-		// Class<RandomProvider> randomProviderClass = (Class<RandomProvider>)
-		// Class.forName(randomProviderClassName);
-		// randomProvider = randomProviderClass.newInstance();
-		//
-		// primeGeneratorClassName = "org.enquery.encryptedquery.encryption.PrimeGenerator";
-		// log.info("Prime Generator Class {}", primeGeneratorClassName);
-		//
-		// Class<PrimeGenerator> primeGeneratorClass = (Class<PrimeGenerator>)
-		// Class.forName(primeGeneratorClassName);
-		// primeGenerator = primeGeneratorClass.newInstance();
-
-	}
-
-	// public ClearTextQueryResponse decrypt(ExecutorService es, Response response, QueryKey
-	// queryKey) throws InterruptedException, PIRException, ClassNotFoundException,
-	// InstantiationException, IllegalAccessException {
-	// executionService = es;
-	// activate();
-	// return decrypt(response, queryKey);
-	// }
-
-	/**
-	 * Method to decrypt the response elements and reconstructs the data elements
-	 * <p>
-	 * Each element of response.getResponseElements() is an encrypted column vector E(Y_i)
-	 * <p>
-	 * To decrypt and recover data elements:
-	 * <p>
-	 * (1) Decrypt E(Y_i) to yield
-	 * <p>
-	 * Y_i, where Y_i = \sum_{j = 0}^{numSelectors} 2^{j*dataPartitionBitSize} D_j
-	 * <p>
-	 * such that D_j is dataPartitionBitSize-many bits of data corresponding to selector_k for j =
-	 * H_k(selector_k), for some 0 <= k < numSelectors
-	 * <p>
-	 * (2) Reassemble data elements across columns where, hit r for selector_k, D^k_r, is such that
-	 * <p>
-	 * D^k_r = D^k_r,0 || D^k_r,1 || ... || D^k_r,(numPartitionsPerDataElement - 1)
-	 * <p>
-	 * where D^k_r,l = Y_{r*numPartitionsPerDataElement + l} & (2^{r*numPartitionsPerDataElement} *
-	 * (2^numBitsPerDataElement - 1))
-	 * 
-	 * @throws ClassNotFoundException
-	 * @throws IllegalAccessException
-	 * @throws InstantiationException
-	 *
-	 */
 	public ClearTextQueryResponse decrypt(Response response, QueryKey queryKey) throws InterruptedException, PIRException, ClassNotFoundException, InstantiationException, IllegalAccessException {
 		long startTime = System.currentTimeMillis();
 
@@ -143,11 +74,13 @@ public class DecryptResponse {
 
 		final QueryInfo queryInfo = response.getQueryInfo();
 		final ClearTextQueryResponse result = new ClearTextQueryResponse(queryInfo.getQueryName(), queryInfo.getIdentifier());
+		final CryptoScheme crypto = cryptoRegistry.cryptoSchemeByName(queryInfo.getCryptoSchemeId());
+		Validate.notNull(crypto, "CryptoScheme not found for id: %s", queryInfo.getCryptoSchemeId());
 
 		CompletionService<ClearTextQueryResponse> completionService = new ExecutorCompletionService<>(executionService);
 		int pending = 0;
 		for (final Map<Integer, CipherText> responseLine : response.getResponseElements()) {
-			DecryptResponseLineTask task = make(response, queryKey, responseLine);
+			DecryptResponseLineTask task = make(response, queryKey, responseLine, crypto);
 			completionService.submit(task);
 			++pending;
 		}
@@ -164,15 +97,12 @@ public class DecryptResponse {
 		return result;
 	}
 
-	private DecryptResponseLineTask make(Response response, QueryKey queryKey, Map<Integer, CipherText> responseLine) {
+	private DecryptResponseLineTask make(Response response, QueryKey queryKey, Map<Integer, CipherText> responseLine, CryptoScheme crypto) {
 		DecryptResponseLineTask task = new DecryptResponseLineTask();
 		task.setExecutionService(executionService);
 		task.setResponseLine(responseLine);
 		task.setQueryKey(queryKey);
 		task.setQueryInfo(response.getQueryInfo());
-		// task.setModPowAbstraction(modPowAbstraction);
-		// task.setPrimeGenerator(primeGenerator);
-		// task.setRandomProvider(randomProvider);
 		task.setCrypto(crypto);
 		return task;
 	}

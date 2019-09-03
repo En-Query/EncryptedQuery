@@ -14,7 +14,10 @@ import {
   List,
   Container,
   Popup,
-  Card
+  Card,
+  Modal,
+  Header,
+  Icon
 } from "semantic-ui-react";
 import PageHeading from "./FixedMenu";
 import PageFooter from "./PageFooter";
@@ -41,7 +44,9 @@ class CreateQuery extends Component {
       dataChunkSize: 3,
       selectorValue: "",
       selectorValues: [],
-      isLoading: true
+      isLoading: true,
+      filterExpression: "",
+      open: false
     };
   }
 
@@ -212,12 +217,28 @@ class CreateQuery extends Component {
     });
   };
 
+  handleFilterExpressionChange = (e, { value }) => {
+    this.setState({ filterExpression: value }, () => {
+      console.log(
+        "Filter expression entered --> ",
+        this.state.filterExpression
+      );
+    });
+  };
+
+  closeConfigShow = (closeOnEscape, closeOnDimmerClick) => () => {
+    this.setState({ closeOnEscape, closeOnDimmerClick, open: true });
+  };
+
+  close = () => this.setState({ open: false });
+
   handleSubmit = e => {
     e.preventDefault();
     const {
       queryName,
       dataChunkSize,
-      selectorValues
+      selectorValues,
+      filterExpression
     } = this.state;
     console.log(this.state);
     const queriesUri = localStorage.getItem("queriesUri");
@@ -233,7 +254,9 @@ class CreateQuery extends Component {
         parameters: {
           dataChunkSize: dataChunkSize
         },
-        selectorValues: selectorValues
+        selectorValues: selectorValues,
+        filterExpression:
+          filterExpression.length > 0 ? filterExpression : undefined
       })
     })
       .then(response => {
@@ -253,7 +276,10 @@ class CreateQuery extends Component {
       selectorField,
       value,
       dataChunkSize,
-      selectorValues
+      selectorValues,
+      filterExpression,
+      closeOnDimmerClick,
+      open
     } = this.state;
 
     return (
@@ -405,6 +431,130 @@ class CreateQuery extends Component {
                         );
                       })}
                     </ul>
+                  </Form.Field>
+                  <Form.Field>
+                    <label>SQL Filter Expression:</label>
+
+                    <div style={{ display: "flex" }}>
+                      <Input
+                        value={value}
+                        name="filterExpression"
+                        onChange={this.handleFilterExpressionChange}
+                        placeholder="Enter a SQL Filter Expression"
+                      />
+                      <Modal
+                        trigger={
+                          <Button
+                            icon="info"
+                            size="mini"
+                            onClick={this.closeConfigShow(true, false)}
+                            circular
+                            type="button"
+                            style={{ margin: "5px" }}
+                          />
+                        }
+                        open={open}
+                        onClose={this.close}
+                        closeOnDimmerClick={closeOnDimmerClick}
+                        size="small"
+                        centered={false}
+                        basic
+                      >
+                        <Header icon="file" content="CURRENTLY SUPPORTED SQL" />
+                        <Modal.Content>
+                          <h4
+                          >{`Arithmetic Operators: '+', '-', '*', '/', '%' `}</h4>
+                          <h4>String concatenation: '||'</h4>
+                          <h4
+                          >{`Relational: '>', '>=', '<', '<=' ,'=' , '<>'`}</h4>
+                          <h4>Logical operators: And, Or, Not</h4>
+                          <h4>
+                            "Is Empty" and "Is Not Empty" (for lists and
+                            strings)
+                          </h4>
+                          <h4>
+                            "Is Null" and "Is not null" to test null values
+                          </h4>
+                          <h4>"Is" and "Is not" for equality check</h4>
+                          <h4>
+                            "MATCHES" to test regular expressions => (should be
+                            renamed to avoid confusion with SQL homonym Should
+                            be changed to mimic Oracle’s REGEXP_LIKE, or
+                            PostgreSQL’s REGEXP_MATCHES, since there is no
+                            equivalent in ANSI SQL
+                          </h4>
+                          <br />
+                          <h4>Operator "IN" for Strings and Lists</h4>
+                          <h4>
+                            Temporal values: CURRENT_TIMESTAMP, CURRENT_DATE,
+                            TIMESTAMP ‘2001-07-04T14:23Z’, DATE ‘2001-07-04’
+                          </h4>
+                          <br />
+                          <h4>
+                            Lists (Row Value Constructors): (1,2,4), ('a', 'b',
+                            'c')
+                          </h4>
+                          <br />
+                          <h4>
+                            Aggregate functions: AVG, SUM, MIN, MAX, COUNT
+                          </h4>
+                          <h4>Math functions: SQRT</h4>
+                          <h4>
+                            String functions: CHAR_LENGTH, CHARACTER_LENGTH
+                          </h4>
+                          <h4>Examples:</h4>
+                          <h4>quantity is 0</h4>
+                          <h4>age > 24</h4>
+                          <h4>{`(price > 24) And (count < 100)`}</h4>
+                          <h4> "last name" = 'Smith'</h4>
+                          <h4>CURRENT_TIMESTAMP > dob</h4>
+                          <h4> {`CURRENT_TIMESTAMP > '2001-07-04T14:23Z'`}</h4>
+                          <h4> 'sarah' IN children</h4>
+                          <h4> Not children Is Empty</h4>
+                          <h4> name MATCHES 'chaper[ ]+[0-9]+'</h4>
+                          <h4>(1, 3, 5) IS NOT EMPTY</h4>
+                          <h4> 1 IN (1, 2, 3)</h4>
+                          <h4>COUNT(3, 5.0, 18) = 3</h4>
+                          <br />
+                          <h3>MISSING FUNCTIONS (ANSI SQL):</h3>
+                          <h4>==================================</h4>
+                          <h4
+                          >{`POSITION <left paren> <character value expression> IN <character value expression> <right paren>`}</h4>
+                          <h4
+                          >{`OCTET_LENGTH <left paren> <string value expression> <right paren>`}</h4>
+                          <h4
+                          >{`BIT_LENGTH <left paren> <string value expression> <right paren>`}</h4>
+                          <h4
+                          >{`EXTRACT <left paren> <extract field> FROM <extract source> <right paren>`}</h4>
+                          <h4>SUBSTRING</h4>
+                          <h4>LOWER</h4>
+                          <h4>CONVERT</h4>
+                          <h4>TRANSLATE</h4>
+                          <h4>TRIM</h4>
+                          <h4>CURRENT_TIME</h4>
+                          <h4>NULLIF</h4>
+                          <h4>COALESCE</h4>
+                          <h4>CASE</h4>
+                          <h4>CAST</h4>
+                          <h4>Internal Values (temporal)</h4>
+                          <h4>Arithmetic with temporal values</h4>
+                          <h4>BETWEEN</h4>
+                          <h4>LIKe</h4>
+                          <h4>OVERLAPS</h4>
+                          <h4>==================================</h4>
+                        </Modal.Content>
+                        <Modal.Actions>
+                          <Button
+                            floated="right"
+                            color="red"
+                            onClick={this.close}
+                            inverted
+                          >
+                            <Icon name="close" /> Close
+                          </Button>
+                        </Modal.Actions>
+                      </Modal>
+                    </div>
                   </Form.Field>
                   <Form.Button
                     fluid

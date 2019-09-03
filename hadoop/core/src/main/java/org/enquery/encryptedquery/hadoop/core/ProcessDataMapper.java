@@ -24,103 +24,91 @@ import java.util.Map;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
-
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.core.Partitioner;
-
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.RecordEncoding;
+import org.enquery.encryptedquery.filter.RecordFilter;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
-	 * Mapper class for the SortDataIntoRows job
-	 *
-	 * <p> This mapper breaks each input data element into parts and
-	 * computes its selector hash ("row number").  It emits key-value
-	 * pairs {@code (row, parts)} where each value {@code parts} is a byte
-	 * array representing the concatenation of all the parts in the data
-	 * element.
-	 */
-	public class ProcessDataMapper extends Mapper<LongWritable, Text, IntWritable, BytesWritable> {
-		
-	  private static final Logger log = LoggerFactory.getLogger(ProcessDataMapper.class);
+ * Mapper class for the SortDataIntoRows job
+ *
+ * <p>
+ * This mapper breaks each input data element into parts and computes its selector hash ("row
+ * number"). It emits key-value pairs {@code (row, parts)} where each value {@code parts} is a byte
+ * array representing the concatenation of all the parts in the data element.
+ */
+public class ProcessDataMapper extends Mapper<LongWritable, Text, IntWritable, BytesWritable> {
 
-	  private IntWritable keyOut = null;
-	  private BytesWritable valueOut = null;
-	  private QueryInfo queryInfo;
-	  
-      transient private Partitioner partitioner;
-      transient private JSONStringConverter jsonConverter;
-      transient private RecordEncoding recordEncoding;
+	private static final Logger log = LoggerFactory.getLogger(ProcessDataMapper.class);
 
-	  @Override
-	  public void setup(Context ctx) throws IOException, InterruptedException
-	  {
-	    super.setup(ctx);
-        log.info("SortDataIntoRowsMapper - Setup Running");
-	    keyOut = new IntWritable();
-	    valueOut = new BytesWritable();
-	    
-		if (partitioner == null) {
+	private IntWritable keyOut = null;
+	private BytesWritable valueOut = null;
+	private QueryInfo queryInfo;
+	private Partitioner partitioner;
+	private JSONStringConverter jsonConverter;
+	private RecordEncoding recordEncoding;
+	private DistCacheLoader loader;
+	private RecordFilter recordFilter;
+
+	@Override
+	public void setup(Context ctx) throws IOException, InterruptedException {
+		super.setup(ctx);
+		try {
+			log.info("SortDataIntoRowsMapper - Setup Running");
+			loader = new DistCacheLoader();
+			keyOut = new IntWritable();
+			valueOut = new BytesWritable();
 			partitioner = new Partitioner();
+			queryInfo = loader.loadQueryInfo();
+			jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
+			recordEncoding = new RecordEncoding(queryInfo);
+			String filterExpr = queryInfo.getFilterExpression();
+			if (filterExpr != null) {
+				recordFilter = new RecordFilter(filterExpr);
+				log.info("Initialized using filter expression: '{}'", filterExpr);
+			} else {
+				recordFilter = null;
+			}
+
+			log.info("Query Identifer: {}", queryInfo.getIdentifier());
+		} catch (Exception e) {
+			throw new IOException("Error initializing mapper.", e);
 		}
+	}
 
-		FileSystem fs = FileSystem.newInstance(ctx.getConfiguration());
-
-	    // Can make this so that it reads multiple queries at one time...
-	    String hdfsWorkingFolder = ctx.getConfiguration().get(HadoopConfigurationProperties.HDFSWORKINGFOLDER);
-	    Path queryInfoFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + "query-info");
-	    queryInfo = new HadoopFileSystemStore(fs).recall(queryInfoFile, QueryInfo.class);
-		jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
-		recordEncoding = new RecordEncoding(queryInfo);
-
-	    log.info("Query Identifer: {}", queryInfo.getIdentifier());
-
-	  }
-
-	  /**
-	   * The key is the docID/line number and the value is the doc
-	   */
+	/**
+	 * The key is the docID/line number and the value is the doc
+	 */
 	@Override
 	public void map(LongWritable key, Text value, Context ctx) throws IOException, InterruptedException {
-	
+
 		Pair<Integer, byte[]> returnTuple;
 		ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_RECORDS_INIT_MAPPER).increment(1);
-		boolean passFilter = true;
-		// TODO: Add Record Filtering to discard those who do not pass filter.
 
-		// if (filter != null)
-		// {
-		// passFilter = ((DataFilter) filter).filterDataElement(value, dSchema);
-		// }
+		if (log.isDebugEnabled()) {
+			log.debug("Input Line: {}", value.toString());
+		}
 
-		if (passFilter) {
+		Map<String, Object> recordData = jsonConverter.toStringObjectFlatMap(value.toString());
+		if (recordFilter == null || recordFilter.satisfiesFilter(recordData)) {
 			try {
-
-				if (log.isDebugEnabled()) {
-					log.debug("Input Line: {}", value.toString());
-				}
-				Map<String, Object> recordData = jsonConverter.toStringObjectFlatMap(value.toString());
-				if (log.isDebugEnabled()) {
-					log.debug("selector {} value ({})", "Caller #", recordData.get("Caller #"));
-				}
 				returnTuple = createRecordPair(recordData);
-
 			} catch (Exception e) {
-                // There may be some records we cannot process, swallowing exception here to continue processing
+				// There may be some records we cannot process, swallowing exception here to
+				// continue processing
 				// rest of records.
 				log.error("Error in partitioning data element value {} ", value.toString());
 				e.printStackTrace();
-                returnTuple = null;
+				returnTuple = null;
 			}
 			if (returnTuple != null) {
 				if (log.isDebugEnabled()) {
@@ -143,13 +131,20 @@ import org.slf4j.LoggerFactory;
 			}
 		}
 	}
-	  
-	  @Override
-	  public void cleanup(Context ctx) throws IOException, InterruptedException
-	  {
-	    log.info("Finished with the map - cleaning up ");
-	  }
-	  
+
+	@Override
+	public void cleanup(Context ctx) throws IOException, InterruptedException {
+		try {
+			log.info("Finished with the map - cleaning up ");
+			if (loader != null) {
+				loader.close();
+				loader = null;
+			}
+		} catch (Exception e) {
+			throw new IOException("Exception cleaning up.", e);
+		}
+	}
+
 	private Pair<Integer, byte[]> createRecordPair(Map<String, Object> recordData) throws Exception {
 		Pair<Integer, byte[]> pair = null;
 

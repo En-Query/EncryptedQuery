@@ -34,6 +34,7 @@ public class Query extends Resource {
 	private String schedulesUri;
 	private Map<String, String> parameters;
 	private List<String> selectorValues;
+	private String filterExpression;
 
 	public Query() {
 		setType(TYPE);
@@ -87,11 +88,25 @@ public class Query extends Resource {
 		this.querySchema = querySchema;
 	}
 
+	public String getFilterExpression() {
+		return filterExpression;
+	}
+
+	public void setFilterExpression(String filterExpression) {
+		this.filterExpression = filterExpression;
+	}
+
 	@Override
 	public String toString() {
 		final int maxLen = 10;
 		StringBuilder builder = new StringBuilder();
-		builder.append("Query [name=").append(name).append(", status=").append(status).append(", querySchema=").append(querySchema).append(", schedulesUri=").append(schedulesUri).append(", parameters=")
+		builder.append("Query [name=")
+				.append(name)
+				.append(", status=").append(status)
+				.append(", querySchema=").append(querySchema)
+				.append(", schedulesUri=").append(schedulesUri)
+				.append(", filterExpression=").append(filterExpression)
+				.append(", parameters=")
 				.append(parameters != null ? toString(parameters.entrySet(), maxLen) : null).append(", selectorValues=").append(selectorValues != null ? toString(selectorValues, maxLen) : null).append("]");
 		return builder.toString();
 	}

@@ -86,14 +86,15 @@ public class QueryCipher {
 				hashBitSize = Integer.parseInt(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, hashBitSize.toString()));
 			}
 
-			logger.info("  - HashBitSize ( {} )", hashBitSize);
-			logger.info("  - Number of Selectors ( {} )", selectors.size());
+			logger.info("  - HashBitSize: {}", hashBitSize);
+			logger.info("  - Number of Selectors: {}", selectors.size());
+			logger.info("  - Filter Expression: {}", jpaQuery.getFilterExpression());
 			logger.info("  - Additional Parameters:");
 			for (Map.Entry<String, String> entry : parameters.entrySet()) {
 				logger.info("     {} = {}", entry.getKey(), entry.getValue());
 			}
 
-			Querier querier = encryptQuery.encrypt(querySchema, selectors, dataChunkSize, hashBitSize);
+			Querier querier = encryptQuery.encrypt(querySchema, selectors, dataChunkSize, hashBitSize, jpaQuery.getFilterExpression());
 
 			logger.info("Finished encrypting {}.", jpaQuery);
 			return querier;

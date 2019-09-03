@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -354,12 +355,12 @@ public class RecordEncodingTest {
 			}
 
 			@Override
-			public String visitISO8601Date() {
-				return "";
+			public Instant visitISO8601Date() {
+				return null;
 			}
 
 			@Override
-			public List<String> visitISO8601DateList() {
+			public List<Instant> visitISO8601DateList() {
 				return Collections.EMPTY_LIST;
 			}
 
@@ -462,7 +463,7 @@ public class RecordEncodingTest {
 			public List<String> visitStringList() {
 				return Collections.EMPTY_LIST;
 			}
-			
+
 			@Override
 			public Boolean visitBoolean() {
 				return null;
@@ -549,7 +550,7 @@ public class RecordEncodingTest {
 		field = new QuerySchemaElement();
 		field.setName("byteListField");
 		fields.add(field);
-		
+
 		field = new QuerySchemaElement();
 		field.setName("booleanField");
 		fields.add(field);
@@ -658,7 +659,7 @@ public class RecordEncodingTest {
 		field.setDataType(FieldType.BYTE_LIST);
 		field.setPosition(pos++);
 		fields.add(field);
-		
+
 		field = new DataSchemaElement();
 		field.setName("booleanField");
 		field.setDataType(FieldType.BOOLEAN);

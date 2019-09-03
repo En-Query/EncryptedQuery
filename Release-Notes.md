@@ -1,6 +1,10 @@
-# Encrypted Query v2.2.0 - Release Notes
+# Encrypted Query v2.2.2 - Release Notes
 
 Encrypted query has been updated to make it more Enterprise ready.   The Querier and Responder have been seperated into Separate modules intended to run on Separate servers.   The system has been developed and testing on servers using Centos 7 OS.
+
+#### Changes in release 2.2.2
+* Added support for filter expressions during Query creation. This is used to skip records from the source as a way to speed up processing 
+when only a subset of the data needs to be scanned. See file `doc/Expression-Filter-Syntax.md` for more information.
 
 #### Changes in release 2.2.0
 * Added support for processing Hadoop data in the responder.  

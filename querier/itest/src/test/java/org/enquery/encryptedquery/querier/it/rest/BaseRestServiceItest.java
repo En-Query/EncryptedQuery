@@ -217,9 +217,11 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:queries-result");
 
 				from("direct:create-query")
+						.streamCaching()
+						.log("${body}")
 						.marshal(queryFormat)
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						// .log("${body}")
+						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(queryFormat)
 						.end()
@@ -906,34 +908,8 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 	protected ScheduleResponse postSchedule(
 			String schedulesUri,
-			// String dataSchemaName,
-			// String dataSourceName,
-			// QuerySchema querySchema,
 			String dataSoureId,
 			Map<String, String> dataSourceParameters) throws Exception {
-
-		// DataSchemaResponse jsonDataSchema = retrieveDataSchemaByName(dataSchemaName);
-		// DataSourceResponse jsonDataSource = retrieveDataSourceByName(jsonDataSchema,
-		// dataSourceName);
-		// org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema jpaDataSchema =
-		// dataSchemaRepo.find(Integer.valueOf(jsonDataSchema.getData().getId()));
-		// org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema jpaQuerySchema =
-		// querySchemaRepo.add(sampleData.createJPAQuerySchema(jpaDataSchema));
-		// org.enquery.encryptedquery.querier.data.entity.json.QuerySchema jsonQuerySchema =
-		// retrieveQuerySchemas(jsonDataSchema)
-		// .getData()
-		// .stream()
-		// .filter(x -> x.getId().equals(jpaQuerySchema.getId().toString()))
-		// .findFirst()
-		// .get();
-		//
-		// jsonQuerySchema = retrieveQuerySchema(jsonQuerySchema.getSelfUri()).getData();
-
-		// submit the Query and wait for its encryption
-		// String schedulesUri = createQueryAndWaitForEncryption(
-		// querySchema.getQueriesUri(), query)
-		// .getData()
-		// .getSchedulesUri();
 
 
 		org.enquery.encryptedquery.querier.data.entity.json.Schedule sch = new org.enquery.encryptedquery.querier.data.entity.json.Schedule();

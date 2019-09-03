@@ -14,23 +14,21 @@
  * You should have received a copy of the GNU Affero General Public License along with this program.
  * If not, see <https://www.gnu.org/licenses/>.
  */
-package org.enquery.encryptedquery.responder.it.rest;
+package org.enquery.encryptedquery.responder.it.hadoop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.ops4j.pax.exam.CoreOptions.propagateSystemProperty;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
+import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.replaceConfigurationFile;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import javax.inject.Inject;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -45,16 +43,14 @@ import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
-import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
-import org.enquery.encryptedquery.responder.it.util.FlinkDriver;
-import org.enquery.encryptedquery.responder.it.util.KafkaDriver;
+import org.enquery.encryptedquery.responder.it.rest.BaseRestServiceItest;
+import org.enquery.encryptedquery.responder.it.util.HadoopDriver;
+import org.enquery.encryptedquery.responder.it.util.HadoopJsonRunnerConfigurator;
 import org.enquery.encryptedquery.xml.Versions;
-import org.enquery.encryptedquery.xml.schema.Configuration.Entry;
 import org.enquery.encryptedquery.xml.schema.DataSchemaResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResource;
 import org.enquery.encryptedquery.xml.schema.DataSourceResources;
@@ -65,7 +61,6 @@ import org.enquery.encryptedquery.xml.schema.ResultResource;
 import org.enquery.encryptedquery.xml.schema.ResultResources;
 import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -73,17 +68,21 @@ import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
-import org.ops4j.pax.exam.ProbeBuilder;
-import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.junit.PaxExam;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.ops4j.pax.exam.util.Filter;
-import org.osgi.framework.Constants;
 
+/**
+ * This is to test MapReduce against a remote server. You'll need to edit the file
+ * `remote-hadoop-conf.xml` in the `src/test/resources` directory to specify the remote server
+ * address. In this file, replace `localhost` by the actual host.
+ * 
+ */
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
-public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
+@Ignore
+public class HadoopMapRedRemoteIT extends BaseRestServiceItest {
 
 	private static final Integer DATA_CHUNK_SIZE = 1;
 	private static final Integer HASH_BIT_SIZE = 9;
@@ -96,33 +95,24 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 	@Inject
 	private QueryTypeConverter queryConverter;
 	@Inject
-	private DecryptResponse decryptor;
-	@Inject
 	private CryptoSchemeRegistry cryptoSchemeRegistry;
+	@Inject
+	private DecryptResponse decryptor;
 
 	private DataSchemaResource booksDataSchema;
 	private DataSourceResource dataSourceResource;
-	private static FlinkDriver flinkDriver = new FlinkDriver();
-	private static KafkaDriver kafkaDriver = new KafkaDriver();
+	private static HadoopDriver hadoopDriver = new HadoopDriver();
 	private Querier querier;
 
 	@Configuration
-	public Option[] configuration() {
+	public Option[] configuration() throws URISyntaxException, IOException {
 		final String booksJsonFile = Paths.get("target", "test-classes", "books.json").toAbsolutePath().toString();
 
 		return combineOptions(super.baseOptions(),
 				CoreOptions.options(
 						systemProperty("books.test.data.file").value(booksJsonFile),
-						propagateSystemProperty("flink.kafka.app")),
-				flinkDriver.configuration(),
-				kafkaDriver.configuration());
-	}
-
-	@ProbeBuilder
-	@Override
-	public TestProbeBuilder probeConfiguration(TestProbeBuilder probe) {
-		probe.setHeader(Constants.DYNAMICIMPORT_PACKAGE, "*");
-		return probe;
+						replaceConfigurationFile("etc/remote-hadoop-conf.xml", getResourceAsFile("/remote-hadoop-conf.xml"))),
+				hadoopDriver.configuration());
 	}
 
 	@Before
@@ -132,97 +122,35 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 
 		installBooksDataSchema();
 		booksDataSchema = retrieveDataSchemaByName("Books");
-		installFlinkKafkaDataSource("flink-kafka-books", booksDataSchema.getDataSchema().getName());
-		DataSourceResources dataSources = retrieveDataSources("/responder/api/rest/datasources");
-
-		dataSourceResource = dataSources.getDataSourceResource().stream()
-				.filter(ds -> "flink-kafka-books".equals(ds.getDataSource().getName()))
-				.findFirst()
-				.orElse(null);
-
-		assertEquals("flink-kafka-books", dataSourceResource.getDataSource().getName());
 
 		querier = createQuerier();
-		kafkaDriver.init();
-		flinkDriver.init();
-	}
-
-	@After
-	public void cleanup() throws IOException, InterruptedException {
-		flinkDriver.cleanup();
-		kafkaDriver.cleanup();
 	}
 
 	@Test
-	@Ignore
-	public void fromLatest() throws Exception {
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-		String offset = "fromLatest";
-		runQuery(offset);
-	}
-
-
-	@Test
-	public void failedJob() throws Exception {
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-		// emulate error killing kafka
-		kafkaDriver.cleanup();
-		ExecutionResource execution = runQuery("fromEarliest");
-		execution = retrieveExecution(execution.getSelfUri());
-		assertNotNull(execution.getExecution().getErrorMessage());
-	}
-
-	@Test
-	public void onceFromEarliest() throws Exception {
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-		ExecutionResource execution = runQuery("fromEarliest");
+	public void happyPathV2() throws Exception {
+		installHadoopDataSource(false);
+		ExecutionResource execution = runQuery();
 		validateSingleResult(execution);
 	}
 
 	@Test
-	public void twiceFromEarliest() throws Exception {
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-		String offset = "fromEarliest";
-
-		ExecutionResource execution = runQuery(offset);
-		validateSingleResult(execution);
-
-		execution = runQuery(offset);
+	public void happyPathV1() throws Exception {
+		installHadoopDataSource(true);
+		ExecutionResource execution = runQuery();
 		validateSingleResult(execution);
 	}
 
-	@Test
-	@Ignore("not working")
-	public void twiceFromLatestCommit() throws Exception {
-		// feed Kafka
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-		String offset = "fromLatestCommit";
-
-		// first run produces result
-		ExecutionResource execution = runQuery(offset);
-		validateSingleResult(execution);
-
-		// second run produces no result
-		execution = runQuery(offset);
-		validateNoResult(execution);
-
-		// feed Kafka again
-		kafkaDriver.send(Paths.get(System.getProperty("books.test.data.file")));
-
-		// thirs run produces result again
-		execution = runQuery(offset);
-		validateSingleResult(execution);
-	}
 
 	/**
 	 * @param execution
 	 * @throws Exception
 	 */
+	@SuppressWarnings("unused")
 	private void validateNoResult(ExecutionResource execution) throws Exception {
 		assertTrue(retrieveResults(execution.getSelfUri()).getResultResource().size() == 0);
 	}
 
-	private ExecutionResource runQuery(String offset) throws DatatypeConfigurationException, Exception {
+	private ExecutionResource runQuery() throws DatatypeConfigurationException, Exception {
 		// Add an execution for current time
 		DatatypeFactory dtf = DatatypeFactory.newInstance();
 		Execution ex = new Execution();
@@ -235,33 +163,16 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		Query xmlQuery = queryConverter.toXMLQuery(querier.getQuery());
 		ex.setQuery(xmlQuery);
 
-		ex.setConfiguration(makeConfiguration(offset));
-
 		ExecutionResource execution = createExecution(dataSourceResource.getExecutionsUri(), ex);
 		log.info("Submitted execution {}", execution);
 
-		ExecutorService es = Executors.newCachedThreadPool();
-
-		Future<Boolean> submit1 = es.submit(() -> executionFinished(execution));
-		Future<Boolean> submit2 = es.submit(() -> executionFinished(execution));
-
-		assertTrue(submit1.get() && submit2.get());
+		tryUntilTrue(60,
+				5_000,
+				"Timeout waiting for an execution to finish.",
+				uri -> retrieveExecution(uri).getExecution().getCompletedOn() != null,
+				execution.getSelfUri());
 
 		return execution;
-	}
-
-	private Boolean executionFinished(ExecutionResource execution) {
-		try {
-			tryUntilTrue(40,
-					5_000,
-					"Timeout waiting for an execution to finish.",
-					uri -> retrieveExecution(uri).getExecution().getCompletedOn() != null,
-					execution.getSelfUri());
-			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
 	}
 
 	private void validateSingleResult(ExecutionResource execution) throws Exception {
@@ -287,6 +198,7 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		log.info("Result window.start= {}, window.end={}",
 				resultWithPayload.getWindowStart(),
 				resultWithPayload.getWindowEnd());
+
 
 		queryConverter = new QueryTypeConverter();
 		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
@@ -320,27 +232,6 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 		assertEquals(44, f.getValue());
 	}
 
-	private org.enquery.encryptedquery.xml.schema.Configuration makeConfiguration(String offset) {
-		// Run from Earliest
-		org.enquery.encryptedquery.xml.schema.Configuration configuration = new org.enquery.encryptedquery.xml.schema.Configuration();
-		Entry config = new Entry();
-		config.setKey(KafkaConfigurationProperties.OFFSET);
-		config.setValue(offset);
-		configuration.getEntry().add(config);
-
-		// Runtime duration
-		config = new Entry();
-		config.setKey(FlinkConfigurationProperties.STREAM_RUNTIME_SECONDS);
-		config.setValue("60");
-		configuration.getEntry().add(config);
-
-		// Window lenght
-		config = new Entry();
-		config.setKey(FlinkConfigurationProperties.WINDOW_LENGTH_IN_SECONDS);
-		config.setValue("10");
-		configuration.getEntry().add(config);
-		return configuration;
-	}
 
 	private Querier createQuerier() throws Exception {
 		byte[] bytes = IOUtils.resourceToByteArray("/schemas/get-price-query-schema.xml",
@@ -351,4 +242,29 @@ public class ResultsFlinkKafkaIT extends BaseRestServiceItest {
 
 		return querierFactory.encrypt(querySchema, SELECTORS, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
 	}
+
+
+	private void installHadoopDataSource(boolean useVersion1) throws Exception {
+		final String dataSchemaName = booksDataSchema.getDataSchema().getName();
+		final String dataSourceName = "hadoop-books-json" + ((useVersion1) ? "-v1" : "v2");
+
+		// Add a QueryRunner
+		HadoopJsonRunnerConfigurator runnerConfigurator = new HadoopJsonRunnerConfigurator(confAdmin);
+		runnerConfigurator.create(dataSourceName,
+				dataSchemaName,
+				useVersion1,
+				Paths.get("etc/remote-hadoop-conf.xml").toAbsolutePath().toString(),
+				"enquery");
+
+		// give enough time for the QueryRunner to be registered
+		waitUntilQueryRunnerRegistered(dataSourceName);
+
+		DataSourceResources dataSources = retrieveDataSources("/responder/api/rest/datasources");
+		dataSourceResource =
+				dataSources.getDataSourceResource().stream()
+						.filter(ds -> dataSourceName.equals(ds.getDataSource().getName()))
+						.findFirst()
+						.orElse(null);
+	}
+
 }

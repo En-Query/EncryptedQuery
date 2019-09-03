@@ -86,7 +86,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n                \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n               \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n               \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
+					"raw": "{\r\n    \"name\":\"QS-Phone-Data\",\r\n    \"selectorField\":\"Caller #\",\r\n    \"fields\":[\r\n            {\r\n                \"name\": \"Caller #\",\r\n                \"size\":20,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Callee #\",\r\n               \"size\":16,\r\n                \"maxArrayElements\":1\r\n            },\r\n            {\r\n                \"name\": \"Duration\",\r\n               \"size\":10,\r\n                \"maxArrayElements\":1\r\n\r\n            },\r\n            {\r\n                \"name\": \"Date/Time\",\r\n                \"size\":30,\r\n                \"maxArrayElements\":1\r\n            }\r\n    ]\r\n}"
 				},
 				"url": {
 					"raw": "http://enquery.querier.com:8182/querier/api/rest/dataschemas/2147483602/queryschemas",

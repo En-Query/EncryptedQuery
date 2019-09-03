@@ -43,7 +43,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Configuration;
@@ -171,18 +170,22 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 	}
 
 	protected ScheduleResponse postSchedule(String dataSourceName) throws Exception {
+		return postSchedule(dataSourceName, null);
+	}
+
+	protected ScheduleResponse postSchedule(String dataSourceName, String filterExp) throws Exception {
 
 		DataSchemaResponse jsonDataSchema = retrieveDataSchemaByName("Books");
 		DataSourceResponse jsonDataSource = retrieveDataSourceByName(jsonDataSchema, dataSourceName);
 
 		QuerySchema querySchema = createQuerySchema(jsonDataSchema.getData());
-		Query query = createQueryAndWaitForEncryption(querySchema);
+		Query query = createQueryAndWaitForEncryption(querySchema, filterExp);
 
 		return postSchedule(query.getSchedulesUri(), jsonDataSource.getData().getId(), dataSourceParams());
 	}
 
-	protected Query createQueryAndWaitForEncryption(QuerySchema querySchema) throws Exception {
-		Query query = createQuery();
+	protected Query createQueryAndWaitForEncryption(QuerySchema querySchema, String filterExp) throws Exception {
+		Query query = createQuery(filterExp);
 		return createQueryAndWaitForEncryption(querySchema.getQueriesUri(), query).getData();
 	}
 
@@ -204,44 +207,49 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 
 		QuerySchemaField field = new QuerySchemaField();
 		field.setName("author");
-		field.setSize(100);
-		field.setMaxArrayElements(1);
 		List<QuerySchemaField> fields = new ArrayList<>();
 		fields.add(field);
+
 		QuerySchemaField field2 = new QuerySchemaField();
 		field2.setName("title");
-		field2.setSize(100);
-		field2.setMaxArrayElements(1);
 		fields.add(field2);
 		result.setFields(fields);
 
 		return createQuerySchema(dataSchema.getQuerySchemasUri(), result).getData();
 	}
 
-	protected org.enquery.encryptedquery.querier.data.entity.json.Query createQuery() {
-		org.enquery.encryptedquery.querier.data.entity.json.Query q = new org.enquery.encryptedquery.querier.data.entity.json.Query();
-		q.setName("Test Query " + ++queryCount);
+	protected org.enquery.encryptedquery.querier.data.entity.json.Query createQuery(String filterExp) {
+		org.enquery.encryptedquery.querier.data.entity.json.Query query = new org.enquery.encryptedquery.querier.data.entity.json.Query();
+		query.setName("Test Query " + ++queryCount);
 
 		// TODO: replace params with specific properties
 		Map<String, String> params = new HashMap<>();
 		params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
 		params.put(QuerierProperties.HASH_BIT_SIZE, "8");
-		// params.put(QuerierProperties.CERTAINTY, "128");
-		q.setParameters(params);
+		query.setParameters(params);
 
 		List<String> selectorValues = new ArrayList<>();
 		selectorValues.add("A Cup of Java");
-		q.setSelectorValues(selectorValues);
+		query.setSelectorValues(selectorValues);
+		query.setFilterExpression(filterExp);
 
-		return q;
+		return query;
 	}
 
-	protected ResultResponse postScheduleAndWaitForResult(String dataSourceName) throws Exception {
-		return waitForScheduleResult(postSchedule(dataSourceName));
+	protected ResultResponse postScheduleAndWaitForResult(String dataSourceName, String filterExp) throws Exception {
+		return waitForScheduleResult(postSchedule(dataSourceName, filterExp));
 	}
 
 	protected Retrieval submitQueryAndRetrieveResult(String dataSourceName) throws Exception {
-		ResultResponse resultResponse = postScheduleAndWaitForResult(dataSourceName);
+		return submitQueryAndRetrieveResult(dataSourceName, null);
+	}
+
+	protected Retrieval submitQueryAndRetrieveResult(String dataSourceName, String filterExp) throws Exception {
+		return submitQueryAndRetrieveResultWithFilterExp(dataSourceName, filterExp);
+	}
+
+	private Retrieval submitQueryAndRetrieveResultWithFilterExp(String dataSourceName, String filterExp) throws Exception {
+		ResultResponse resultResponse = postScheduleAndWaitForResult(dataSourceName, filterExp);
 		RetrievalResponse r = postRetrieval(resultResponse);
 		Resource retrieval = r.getData();
 

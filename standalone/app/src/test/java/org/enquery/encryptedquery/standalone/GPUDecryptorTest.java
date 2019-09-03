@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
@@ -70,7 +69,7 @@ public class GPUDecryptorTest {
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
 	private static final Path CONFIG_FILE_NAME = Paths.get("target/test-classes/", "config_gpudecryptor.cfg");
-	private static final Path DATA_FILE_NAME = Paths.get("target/test-classes/", "simple-data.json");
+	private static final Path DATA_FILE_NAME = Paths.get("target/test-classes/", "people.json");
 
 	private static final String SELECTOR = "31";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
@@ -83,7 +82,9 @@ public class GPUDecryptorTest {
 	private Map<String, String> config;
 
 	// private Responder responder;
-	private ExecutorService decryptionThreadPool = Executors.newCachedThreadPool();;
+	// private ExecutorService decryptionThreadPool = Executors.newCachedThreadPool();
+
+	private DecryptResponse decryptResponse;;
 
 	// private Responder responder;
 
@@ -102,17 +103,20 @@ public class GPUDecryptorTest {
 		crypto = new PaillierCryptoScheme();
 		crypto.initialize(config);
 
+		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
+			@Override
+			public CryptoScheme cryptoSchemeByName(String schemeId) {
+				if (schemeId.equals(crypto.name())) {
+					return crypto;
+				}
+				return null;
+			}
+		};
 
-		// responder = new Responder();
-		// responder.setOutputFileName(RESPONSE_FILE_NAME);
-		// responder.setInputDataFile(DATA_FILE_NAME);
-		// responder.setQueryFileName(QUERY_FILE_NAME);
-		// saveQuery(responder.getCrypto());
-		// responder.in
 
-		// crypto = new PaillierCryptoScheme();
-		// crypto.initialize(config);
-		// crypto = responder.getCrypto();
+		decryptResponse = new DecryptResponse();
+		decryptResponse.setCryptoRegistry(cryptoRegistry);
+		decryptResponse.setExecutionService(Executors.newCachedThreadPool());
 
 
 
@@ -188,13 +192,7 @@ public class GPUDecryptorTest {
 
 		log.info("# Response records: ", response.getResponseElements().size());
 
-		// ExecutorService es = Executors.newCachedThreadPool();
-		DecryptResponse dr = new DecryptResponse();
-		dr.setCrypto(crypto);
-		dr.setExecutionService(decryptionThreadPool);
-		dr.activate();
-
-		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		ClearTextQueryResponse answer = decryptResponse.decrypt(response, queryKey);
 		log.info(answer.toString());
 
 		assertEquals(1, answer.selectorCount());
@@ -229,12 +227,7 @@ public class GPUDecryptorTest {
 		log.info("# Response records: ", response.getResponseElements().size());
 
 
-		DecryptResponse dr = new DecryptResponse();
-		dr.setCrypto(crypto);
-		dr.setExecutionService(decryptionThreadPool);
-		dr.activate();
-
-		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		ClearTextQueryResponse answer = decryptResponse.decrypt(response, queryKey);
 		log.info("answer: " + answer);
 		assertNotNull(answer);
 		assertEquals(1, answer.selectorCount());

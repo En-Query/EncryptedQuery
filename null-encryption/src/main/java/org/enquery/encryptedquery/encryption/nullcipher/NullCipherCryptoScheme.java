@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-@Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
+@Component(configurationPolicy = ConfigurationPolicy.REQUIRE, property = "name=Null")
 public class NullCipherCryptoScheme extends AbstractCryptoScheme implements CryptoScheme {
 
 	private final Logger log = LoggerFactory.getLogger(NullCipherCryptoScheme.class);

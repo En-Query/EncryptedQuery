@@ -44,6 +44,7 @@ import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.batch.ColumnReduceFunctionV2;
 import org.enquery.encryptedquery.flink.batch.Dispatcher;
+import org.enquery.encryptedquery.flink.batch.FlinkBatchRecordFilter;
 import org.enquery.encryptedquery.flink.batch.ResponseFileOutputFormat;
 import org.enquery.encryptedquery.flink.streaming.ColumnBufferMap;
 import org.enquery.encryptedquery.flink.streaming.IncrementalResponseSink;
@@ -145,10 +146,14 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		final ColumnReduceFunctionV2 columnProcessor = new ColumnReduceFunctionV2(query, config);
 		final FileOutputFormat<Tuple2<Integer, CipherText>> outputFormat = new ResponseFileOutputFormat(queryInfo);
 
-		final String sfn = selectorFieldName;
+		// final String sfn = selectorFieldName;
+		// final String filter = query.getQueryInfo().getFilterExpression();
+		// FlinkStreamingRecordFilter rf = null;
+		// if (filter != null) {
+		// rf = new FlinkStreamingRecordFilter(filter);
+		// }
 
-		source
-				.filter(row -> row.get(sfn) != null)
+		source.filter(new FlinkBatchRecordFilter(query))
 				// shuffle input records for better parallelism
 				.rebalance()
 				// .setParallelism(flinkParallelism)
@@ -182,6 +187,7 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		query = loadQuery(inputFileName);
 		Validate.notNull(query);
 		Validate.notNull(query.getQueryInfo());
+		log.info("Loaded query with filter expression: {}", query.getQueryInfo().getFilterExpression());
 
 		QueryInfo queryInfo = query.getQueryInfo();
 		querySchema = queryInfo.getQuerySchema();

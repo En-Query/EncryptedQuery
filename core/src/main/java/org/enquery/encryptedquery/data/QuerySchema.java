@@ -184,7 +184,10 @@ public class QuerySchema implements Serializable {
 			String elementName = qse.getName();
 			Validate.notNull(elementName);
 
-			FieldType dataType = qs.getDataSchema().elementByName(elementName).getDataType();
+			DataSchemaElement dataSchemaElement = qs.getDataSchema().elementByName(elementName);
+			Validate.notNull(dataSchemaElement, "Data schema does not have field with name '%s'.", elementName);
+
+			FieldType dataType = dataSchemaElement.getDataType();
 			if (dataType == FieldType.STRING || dataType == FieldType.BYTEARRAY) {
 				if (qse.getSize() != null && qse.getSize() < 1) {
 					throw new RuntimeException(

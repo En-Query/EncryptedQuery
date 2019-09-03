@@ -16,6 +16,7 @@
  */
 package org.enquery.encryptedquery.core;
 
+import java.time.Instant;
 import java.util.List;
 
 public enum FieldType {
@@ -447,7 +448,7 @@ public enum FieldType {
 
 		@Override
 		public <E> E convert(FieldTypeValueConverterVisitor<E> visitor, Object value) {
-			return visitor.visitISO8601Date((String) value);
+			return visitor.visitISO8601Date((Instant) value);
 		}
 
 		@Override
@@ -465,7 +466,7 @@ public enum FieldType {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <E> E convert(FieldTypeValueConverterVisitor<E> visitor, Object value) {
-			return visitor.visitISO8601DateList((List<String>) value);
+			return visitor.visitISO8601DateList((List<Instant>) value);
 		}
 
 		@Override

@@ -33,6 +33,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.GenericInputSplit;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
+import org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.slf4j.Logger;
@@ -56,6 +57,7 @@ public class JDBCSource extends RichInputFormat<Map<String, Object>, InputSplit>
 	private transient PreparedStatement statement;
 	private transient ResultSet resultSet;
 	private boolean hasNext;
+	private transient FieldTypeUntypedValueConverterVisitor typeConverter;
 
 	/**
 	 * 
@@ -86,6 +88,7 @@ public class JDBCSource extends RichInputFormat<Map<String, Object>, InputSplit>
 	@Override
 	public void open(InputSplit split) throws IOException {
 		try {
+			typeConverter = new JDBCTypeConverter();
 			Class.forName(drivername);
 			dbConn = DriverManager.getConnection(dbURL);
 			statement = dbConn.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
@@ -167,8 +170,14 @@ public class JDBCSource extends RichInputFormat<Map<String, Object>, InputSplit>
 	private Map<String, Object> loadRecord() throws SQLException {
 		Map<String, Object> result = new HashMap<>(dataSchema.elementCount());
 		for (DataSchemaElement dse : dataSchema.elements()) {
-			result.put(dse.getName(), resultSet.getObject(dse.getPosition() + 1));
+			Object fieldValue = resultSet.getObject(dse.getPosition() + 1);
+			if (fieldValue != null) {
+				// convert to expected data type based on the schema
+				final Object actualValue = dse.getDataType().convert(typeConverter, fieldValue);
+				result.put(dse.getName(), actualValue);
+			}
 		}
+
 		return result;
 	}
 

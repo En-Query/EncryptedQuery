@@ -1,0 +1,10 @@
+<configuration>
+	<property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:${hdfs.port}</value>
+    </property>
+	<property>
+        <name>mapreduce.job.reduces</name>
+        <value>1</value>
+    </property>
+</configuration>

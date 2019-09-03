@@ -120,10 +120,19 @@ public class BaseRestServiceWithFlinkRunnerItest extends BaseRestServiceWithBook
 	}
 
 	protected ResultResponse postScheduleAndWaitForResult() throws Exception {
-		return postScheduleAndWaitForResult("Flink-JDBC-Derby-Books");
+		return postScheduleAndWaitForResult(null);
+	}
+
+	protected ResultResponse postScheduleAndWaitForResult(String filterExp) throws Exception {
+		return postScheduleAndWaitForResult("Flink-JDBC-Derby-Books", filterExp);
 	}
 
 	protected Retrieval submitQueryAndRetrieveResult() throws Exception {
 		return super.submitQueryAndRetrieveResult("Flink-JDBC-Derby-Books");
+	}
+
+	@Override
+	protected Retrieval submitQueryAndRetrieveResult(String filterExpression) throws Exception {
+		return super.submitQueryAndRetrieveResult("Flink-JDBC-Derby-Books", filterExpression);
 	}
 }

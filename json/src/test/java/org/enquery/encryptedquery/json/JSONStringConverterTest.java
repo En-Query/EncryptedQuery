@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.Map;
 import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.utils.ISO8601DateParser;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +54,7 @@ public class JSONStringConverterTest {
 			+ "\"null\":null,"
 			+ "\"int\": 12345,"
 			+ "\"double\": 1547215054.479078000,"
+			+ "\"ISO8601Date\": \"2001-01-01T19:32:11Z\","
 			+ "\"array\":[1, 2, 3, 4, 5],"
 			+ "\"object1\":{"
 			+ "		\"string\":\"string value\","
@@ -138,6 +141,12 @@ public class JSONStringConverterTest {
 		element = new DataSchemaElement();
 		element.setDataType(FieldType.DOUBLE);
 		element.setName("double");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.ISO8601DATE);
+		element.setName("ISO8601Date");
 		element.setPosition(pos++);
 		ds.addElement(element);
 
@@ -262,6 +271,11 @@ public class JSONStringConverterTest {
 		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof Double);
 		assertEquals(1547215054.479078000, value);
+
+		value = flat.get("ISO8601Date");
+		assertNotNull(value);
+		assertTrue("Actual type=" + value.getClass(), value instanceof Instant);
+		assertEquals(ISO8601DateParser.getInstant("2001-01-01T19:32:11Z"), value);
 
 		value = flat.get("array");
 		assertNotNull(value);

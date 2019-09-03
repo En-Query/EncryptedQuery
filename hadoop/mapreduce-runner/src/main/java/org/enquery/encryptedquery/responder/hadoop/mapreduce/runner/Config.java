@@ -50,79 +50,43 @@ public @interface Config {
 			required = true,
 			description = "Record type (i.e. json, csv, etc).")
 	String data_source_record_type();
-	
-	@AttributeDefinition(name = ".computer.threshold",
+
+	@AttributeDefinition(name = ".compute.threshold",
 			required = false,
 			description = "Amount of data to process before consolidation.   Larger numbers require more memory per task. Defaults to 30000")
 	String _compute_threshold() default "30000";
 
-	@AttributeDefinition(name = "limit.hits.per.selector",
+	@AttributeDefinition(name = ".hadoop.username",
 			required = false,
-			description = "Limit number of hits per Selector Hash.  If true then maxHitsPerSelector is the max number of hits")
-	String _limit_hits_per_selector() default "true";
-	
-	@AttributeDefinition(name = "Hadoop Server URI",
-			required = true,
-			description = "Hadoop Master URI (i.e. hdfs://namenodeserver:8020)")
-	String _hadoop_server_uri() default "hdfs://localhost:8020";
-
-	@AttributeDefinition(name = "Hadoop Username",
-			required = true,
-			description = "Username used to access Hadoop.")
-	String _hadoop_username() default "hadoop";
+			description = "Username used to access Hadoop. If not specified, the current user account running Responder is used.")
+	String _hadoop_username();
 
 	@AttributeDefinition(name = "Hadoop Run Directory",
 			required = true,
-			description = "HDFS Path to a folder to use as the parent folder to store temporary files during the execution of the query."
-					+ "Every execution will create temporary files in this folder.")
+			description = "HDFS directory to store temp files. Required.")
 	String _hdfs_run_directory();
-	
-	@AttributeDefinition(name = "Hadoop Installation Directory",
+
+	@AttributeDefinition(name = ".hadoop.install.dir",
 			required = true,
 			description = "Directory where Hadoop runtime is installed.")
 	String _hadoop_install_dir() default "/opt/hadoop";
 
-	@AttributeDefinition(name = "Hadoop Reduce Tasks",
+	@AttributeDefinition(name = ".hadoop.chunking.byte.size",
 			required = false,
-			description = "Number of Tasks to use for Map Reduce.")
-	String _hadoop_reduce_tasks() default "10";
-	
-	@AttributeDefinition(name = "Hadoop MR Map Memory MB",
-			required = false,
-			description = "Amount of Memory for each MapReduce Map task.")
-	String _hadoop_mapreduce_map_memory_mb() ;
+			description = "Chunking size for Hadoop processing.")
+	String _hadoop_chunking_byte_size() default "100";
 
-	@AttributeDefinition(name = "Hadoop MR Reduce Memory MB",
-			required = false,
-			description = "Amount of Memory for each MapReduce Reduce task.")
-	String _hadoop_mapreduce_reduce_memory_mb();
-
-	@AttributeDefinition(name = "Hadoop MR Map Java Opts",
-			required = false,
-			description = "Java Options for MapReduce Map task.")
-	String _hadoop_mapreduce_map_java_opts() ;
-
-	@AttributeDefinition(name = "Hadoop MR Reduce Java Opts",
-			required = false,
-			description = "Java Options for MapReduce Reduce task.")
-	String _hadoop_mapreduce_reduce_java_opts();
-
-	@AttributeDefinition(name = "Hadoop Chunking Byte Size",
-				required = false,
-				description = "Chunking size for Hadoop processing.")
-	String _hadoop_chunking_byte_size() default "100";	
-			
-	@AttributeDefinition(name = "Hadoop MR Processing Method",
+	@AttributeDefinition(name = ".hadoop.processing.method",
 			required = false,
 			description = "Method for processing data in MR, v1 for processing columns method, v2 for processing by record method.")
-    String _hadoop_processing_method() default "v2";	
-	
-	@AttributeDefinition(name = "Additional Hadoop Argumments",
+	String _hadoop_processing_method() default "v2";
+
+	@AttributeDefinition(name = ".additional.hadoop.arguments",
 			required = false,
-			description = "Additional arguments to be passed to Hadoop 'run' command when executing the query.")
+			description = "Additional arguments to be passed to Hadoop command when executing the query.")
 	String _additional_hadoop_arguments();
 
-	@AttributeDefinition(name = ".jar.file.path",
+	@AttributeDefinition(name = ".application.jar.path",
 			required = true,
 			description = "Path to the hadoop-map-reduce jar file.  This is the jar file implementing the query execution.")
 	String _application_jar_path();
@@ -133,4 +97,8 @@ public @interface Config {
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
 
+	@AttributeDefinition(name = ".hadoop.config.file",
+			required = false,
+			description = "Hadoop Config File. Optional path to a Hadoop configuration file (in the local machine) containing additional Hadoop settings.")
+	String _hadoop_config_file();
 }

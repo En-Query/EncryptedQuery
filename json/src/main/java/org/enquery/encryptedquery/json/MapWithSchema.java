@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.json;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
+import org.enquery.encryptedquery.utils.ISO8601DateParser;
 
 /**
  * A HashMap, that given a DataSchema, keeps only elements that are defined in the data schema and
@@ -232,8 +234,8 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	 * lang.Object)
 	 */
 	@Override
-	public String visitISO8601Date(Object value) {
-		return (String) value;
+	public Instant visitISO8601Date(Object value) {
+		return ISO8601DateParser.getInstant((String) value);
 	}
 
 	/*
@@ -244,7 +246,7 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	 * java.lang.Object)
 	 */
 	@Override
-	public List<String> visitISO8601DateList(Object value) {
+	public List<Instant> visitISO8601DateList(Object value) {
 		return convertList(value, v -> visitISO8601Date(v));
 	}
 

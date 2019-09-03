@@ -20,12 +20,12 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.function.Consumer;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor;
-import org.enquery.encryptedquery.utils.ISO8601DateParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,8 +132,8 @@ public class FieldEncoder implements FieldTypeValueConverterVisitor<Void> {
 	 * String)
 	 */
 	@Override
-	public Void visitISO8601Date(String value) {
-		buffer.putLong(ISO8601DateParser.getLongDate(value));
+	public Void visitISO8601Date(Instant value) {
+		buffer.putLong(value.toEpochMilli());
 		return null;
 	}
 
@@ -145,7 +145,7 @@ public class FieldEncoder implements FieldTypeValueConverterVisitor<Void> {
 	 * List)
 	 */
 	@Override
-	public Void visitISO8601DateList(List<String> value) {
+	public Void visitISO8601DateList(List<Instant> value) {
 		encodeList(value, v -> visitISO8601Date(v));
 		return null;
 	}
@@ -426,7 +426,7 @@ public class FieldEncoder implements FieldTypeValueConverterVisitor<Void> {
 		encodeList(value, v -> visitString(v));
 		return null;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 

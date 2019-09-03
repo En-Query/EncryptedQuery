@@ -35,7 +35,6 @@ import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
 import org.enquery.encryptedquery.querier.encrypt.Querier;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.responder.data.entity.DataSource;
 import org.enquery.encryptedquery.responder.data.service.DataSourceRegistry;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;

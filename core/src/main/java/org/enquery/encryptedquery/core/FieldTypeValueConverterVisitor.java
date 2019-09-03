@@ -16,6 +16,7 @@
  */
 package org.enquery.encryptedquery.core;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -27,14 +28,14 @@ public interface FieldTypeValueConverterVisitor<E> {
 	E visitByte(Byte value);
 
 	E visitByteList(List<Byte> value);
-	
+
 	E visitBoolean(Boolean value);
 
 	E visitBooleanList(List<Boolean> value);
 
-	E visitISO8601Date(String value);
+	E visitISO8601Date(Instant value);
 
-	E visitISO8601DateList(List<String> value);
+	E visitISO8601DateList(List<Instant> value);
 
 	E visitIP6(String value);
 

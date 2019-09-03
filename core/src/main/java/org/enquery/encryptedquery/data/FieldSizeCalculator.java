@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.data;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 
 import org.enquery.encryptedquery.core.FieldTypeValueConverterVisitor;
@@ -156,7 +157,7 @@ public class FieldSizeCalculator implements FieldTypeValueConverterVisitor<Integ
 	 * String)
 	 */
 	@Override
-	public Integer visitISO8601Date(String value) {
+	public Integer visitISO8601Date(Instant value) {
 		return Long.BYTES;
 	}
 
@@ -168,7 +169,7 @@ public class FieldSizeCalculator implements FieldTypeValueConverterVisitor<Integ
 	 * List)
 	 */
 	@Override
-	public Integer visitISO8601DateList(List<String> value) {
+	public Integer visitISO8601DateList(List<Instant> value) {
 		return calc(value, Long.BYTES);
 	}
 
@@ -386,7 +387,7 @@ public class FieldSizeCalculator implements FieldTypeValueConverterVisitor<Integ
 	public Integer visitStringList(List<String> value) {
 		return calculateStringFieldSize(value);
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 

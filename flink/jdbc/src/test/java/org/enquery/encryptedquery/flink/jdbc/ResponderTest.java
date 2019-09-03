@@ -34,7 +34,6 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBException;
@@ -47,6 +46,10 @@ import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Field;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Hits;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
+import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.enquery.encryptedquery.data.QueryKey;
@@ -81,15 +84,12 @@ public class ResponderTest extends JDBCTestBase {
 
 	public static final int modulusBitSize = 384;
 	public static final int certainty = 128;
-	private static final String SELECTOR = "A Cup of Java";
-	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
-	private QuerySchema querySchema;
 	private QueryTypeConverter queryConverter;
 	private ResponseTypeConverter responseConverter;
-	private QueryKey queryKey;
 	private Map<String, String> config;
 	private PaillierCryptoScheme crypto;
+	private DecryptResponse decryptResponse;
 
 	@Before
 	public void prepare() throws Exception {
@@ -119,15 +119,9 @@ public class ResponderTest extends JDBCTestBase {
 		responseConverter.setSchemeRegistry(cryptoRegistry);
 		responseConverter.initialize();
 
-		querySchema = createQuerySchema();
-
-		Querier querier = createQuerier("Books", SELECTORS);
-		queryKey = querier.getQueryKey();
-
-		// save the query
-		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
-			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
-		}
+		decryptResponse = new DecryptResponse();
+		decryptResponse.setCryptoRegistry(cryptoRegistry);
+		decryptResponse.setExecutionService(Executors.newCachedThreadPool());
 	}
 
 	@After
@@ -139,7 +133,15 @@ public class ResponderTest extends JDBCTestBase {
 	}
 
 	@Test
-	public void test() throws Exception {
+	public void testNoFilter() throws Exception {
+		QuerySchema querySchema = createQuerySchema("title");
+		Querier querier = createQuerier(querySchema, null, Arrays.asList(new String[] {"A Cup of Java"}));
+		QueryKey queryKey = querier.getQueryKey();
+
+		// save the query
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		}
 
 		Configuration cfg = new Configuration();
 		cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
@@ -160,46 +162,136 @@ public class ResponderTest extends JDBCTestBase {
 		}
 
 		Response response = loadResponseFile();
-		response.getQueryInfo().printQueryInfo();
+		// response.getQueryInfo().printQueryInfo();
 
-		log.info("# Response records: ", response.getResponseElements().size());
-
-		DecryptResponse dr = new DecryptResponse();
-		ExecutorService es = Executors.newCachedThreadPool();
-		dr.setCrypto(crypto);
-		dr.setExecutionService(es);
-		dr.activate();
-
-		ClearTextQueryResponse answer = dr.decrypt(response, queryKey);
+		ClearTextQueryResponse answer = decryptResponse.decrypt(response, queryKey);
 		assertNotNull(answer);
+		log.info(answer.toString());
+
 		assertEquals(1, answer.selectorCount());
-		int[] hitCount = {0};
-		int[] recordCount = {0};
-		answer.forEach(sel -> {
-			log.info("Selector {}", sel);
-			assertEquals("title", sel.getName());
-			sel.forEachHits(h -> {
-				hitCount[0]++;
-				assertEquals("A Cup of Java", h.getSelectorValue());
-				assertEquals(1, h.recordCount());
-				h.forEachRecord(r -> {
-					recordCount[0]++;
-					r.forEachField(f -> {
-						log.info("Field {}.", f);
-						if (f.getName().equalsIgnoreCase("price")) {
-							assertEquals(Double.valueOf("44.44"), f.getValue());
-						} else if (f.getName().equalsIgnoreCase("release_dt")) {
-							assertTrue("2001-01-03T11:18:00.000Z".equals(f.getValue().toString()) || "2001-01-03T11:18:00Z".equals(f.getValue().toString()));
-							// assertEquals("2001-01-03T11:18:00.000Z", f.getValue());
-						}
-					});
-				});
-			});
+		Selector selector = answer.selectorByName("title");
+		log.info("Selector {}", selector);
+		assertEquals("title", selector.getName());
+		assertEquals(1, selector.hitCount());
+		Hits hits = selector.hitsBySelectorValue("A Cup of Java");
+		assertNotNull(hits);
+		assertEquals("A Cup of Java", hits.getSelectorValue());
+		assertEquals(1, hits.recordCount());
+		Record record = hits.recordByIndex(0);
+		assertNotNull(record);
+		assertEquals(4, record.fieldCount());
+		Field price = record.fieldByName("price");
+		assertNotNull(price);
+		assertEquals(Double.valueOf("44.44"), price.getValue());
+		Field releaseDate = record.fieldByName("release_dt");
+		assertNotNull(releaseDate);
+		assertEquals("2001-01-03T11:18:00Z", releaseDate.getValue().toString());
+	}
+
+	@Test
+	public void testWithFilter() throws Exception {
+		QuerySchema querySchema = createQuerySchema("author");
+		Querier querier = createQuerier(querySchema, "qty < 100", Arrays.asList(new String[] {"Kevin Jones"}));
+		QueryKey queryKey = querier.getQueryKey();
+
+		// save the query
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		}
+
+		Configuration cfg = new Configuration();
+		cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
+		cfg.setString(AkkaOptions.CLIENT_TIMEOUT, "2 min");
+		cfg.setInteger(CoreOptions.DEFAULT_PARALLELISM, 4);
+		cfg.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, 4);
+
+		LocalEnvironment env = ExecutionEnvironment.createLocalEnvironment(cfg);
+
+		try (Responder q = new Responder()) {
+			q.setInputFileName(QUERY_FILE_NAME);
+			q.setOutputFileName(RESPONSE_FILE_NAME);
+			q.setDriverClassName(DRIVER_CLASS);
+			q.setConnectionUrl(DB_URL);
+			q.setSqlQuery(SELECT_ALL_BOOKS);
+			q.setConfig(config);
+			q.run(env);
+		}
+
+		Response response = loadResponseFile();
+		// response.getQueryInfo().printQueryInfo();
+
+		ClearTextQueryResponse answer = decryptResponse.decrypt(response, queryKey);
+		assertNotNull(answer);
+		log.info(answer.toString());
+
+		assertEquals(1, answer.selectorCount());
+		Selector selector = answer.selectorByName("author");
+		log.info("Selector {}", selector);
+		assertEquals("author", selector.getName());
+		assertEquals(1, selector.hitCount());
+		Hits hits = selector.hitsBySelectorValue("Kevin Jones");
+		assertNotNull(hits);
+		assertEquals("Kevin Jones", hits.getSelectorValue());
+		assertEquals(5, hits.recordCount());
+
+		// validate that title "A Teaspoon of Java 1.8" is not returned (becasue its qty > 100)
+		int[] cnt = new int[1];
+		hits.forEachRecord(rec -> {
+			if ("A Teaspoon of Java 1.8".equals(rec.fieldByName("title").getValue())) {
+				cnt[0]++;
+			}
 		});
 
-		assertEquals(1, hitCount[0]);
-		assertEquals(1, recordCount[0]);
+		assertTrue(cnt[0] == 0);
 	}
+
+
+	@Test
+	public void testAllRecordsFiltered() throws Exception {
+		QuerySchema querySchema = createQuerySchema("author");
+		Querier querier = createQuerier(querySchema, "qty > 1010", Arrays.asList(new String[] {"Kevin Jones"}));
+		QueryKey queryKey = querier.getQueryKey();
+
+		// save the query
+		try (OutputStream os = new FileOutputStream(QUERY_FILE_NAME.toFile())) {
+			queryConverter.marshal(queryConverter.toXMLQuery(querier.getQuery()), os);
+		}
+
+		Configuration cfg = new Configuration();
+		cfg.setString(AkkaOptions.ASK_TIMEOUT, "2 min");
+		cfg.setString(AkkaOptions.CLIENT_TIMEOUT, "2 min");
+		cfg.setInteger(CoreOptions.DEFAULT_PARALLELISM, 4);
+		cfg.setInteger(TaskManagerOptions.NUM_TASK_SLOTS, 4);
+
+		LocalEnvironment env = ExecutionEnvironment.createLocalEnvironment(cfg);
+
+		try (Responder q = new Responder()) {
+			q.setInputFileName(QUERY_FILE_NAME);
+			q.setOutputFileName(RESPONSE_FILE_NAME);
+			q.setDriverClassName(DRIVER_CLASS);
+			q.setConnectionUrl(DB_URL);
+			q.setSqlQuery(SELECT_ALL_BOOKS);
+			q.setConfig(config);
+			q.run(env);
+		}
+
+		Response response = loadResponseFile();
+
+		ClearTextQueryResponse answer = decryptResponse.decrypt(response, queryKey);
+		assertNotNull(answer);
+		log.info(answer.toString());
+
+		assertEquals(1, answer.selectorCount());
+		Selector selector = answer.selectorByName("author");
+		log.info("Selector {}", selector);
+		assertEquals("author", selector.getName());
+		assertEquals(1, selector.hitCount());
+		Hits hits = selector.hitsBySelectorValue("Kevin Jones");
+		assertNotNull(hits);
+		assertEquals("Kevin Jones", hits.getSelectorValue());
+		assertEquals(0, hits.recordCount());
+	}
+
 
 	private Response loadResponseFile() throws FileNotFoundException, IOException, JAXBException {
 		try (FileInputStream fis = new FileInputStream(RESPONSE_FILE_NAME.toFile())) {
@@ -218,16 +310,16 @@ public class ResponderTest extends JDBCTestBase {
 	}
 
 
-	private Querier createQuerier(String queryType, List<String> selectors) throws Exception {
+	private Querier createQuerier(QuerySchema querySchema, String filterExpression, List<String> selectors) throws Exception {
 		RandomProvider randomProvider = new RandomProvider();
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
 
-		return queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE);
+		return queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE, filterExpression);
 	}
 
-	private QuerySchema createQuerySchema() {
+	private QuerySchema createQuerySchema(String selectorFieldName) {
 		int pos = 0;
 		DataSchema ds = new DataSchema();
 		ds.setName("Books");
@@ -270,7 +362,7 @@ public class ResponderTest extends JDBCTestBase {
 
 		QuerySchema qs = new QuerySchema();
 		qs.setName("Books");
-		qs.setSelectorField("title");
+		qs.setSelectorField(selectorFieldName);
 		qs.setDataSchema(ds);
 
 		QuerySchemaElement field1 = new QuerySchemaElement();
@@ -283,18 +375,15 @@ public class ResponderTest extends JDBCTestBase {
 
 		QuerySchemaElement field3 = new QuerySchemaElement();
 		field3.setName("author");
-		field3.setMaxArrayElements(1);
 		qs.addElement(field3);
 
 		QuerySchemaElement field4 = new QuerySchemaElement();
 		field4.setName("price");
-		field4.setMaxArrayElements(1);
 		qs.addElement(field4);
 
 
 		QuerySchemaElement field5 = new QuerySchemaElement();
 		field5.setName("release_dt");
-		field5.setMaxArrayElements(1);
 		qs.addElement(field5);
 
 		return qs;

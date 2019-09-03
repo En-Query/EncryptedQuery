@@ -16,220 +16,139 @@
  */
 package org.enquery.encryptedquery.hadoop.mapreduce;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Map;
 
-import javax.xml.bind.JAXBException;
-
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.Validate;
-import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.enquery.encryptedquery.data.DataSchema;
-import org.enquery.encryptedquery.data.Query;
-import org.enquery.encryptedquery.data.QuerySchema;
-import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
+import org.apache.hadoop.util.Tool;
 import org.enquery.encryptedquery.hadoop.core.HDFSFileIOUtils;
 import org.enquery.encryptedquery.hadoop.core.HadoopConfigurationProperties;
-import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
+import org.enquery.encryptedquery.responder.ResponderProperties;
+import org.enquery.encryptedquery.utils.FileIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Responder {
+public class Responder extends Configured implements Tool {
 
 	private static final Logger log = LoggerFactory.getLogger(Responder.class);
 
-	private Map<String, String> config;
-
-	protected QuerySchema querySchema;
-	protected DataSchema dataSchema;
-	private java.nio.file.Path queryFileName;
-	private java.nio.file.Path configFileName;
-	protected Query query;
-	private FileSystem hdfs;
-	protected QueryTypeConverter queryTypeConverter;
-	
-	private Path inputDataFile;
+	private Path queryFile;
+	private Path outputFile;
+	private String inputFile;
+	private Boolean v1ProcessingMethod = false;
+	private Path configFile;
 	private Path hdfsWorkingFolder;
 	private Path hdfsInitFolder;
 	private Path hdfsMultFolder;
 	private Path hdfsFinalFolder;
-	private java.nio.file.Path outputFileName;
-	private Boolean v1ProcessingMethod;
+	private boolean success;
 
-	public void initialize() throws Exception {
-		
-        hdfsWorkingFolder = new Path(config.get(HadoopConfigurationProperties.HDFSWORKINGFOLDER));
-        hdfsInitFolder = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName.getFileName().toString() + "_init"); 
-        hdfsMultFolder = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName.getFileName().toString() + "_mult"); 
-        hdfsFinalFolder = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName.getFileName().toString() + "_final"); 
-
-		initializeCryptoScheme();
-
-		query = loadQuery(queryFileName);
-		Validate.notNull(query);
-		Validate.notNull(query.getQueryInfo());
-		String queryInfoFileName = hdfsWorkingFolder.toString() + Path.SEPARATOR + "query-info";
-		writeToHDFS(query.getQueryInfo(), queryInfoFileName);
-		
+	public boolean isSuccess() {
+		return success;
 	}
 
-	/**
-	 * @param config2
-	 * @throws Exception
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
 	 */
-	private void initializeCryptoScheme() throws Exception {
+	@Override
+	public int run(String[] args) throws Exception {
+		log.info("Starting Responder with args: {}", Arrays.toString(args));
 
-		final CryptoScheme crypto = CryptoSchemeFactory.make(config);
+		Configuration conf = getConf();
+		configure(args, conf);
 
-		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
-			@Override
-			public CryptoScheme cryptoSchemeByName(String schemeId) {
-				if (schemeId.equals(crypto.name())) {
-					return crypto;
-				}
-				return null;
-			}
-		};
-
-		queryTypeConverter = new QueryTypeConverter();
-		queryTypeConverter.setCryptoRegistry(cryptoRegistry);
-		queryTypeConverter.initialize();
-	}
-
-	protected Query loadQuery(java.nio.file.Path file) throws IOException, FileNotFoundException, JAXBException {
-		try (FileInputStream fis = new FileInputStream(file.toFile())) {
-			org.enquery.encryptedquery.xml.schema.Query xml = queryTypeConverter.unmarshal(fis);
-			return queryTypeConverter.toCoreQuery(xml);
-		}
-	}
-	
-	public int run() throws Exception {
-		log.info("Starting Responder");
-
-		boolean success = true;
-		initialize();
+		success = true;
 
 		if (v1ProcessingMethod) {
 			if (success) {
-				success = SortDataIntoRows.run(inputDataFile, query.getQueryInfo(), config, hdfs, hdfsInitFolder);
+				success = SortDataIntoRows.run(conf,
+						inputFile,
+						hdfsInitFolder);
 			}
 			if (success) {
-				success = ProcessColumns_v1.run(config, query.getQueryInfo(), hdfs, hdfsInitFolder, hdfsMultFolder,
-						queryFileName, configFileName);
+				success = ProcessColumns_v1.run(conf,
+						hdfsInitFolder,
+						hdfsMultFolder);
 			}
 		} else {
-
 			if (success) {
-				success = ProcessData.run(inputDataFile, query.getQueryInfo(), config, hdfs, hdfsMultFolder,
-						queryFileName, configFileName);
+				success = ProcessData.run(conf,
+						inputFile,
+						hdfsMultFolder);
 			}
 
 		}
+
 		// Concatenate the output to one file
+
 		if (success) {
-			success = CombineColumnResults.run(config, query.getQueryInfo(), hdfs, hdfsMultFolder, hdfsFinalFolder,
-					outputFileName.getFileName().toString(), configFileName, v1ProcessingMethod);
+			success = CombineColumnResults.run(conf,
+					hdfsMultFolder,
+					hdfsFinalFolder,
+					outputFile.getFileName().toString(),
+					v1ProcessingMethod);
 		}
 
 		// Clean up
-		hdfs.delete(hdfsInitFolder, true);
-		hdfs.delete(hdfsMultFolder, true);
-		hdfs.delete(hdfsFinalFolder, true);
-		if (success) {
-			Path hdfsFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName.getFileName().toString());
-			HDFSFileIOUtils.copyHDFSFileToLocal(hdfs, hdfsFile, outputFileName);
-		}
+		cleanup(conf, success);
 
 		return success ? 0 : 1;
 
 	}
 
-	public Boolean getV1ProcessingMethod() {
-		return v1ProcessingMethod;
-	}
+	private void cleanup(Configuration conf, boolean success) throws IOException {
+		FileSystem fs = FileSystem.newInstance(conf);
 
-	public void setV1ProcessingMethod(Boolean v1ProcessingMethod) {
-		this.v1ProcessingMethod = v1ProcessingMethod;
-	}
-
-	public java.nio.file.Path getOutputFileName() {
-		return outputFileName;
-	}
-
-	public void setOutputFileName(java.nio.file.Path outputFileName) {
-		this.outputFileName = outputFileName;
-	}
-
-	public Path getInputDataFile() {
-		return inputDataFile;
-	}
-
-	public void setInputFileName(Path inputDataFile) {
-		this.inputDataFile = inputDataFile;
-	}
-	
-	public void setConfig(Map<String, String> config) {
-		this.config = config;
-	}
-	
-	public java.nio.file.Path getQueryFileName() {
-		return queryFileName;
-	}
-	
-	public void setQueryFileName(java.nio.file.Path queryFileName) {
-		this.queryFileName = queryFileName;
-	}
-	
-	public java.nio.file.Path getConfigFileName() {
-		return configFileName;
-	}
-	
-	public void setConfigFileName(java.nio.file.Path configFileName) {
-		this.configFileName = configFileName;
-	}
-	
-	public FileSystem getHdfs() {
-		return this.hdfs;
-	}
-	
-	public void setHdfs(FileSystem hdfs) {
-		this.hdfs = hdfs;
-	}
-	
-	private void writeToHDFS(Object objToWrite, String hdfsFileName) throws IOException {
-		log.info("Writing {} into HDFS", hdfsFileName );
-
-		org.apache.hadoop.fs.Path hdfswritepath = new org.apache.hadoop.fs.Path(hdfsFileName);
-		
-		if (hdfs.exists(hdfswritepath)) {
-			hdfs.delete(hdfswritepath, false);
+		fs.delete(new org.apache.hadoop.fs.Path(hdfsInitFolder.toString()), true);
+		fs.delete(new org.apache.hadoop.fs.Path(hdfsMultFolder.toString()), true);
+		fs.delete(new org.apache.hadoop.fs.Path(hdfsFinalFolder.toString()), true);
+		if (success) {
+			org.apache.hadoop.fs.Path hdfsFile = new org.apache.hadoop.fs.Path(hdfsWorkingFolder + org.apache.hadoop.fs.Path.SEPARATOR + outputFile.getFileName().toString());
+			HDFSFileIOUtils.copyHDFSFileToLocal(fs, hdfsFile, outputFile);
 		}
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutput out = null;
-		byte[] outputBytes = null;
-		try {
-			out = new ObjectOutputStream(bos);
-			out.writeObject(objToWrite);
-			out.flush();
-			outputBytes = bos.toByteArray();
-		} finally {
-			try {
-			bos.close();
-			} catch (IOException ex) {
-				log.error("Failed to convert object {} to byte array", objToWrite.getClass().getName());
-			}
+	}
+
+	public void configure(String[] args, Configuration conf) throws ParseException, Exception {
+		CommandLineOptions clo = new CommandLineOptions(args);
+
+		queryFile = clo.queryFile();
+		Validate.isTrue(Files.exists(queryFile), "File %s does not exist.", queryFile);
+
+		inputFile = clo.inputFile();
+		Validate.notBlank(inputFile);
+
+		outputFile = clo.outputFile();
+		Validate.isTrue(!Files.exists(outputFile), "Output file %s exists. Delete first.", outputFile);
+
+		configFile = clo.configFile();
+		Map<String, String> config = FileIOUtils.loadPropertyFile(configFile);
+		if (config.get(HadoopConfigurationProperties.PROCESSING_METHOD).equalsIgnoreCase("v1")) {
+			v1ProcessingMethod = true;
 		}
 
-		FSDataOutputStream outputStream = hdfs.create(hdfswritepath);
-		outputStream.write(outputBytes);
-        outputStream.close();		
+		hdfsWorkingFolder = Paths.get(config.get(HadoopConfigurationProperties.HDFSWORKINGFOLDER));
+		hdfsInitFolder = hdfsWorkingFolder.resolve("init");
+		hdfsMultFolder = hdfsWorkingFolder.resolve("mult");
+		hdfsFinalFolder = hdfsWorkingFolder.resolve("final");
+
+		String mhs = config.get(ResponderProperties.MAX_HITS_PER_SELECTOR);
+		if (mhs != null) {
+			conf.setInt(ResponderProperties.MAX_HITS_PER_SELECTOR, Integer.valueOf(mhs));
+		}
+
+		conf.set(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE, config.get(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE));
+		conf.set(HadoopConfigurationProperties.HDFSWORKINGFOLDER, hdfsWorkingFolder.toString());
+		conf.set("mapreduce.map.speculative", "false");
+		conf.set("mapreduce.reduce.speculative", "false");
 	}
 }

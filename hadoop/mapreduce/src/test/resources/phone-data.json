@@ -1,6 +1,5 @@
-{"Duration": "", "Date/Time": "", "Caller #": "", "Callee #": ""}
-{"Duration": "01:22:51", "Date/Time": "05/16/2016 07:51 AM", "Caller #": "664-874-3077", "Callee #": "451-857-2022"}
-{"Duration": "01:56:18", "Date/Time": "03/19/2016 06:35 PM", "Caller #": "275-913-7889", "Callee #": "385-145-4822"}
-{"Duration": "00:36:43", "Date/Time": "09/22/2016 04:29 AM", "Caller #": "846-321-3750", "Callee #": "294-528-2590"}
-{"Duration": "00:33:15", "Date/Time": "07/23/2016 04:36 AM", "Caller #": "514-775-7039", "Callee #": "533-365-1632"}
-{"Duration": "01:03:39", "Date/Time": "05/13/2016", "Caller #": "275-913-7889", "Callee #": "349-899-2100"}
+{"Duration": 83, "Timestamp": "2016-05-16T07:51Z", "Caller": "664-874-3077", "Callee": "451-857-2022"}
+{"Duration": 117, "Timestamp": "2016-03-19T18:35Z", "Caller": "275-913-7889", "Callee": "385-145-4822"}
+{"Duration": 37, "Timestamp": "2016-09-22T04:29Z", "Caller": "846-321-3750", "Callee": "294-528-2590"}
+{"Duration": 34, "Timestamp": "2016-07-23T04:36Z", "Caller": "514-775-7039", "Callee": "533-365-1632"}
+{"Duration": 64, "Timestamp": "2016-05-13T00:02Z", "Caller": "275-913-7889", "Callee": "349-899-2100"}

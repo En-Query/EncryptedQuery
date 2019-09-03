@@ -16,20 +16,21 @@
  */
 package org.enquery.encryptedquery.core;
 
+import java.time.Instant;
 import java.util.List;
 
 public interface FieldTypeProducerVisitor {
 	Byte visitByte();
 
 	List<Byte> visitByteList();
-	
+
 	Boolean visitBoolean();
 
 	List<Boolean> visitBooleanList();
 
-	String visitISO8601Date();
+	Instant visitISO8601Date();
 
-	List<String> visitISO8601DateList();
+	List<Instant> visitISO8601DateList();
 
 	String visitIP6();
 

@@ -24,12 +24,15 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.filter.RecordFilter;
 import org.enquery.encryptedquery.flink.TimestampFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,25 +56,43 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 
 	private static final Logger log = LoggerFactory.getLogger(TimeBoundStoppableConsumer.class);
 
-	// private final Long runtimeInSeconds;
 	private final Long maxTimestamp;
 	private final long windowSize;
 	private final String responseFilePath;
-	// private final SharedState sharedState = new SharedState();
-	private transient volatile boolean isRunning = true;
-	private transient volatile boolean failed = false;
 	private TimeWindow lastWindow;
 	private long windowCount;
+	private final String selectorFieldName;
+	private final String filterExpr;
+
+	private transient volatile boolean isRunning = true;
+	private transient volatile boolean failed = false;
+	private transient long recordCount = 0;
+	private transient long skippedRecordCount = 0;
+	private transient RecordFilter recordFilter;
+
+
 
 	/**
 	 * 
 	 */
-	public TimeBoundStoppableConsumer(Long maxTimestamp, Path responseFilePath, Time windowSize) {
+	public TimeBoundStoppableConsumer(Long maxTimestamp,
+			Path responseFilePath,
+			Time windowSize,
+			Query query) {
+
+		Validate.notNull(query);
+		this.selectorFieldName = query.getQueryInfo().getQuerySchema().getSelectorField();
+
 		this.maxTimestamp = maxTimestamp;
 		this.responseFilePath = responseFilePath.toString();
 		this.windowSize = windowSize.toMilliseconds();
 		Validate.isTrue(this.windowSize / 1000 > 0L, "Window size must be > 0 seconds");
 
+		filterExpr = query.getQueryInfo().getFilterExpression();
+	}
+
+	public long getRecordCount() {
+		return recordCount;
 	}
 
 	/**
@@ -128,15 +149,12 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 	}
 
 	protected void beginRun() throws IOException {
-		// if (runtimeInSeconds != null) {
-		// maxTimestamp = System.currentTimeMillis() + (runtimeInSeconds * 1000);
-		// log.info("Will run until: " + TimestampFormatter.format(maxTimestamp));
-		// } else {
-		// log.info("Will run forever.");
-		// }
-
 		createJobRunningFileMarker();
 		isRunning = true;
+		if (filterExpr != null) {
+			recordFilter = new RecordFilter(filterExpr);
+			log.info("Initialized using filter expression: '{}'", filterExpr);
+		}
 	}
 
 	private Path jobRunningMarkerFile() throws IOException {
@@ -151,6 +169,8 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 	}
 
 	protected void endRun(SourceContext<InputRecord> ctx) throws InterruptedException, IOException {
+		log.info("Emitted a total of {} records and skipped {} records.", getRecordCount(), skippedRecordCount);
+
 		if (failed) {
 			log.info("Failed.");
 		} else if (maxTimestamp != null && System.currentTimeMillis() >= maxTimestamp) {
@@ -208,60 +228,7 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 		}
 	}
 
-	/*--
-	protected long calcEventTimestamp() throws Exception {
-		 final boolean debugging = log.isDebugEnabled();
-	
-		long now = System.currentTimeMillis();
-		long start = TimeWindow.getWindowStartWithOffset(now, 0, windowSize);
-		long end = start + windowSize;
-	
-		// are we in the last second of the window
-		 if ((Math.abs(end - now) <= 1000) && !isWindowComplete(start, end)) {
-		 ResponseFileNameBuilder.createWindowCompleteFile(Paths.get(responseFilePath),
-		 start,
-		 end);
-		 }
-		 while (isWindowComplete(start, end)) {
-		 while (end - now <= 1000) {
-		 if (debugging) {
-		 log.debug("Window {} is complete, waiting for the next window.",
-		 WindowInfo.windowInfo(start, end - 1));
-		 }
-		 Thread.sleep(1000);
-		 now = System.currentTimeMillis();
-		 start = TimeWindow.getWindowStartWithOffset(now, 0, windowSize);
-		 end = start + windowSize;
-		 }
-	
-		// if (debugging) {
-		// log.debug("Calculated time {} ", TimestampFormatter.format(now));
-		// }
-	//		long cnt = sharedState.incrementAndGetPerWindowRecordCount(getRuntimeContext(), start, end);
-	//		log.info("Count={}", cnt);
-		return now;
-	}*/
-
-	/**
-	 * @param start
-	 * @param end
-	 * @return
-	 * @throws IOException
-	 */
-	// private boolean isWindowComplete(long start, long end) {
-	// try {
-	// Path file = ResponseFileNameBuilder.makeWindowCompleteFileName(Paths.get(responseFilePath),
-	// start,
-	// end);
-	//
-	// return Files.exists(file);
-	// } catch (IOException e) {
-	// throw new RuntimeException("IO error", e);
-	// }
-	// }
-
-
-	protected void collect(SourceContext<InputRecord> ctx, Object record, long timestamp) {
+	protected void collect(SourceContext<InputRecord> ctx, Map<String, Object> record, long timestamp) throws Exception {
 		Validate.notNull(record);
 		long start = TimeWindow.getWindowStartWithOffset(timestamp, 0, windowSize);
 		long end = start + windowSize;
@@ -273,15 +240,22 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 		}
 		lastWindow = current;
 
-		// send current record
-		InputRecord ir = new InputRecord();
-		ir.rawData = record;
-		ir.windowMinTimestamp = current.getStart();
-		ir.windowMaxTimestamp = current.maxTimestamp();
-		ir.windowSize = windowCount++;
+		// skip record with null selector field
+		if (record.get(selectorFieldName) == null) return;
 
-		// log.info("Sending record for window {}", WindowInfo.windowInfo(current));
-		ctx.collectWithTimestamp(ir, timestamp);
+		if (recordFilter == null || recordFilter.satisfiesFilter(record)) {
+			InputRecord ir = new InputRecord();
+			ir.data = record;
+			ir.windowMinTimestamp = current.getStart();
+			ir.windowMaxTimestamp = current.maxTimestamp();
+			ir.windowSize = windowCount++;
+			// log.info("Sending record for window {}", WindowInfo.windowInfo(current));
+			ctx.collectWithTimestamp(ir, timestamp);
+			recordCount++;
+		} else {
+			skippedRecordCount++;
+			if (log.isDebugEnabled()) log.debug("Skipped record do to not matching filter: {}", record);
+		}
 	}
 
 	/**

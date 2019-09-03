@@ -358,4 +358,10 @@
             tableName="queryschemafields"/>
 	</changeSet>
 	
+	<changeSet id="add-filter-to-query" author="asoto">
+		<addColumn tableName="queries">
+			<column name="filter_expression" type="varchar(512)"/>
+		</addColumn>
+	</changeSet>
+	
 </databaseChangeLog>

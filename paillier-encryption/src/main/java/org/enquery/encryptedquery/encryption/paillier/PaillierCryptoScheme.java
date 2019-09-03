@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-@Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
+@Component(configurationPolicy = ConfigurationPolicy.REQUIRE, property = "name=Paillier")
 public class PaillierCryptoScheme extends AbstractCryptoScheme implements CryptoScheme, CryptoSchemeSpi {
 
 	private final Logger log = LoggerFactory.getLogger(PaillierCryptoScheme.class);
@@ -98,11 +98,13 @@ public class PaillierCryptoScheme extends AbstractCryptoScheme implements Crypto
 	private Integer threadPoolCoreSize;
 	private Integer threadPoolTaskQueueSize;
 
-	native boolean gpuResponderInitialize(Map<String,String> cfg);
+	native boolean gpuResponderInitialize(Map<String, String> cfg);
+
 	native long gpuResponderLoadQuery(String queryId, int modulusBitSize, byte[] N_bytes, int hashBitSize, Map<Integer, CipherText> queryElements);
+
 	native boolean gpuResponderUnloadQuery(long hQuery);
 
-	native boolean gpuDecryptorInitialize(Map<String,String> cfg);
+	native boolean gpuDecryptorInitialize(Map<String, String> cfg);
 
 	private ResponseDecryptionMethodId responseDecryptionMethodId;
 

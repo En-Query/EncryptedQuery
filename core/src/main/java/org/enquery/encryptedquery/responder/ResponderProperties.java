@@ -22,7 +22,7 @@ package org.enquery.encryptedquery.responder;
 public interface ResponderProperties {
 	String MAX_HITS_PER_SELECTOR = "maxHitsPerSelector";
 	String DATA_SOURCE_RECORD_TYPE = "data.source.record.type";
-	String LIMIT_HITS_PER_SELECTOR = "limitHitsPerSelector";
+	// String LIMIT_HITS_PER_SELECTOR = "limitHitsPerSelector";
 	String COMPUTE_THRESHOLD = "compute.threshold";
 	String COLUMN_BUFFER_SIZE = "column.buffer.size";
 	String COLUMN_BUFFER_MEMORY_MB = "column.buffer.memory.mb";

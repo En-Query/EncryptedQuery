@@ -111,13 +111,16 @@ public class IncrementalResponseSink extends RichSinkFunction<CipherTextAndColum
 		final boolean debugging = log.isDebugEnabled();
 		final String fileName = file.toString();
 
-		final BitSet bitset = columnsSeenPerFile.get(fileName);
-		if (bitset == null) return false;
 
 		CipherTextAndColumnNumber eofSignal = eofSignalsPerFile.get(fileName);
 		if (eofSignal == null) return false;
 
 		final int numberOfColumns = (int) eofSignal.col;
+		if (numberOfColumns == 0) return true;
+
+		final BitSet bitset = columnsSeenPerFile.get(fileName);
+		if (bitset == null) return false;
+
 		for (int i = 0; i < numberOfColumns; ++i) {
 			if (!bitset.get(i)) {
 				if (debugging) log.debug("File '{}' is missing column {}.", file, i);
@@ -148,6 +151,9 @@ public class IncrementalResponseSink extends RichSinkFunction<CipherTextAndColum
 		try (OutputStream output = new FileOutputStream(inProgressFile.toFile(), true);
 				PrintWriter pw = new PrintWriter(output);) {
 
+			// file may be empty, so write the header in case it has not been written yet
+			writeFileHeaderIfNeeded(inProgressFile, output, pw);
+
 			pw.println("</resultSet>");
 			pw.println("</resp:response>");
 		}
@@ -171,19 +177,10 @@ public class IncrementalResponseSink extends RichSinkFunction<CipherTextAndColum
 	 * @throws XMLStreamException
 	 */
 	private void append(Path file, CipherTextAndColumnNumber data) throws FileNotFoundException, IOException, XMLStreamException {
-		final boolean newFile = !anyColumsReceived(file);
-
 		try (OutputStream output = new FileOutputStream(file.toFile(), true);
 				PrintWriter pw = new PrintWriter(output);) {
 
-			if (newFile) {
-				try (ResponseWriter rw = new ResponseWriter(output, false);) {
-					rw.writeBeginDocument();
-					rw.writeBeginResponse();
-					rw.write(queryInfo);
-				}
-				pw.println("<resultSet xmlns=\"http://enquery.net/encryptedquery/response\">");
-			}
+			writeFileHeaderIfNeeded(file, output, pw);
 
 			if (data.cipherText == null) return;
 
@@ -194,6 +191,17 @@ public class IncrementalResponseSink extends RichSinkFunction<CipherTextAndColum
 			pw.println("\"/>");
 		}
 		columnAdded(file, (int) data.col);
+	}
+
+	private void writeFileHeaderIfNeeded(Path file, OutputStream output, PrintWriter pw) throws XMLStreamException, IOException {
+		if (!anyColumsReceived(file)) {
+			try (ResponseWriter rw = new ResponseWriter(output, false);) {
+				rw.writeBeginDocument();
+				rw.writeBeginResponse();
+				rw.write(queryInfo);
+			}
+			pw.println("<resultSet xmlns=\"http://enquery.net/encryptedquery/response\">");
+		}
 	}
 
 	/**

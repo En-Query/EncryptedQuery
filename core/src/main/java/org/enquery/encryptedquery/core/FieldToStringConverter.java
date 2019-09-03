@@ -16,10 +16,13 @@
  */
 package org.enquery.encryptedquery.core;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.commons.codec.binary.Hex;
+import org.enquery.encryptedquery.utils.ISO8601DateParser;
 
 public class FieldToStringConverter implements FieldTypeValueConverterVisitor<String> {
 
@@ -133,8 +136,8 @@ public class FieldToStringConverter implements FieldTypeValueConverterVisitor<St
 	 * String)
 	 */
 	@Override
-	public String visitISO8601Date(String value) {
-		return value;
+	public String visitISO8601Date(Instant value) {
+		return ISO8601DateParser.fromInstant(value);
 	}
 
 	/*
@@ -175,8 +178,8 @@ public class FieldToStringConverter implements FieldTypeValueConverterVisitor<St
 	 * List)
 	 */
 	@Override
-	public String visitISO8601DateList(List<String> value) {
-		return Objects.toString(value);
+	public String visitISO8601DateList(List<Instant> value) {
+		return value.stream().map(i -> ISO8601DateParser.fromInstant(i)).collect(Collectors.toList()).toString();
 	}
 
 	/*

@@ -58,8 +58,9 @@ This version includes the following out-of-the-box data sources:
 |Standalone Java|JSON|Single node query execution on a file where each line is a JSON object.|
 |Apache Flink|JDBC|Flink execution on a JDBC data source. Supports Yarn, and Flink cluster mode.|
 |Apache Flink|Stream of JSON objects.|Flink execution on a Kafka stream of JSON objects. Supports Yarn, and Flink cluster mode.|
+|Hadoop JSON|File of JSON objects (one per line).|Hadoop Map Reduce execution on a HDFS file of JSON objects.|
 
-###### Common
+###### Configuration Parameters Common to all Data Sources
 |Name|Description|
 |----------|-----------|
 |name|Unique name for the Data source. This is value you will use to chose which data source to run a query against.|
@@ -129,6 +130,27 @@ configuration folder: `/opt/enquery/responder/etc/`
 |.flink.parallelism|Number of Flink tasks to use for processing. Optional.|
 |.additional.flink.arguments|Any additional parameters to pass to Flink. Optional.|
 |.column.buffer.memory.mb|Amount of memory in MB to be allocated for Column processing. . Default is 100M.|
+
+###### Hadoop on HDFS file of Kafka JSON objects
+Use this configuration to run an encrypted query against a HDFS file of JSON objects on a Hadoop cluster.
+Data source file names need to be unique, start with
+`org.enquery.encryptedquery.responder.hadoop.mapreduce.runner.HadoopMapReduceRunner-` and end with `.cfg`.
+Once you have created the data source configuration file it needs to be placed in the responder karaf
+configuration folder: `/opt/enquery/responder/etc/`
+
+|Name      |Description|
+|----------|-----------|
+|data.source.file|Absolute HDFS path to the source data file(s).  If a folder then all files within that folder will be searched.|
+|data.source.record.type|Record type (i.e. json, csv, etc). Currently only json is supported.|
+|.compute.threshold|Amount of data to process before consolidation. Larger numbers require more memory per task. Optional. Defaults to 30000.|
+|.hadoop.username|Username used to access Hadoop. If not specified, the current user account running Responder is used.|
+|.hdfs.run.directory|HDFS directory to store temp files. Required.|
+|.hadoop.install.dir|Directory (in the Responder server) where Hadoop runtime is installed.|
+|.hadoop.chunking.byte.size|Chunking size for Hadoop processing. Optional. Defaults to 100.|
+|.hadoop.processing.method|Method for processing data in MR, `v1` for processing columns method, `v2` for processing by record method. Optional. Defaults to `v2`.|
+|.additional.hadoop.arguments|Additional arguments to be passed to Hadoop command when executing the query. Optional.|
+|.hadoop.config.file|Absolute path to a configuration file containing Hadoop settings overriding settings in the Hadoop installation `conf` directory. Optional.|  
+
 
 ### Create a Data Schema xml File
 The Data Schema xml file describes the data available in the data source. 

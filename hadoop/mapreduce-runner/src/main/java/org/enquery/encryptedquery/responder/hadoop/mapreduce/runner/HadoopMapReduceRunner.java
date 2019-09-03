@@ -31,9 +31,11 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
-import org.apache.commons.codec.Charsets;
-import org.apache.commons.lang3.Validate;
+import javax.xml.bind.JAXBException;
 
+import org.apache.commons.codec.Charsets;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.CoreConfigurationProperties;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
@@ -47,6 +49,7 @@ import org.enquery.encryptedquery.responder.data.entity.DataSourceType;
 import org.enquery.encryptedquery.responder.data.entity.ExecutionStatus;
 import org.enquery.encryptedquery.responder.data.service.DataSchemaService;
 import org.enquery.encryptedquery.responder.data.service.QueryRunner;
+import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -67,27 +70,16 @@ public class HadoopMapReduceRunner implements QueryRunner {
 	private String dataSchemaName;
 	private String dataSourceFilePath;
 	private String dataSourceRecordType;
-	private String limitHitsPerSelector;
 	private String computeThreshold;
-	private java.nio.file.Path programPath;
-	private java.nio.file.Path jarPath;
+	private Path programPath;
+	private Path jarPath;
 	private Path runDir;
-	private String queryLocation;
-	
-	//Hadoop Parameters from Data Source
-	private String MRMapMemory;
-	private String MRReduceMemory;
-	private String MRMapJavaOpts;
-	private String MRReduceJavaOpts;
+	private Path hadoopConfigFile;
 	private String hadoopRunDir;
-	private String hdfsuri;
 	private String hdfsUsername;
-	private String hadoopReduceTasks;
 	private String additionalHadoopArguments;
-	@SuppressWarnings("unused")
 	private String processingMethod;
-	private String chunkingByteSize;    // This is for v1 processing only
-	
+	private String chunkingByteSize; // This is for v1 processing only
 
 	@Reference
 	private DataSchemaService dss;
@@ -95,6 +87,8 @@ public class HadoopMapReduceRunner implements QueryRunner {
 	private ExecutorService threadPool;
 	@Reference
 	private CryptoSchemeRegistry cryptoRegistry;
+	@Reference
+	private QueryTypeConverter queryTypeConverter;
 
 	@Activate
 	void activate(final Config config) {
@@ -115,28 +109,25 @@ public class HadoopMapReduceRunner implements QueryRunner {
 		dataSchemaName = config.data_schema_name();
 		Validate.notBlank(dataSchemaName, "DataSchema name cannot be blank.");
 
-		hdfsuri = config._hadoop_server_uri();
-		Validate.notBlank(hdfsuri, "Hadoop server URI cannot be blank.");
-
 		hdfsUsername = config._hadoop_username();
-		Validate.notBlank(hdfsUsername, "Hadoop username cannot be blank.");
 
 		runDir = Paths.get(config._run_directory());
-		Validate.isTrue(Files.exists(runDir), "Does not exists: " + runDir);
+		Validate.isTrue(Files.exists(runDir), "Does not exists: '%s'", runDir.toString());
 
 		hadoopRunDir = config._hdfs_run_directory();
 		Validate.notBlank(hadoopRunDir, "Hadoop Working Folder cannot be blank.");
 
-		hadoopReduceTasks = config._hadoop_reduce_tasks();
+		hadoopConfigFile = null;
+		String tmp = config._hadoop_config_file();
+		if (tmp != null) {
+			hadoopConfigFile = Paths.get(tmp);
+			Validate.isTrue(Files.exists(hadoopConfigFile), "Does not exists: '%s'", hadoopConfigFile.toString());
+		}
 
 		additionalHadoopArguments = config._additional_hadoop_arguments();
 
-		limitHitsPerSelector = config._limit_hits_per_selector();
-		MRMapMemory = config._hadoop_mapreduce_map_memory_mb();
-		MRReduceMemory = config._hadoop_mapreduce_reduce_memory_mb();
-		MRMapJavaOpts = config._hadoop_mapreduce_map_java_opts();
-		MRReduceJavaOpts = config._hadoop_mapreduce_reduce_java_opts();
-		chunkingByteSize = config._hadoop_chunking_byte_size(); // Used for v1 processing, ignored for rest
+		chunkingByteSize = config._hadoop_chunking_byte_size(); // Used for v1 processing, ignored
+																// for rest
 		computeThreshold = config._compute_threshold();
 		processingMethod = config._hadoop_processing_method();
 
@@ -168,7 +159,7 @@ public class HadoopMapReduceRunner implements QueryRunner {
 	public String dataSchemaName() {
 		return dataSchemaName;
 	}
-	
+
 	@Override
 	public DataSourceType getType() {
 		return DataSourceType.Batch;
@@ -185,21 +176,38 @@ public class HadoopMapReduceRunner implements QueryRunner {
 			log.info("Parameters: {}", parameters);
 		}
 		log.info("Working Folder: {}", runDir);
-		log.info("HDFS Uri: {}", hdfsuri);
 
 		Path workingTempDir = null;
 		try {
-			
+
 			workingTempDir = Files.createTempDirectory(runDir, "hadoop-mapreduce-");
-            queryLocation = parameters.get("queryLocation");
-            Validate.notNull(queryLocation);
-            
-			Path queryFile = Paths.get(queryLocation.replaceAll("file:", ""));
+
+			Path queryFile = createQueryFile(workingTempDir, query);
 			Path configFile = createConfigFile(workingTempDir, query, parameters);
+
 
 			List<String> arguments = new ArrayList<>();
 			arguments.add(programPath.toString());
 			arguments.add("jar");
+
+			arguments.add(jarPath.toString());
+
+			if (hdfsUsername != null) {
+				arguments.add("-runas");
+				arguments.add(hdfsUsername);
+			}
+
+			if (hadoopConfigFile != null) {
+				arguments.add("-conf");
+				arguments.add(hadoopConfigFile.toString());
+			}
+
+			arguments.add("-files");
+			arguments.add(String.format(
+					"%s#query.xml,%s#config.properties",
+					queryFile.toString(),
+					configFile.toString()));
+
 			if (additionalHadoopArguments != null) {
 				String[] options = additionalHadoopArguments.split(" ");
 				for (String o : options) {
@@ -207,9 +215,6 @@ public class HadoopMapReduceRunner implements QueryRunner {
 				}
 			}
 
-			arguments.add(jarPath.toString());
-			arguments.add("org.enquery.encryptedquery.hadoop.mapreduce.App");
-		
 			arguments.add("-i");
 			arguments.add(dataSourceFilePath);
 			arguments.add("-q");
@@ -246,47 +251,30 @@ public class HadoopMapReduceRunner implements QueryRunner {
 
 			return JSONStringConverter.toString(result).getBytes();
 
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException | InterruptedException | JAXBException e) {
 			throw new RuntimeException("Error running Hadoop-MapReduce query.", e);
 		} finally {
-			// FileUtils.deleteQuietly(workingTempDir.toFile());
+			FileUtils.deleteQuietly(workingTempDir.toFile());
 		}
 	}
 
 	private Path createConfigFile(Path dir, Query query, Map<String, String> parameters) throws FileNotFoundException, IOException {
 		Path result = Paths.get(dir.toString(), "config.properties");
-		int maxHitsPerSelector = 10000;
 		Properties p = new Properties();
 
 		if (parameters != null) {
 			if (parameters.containsKey(ResponderProperties.MAX_HITS_PER_SELECTOR)) {
-				maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+				int maxHitsPerSelector = Integer.parseInt(parameters.get(ResponderProperties.MAX_HITS_PER_SELECTOR));
+				p.setProperty(ResponderProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
 			}
 		}
-		p.setProperty(ResponderProperties.MAX_HITS_PER_SELECTOR, Integer.toString(maxHitsPerSelector));
-		p.setProperty(ResponderProperties.LIMIT_HITS_PER_SELECTOR, limitHitsPerSelector);
 		p.setProperty(ResponderProperties.DATA_SOURCE_RECORD_TYPE, dataSourceRecordType);
-		p.setProperty(ResponderProperties.COMPUTE_THRESHOLD, computeThreshold);
+		if (computeThreshold != null) p.setProperty(ResponderProperties.COMPUTE_THRESHOLD, computeThreshold);
 		p.setProperty(HadoopConfigurationProperties.HDFSWORKINGFOLDER, hadoopRunDir);
-		p.setProperty(HadoopConfigurationProperties.HDFSSERVER, hdfsuri);
-		p.setProperty(HadoopConfigurationProperties.HDFSUSERNAME, hdfsUsername);
-		p.setProperty(HadoopConfigurationProperties.HADOOP_REDUCE_TASKS, hadoopReduceTasks);
 		p.setProperty(HadoopConfigurationProperties.PROCESSING_METHOD, processingMethod);
-		
-		p.setProperty(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE, chunkingByteSize);     // Used for v1 processing
-		
-		if (MRMapMemory != null) {
-			p.setProperty(HadoopConfigurationProperties.MR_MAP_MEMORY_MB, MRMapMemory);
-		}
-		if (MRReduceMemory != null) {
-			p.setProperty(HadoopConfigurationProperties.MR_REDUCE_MEMORY_MB, MRReduceMemory);
-		}
-		if (MRMapJavaOpts != null) {
-			p.setProperty(HadoopConfigurationProperties.MR_MAP_JAVA_OPTS, MRMapJavaOpts);
-		}
-		if (MRReduceJavaOpts != null) {
-			p.setProperty(HadoopConfigurationProperties.MR_REDUCE_JAVA_OPTS, MRReduceJavaOpts);
-		}
+
+		// Used for v1 processing
+		p.setProperty(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE, chunkingByteSize);
 
 		// Pass the CryptoScheme configuration to the external application,
 		// the external application needs to instantiate the CryptoScheme with these parameters
@@ -310,9 +298,9 @@ public class HadoopMapReduceRunner implements QueryRunner {
 		try (OutputStream os = new FileOutputStream(result.toFile())) {
 			p.store(os, "Automatically generated by: " + this.getClass());
 		}
-		return result.getFileName();
+		return result;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -328,4 +316,13 @@ public class HadoopMapReduceRunner implements QueryRunner {
 
 		return new ExecutionStatus(endTime, error, false);
 	}
+
+	private Path createQueryFile(Path dir, Query query) throws IOException, JAXBException {
+		Path result = Paths.get(dir.toString(), "query.xml");
+		try (FileOutputStream os = new FileOutputStream(result.toFile())) {
+			queryTypeConverter.marshal(queryTypeConverter.toXMLQuery(query), os);
+		}
+		return result;
+	}
+
 }

@@ -125,4 +125,15 @@ public class FileIOUtils {
 						entry -> result.put((String) entry.getKey(), (String) entry.getValue()));
 		return result;
 	}
+
+	public static void savePropertyFile(Path file, Map<String, String> properties) throws FileNotFoundException, IOException {
+		Properties prop = new Properties();
+		properties.forEach((key, value) -> {
+			if (key != null && value != null) prop.put(key, value);
+		});
+
+		try (FileOutputStream fos = new FileOutputStream(file.toFile());) {
+			prop.store(fos, "");
+		}
+	}
 }

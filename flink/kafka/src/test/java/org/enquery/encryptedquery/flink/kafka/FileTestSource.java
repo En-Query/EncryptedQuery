@@ -21,13 +21,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Scanner;
 
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.enquery.encryptedquery.json.JSONStringConverter;
 
 /**
  *
@@ -35,16 +37,23 @@ import org.slf4j.LoggerFactory;
 public class FileTestSource extends TimeBoundStoppableConsumer {
 
 	private static final long serialVersionUID = 896339099221645435L;
-	private static final Logger log = LoggerFactory.getLogger(FileTestSource.class);
 	private final String inputDataFile;
+	private final DataSchema dataSchema;
+	private transient JSONStringConverter jsonConverter;
 
 	/**
 	 * @param windowSize
 	 * 
 	 */
-	public FileTestSource(Path inputDataFile, Path responseFile, Long maxTimestamp, Time windowSize) {
-		super(maxTimestamp, responseFile, windowSize);
+	public FileTestSource(Path inputDataFile,
+			Path responseFile,
+			Long maxTimestamp,
+			Time windowSize,
+			Query query) {
+
+		super(maxTimestamp, responseFile, windowSize, query);
 		this.inputDataFile = inputDataFile.toString();
+		dataSchema = query.getQueryInfo().getQuerySchema().getDataSchema();
 	}
 
 	/*
@@ -56,7 +65,6 @@ public class FileTestSource extends TimeBoundStoppableConsumer {
 	 */
 	@Override
 	public void run(SourceContext<InputRecord> ctx) throws Exception {
-		int count = 0;
 		beginRun();
 		try {
 			Iterator<String> iter = Files.lines(Paths.get(inputDataFile)).iterator();
@@ -67,11 +75,14 @@ public class FileTestSource extends TimeBoundStoppableConsumer {
 				// read the first value as delay
 				String line = delay(iter.next());
 
-				collect(ctx, line, System.currentTimeMillis());
-				count++;
-			}
+				if (jsonConverter == null) {
+					jsonConverter = new JSONStringConverter(dataSchema);
+				}
 
-			log.info("{} records processed.", count);
+				final Map<String, Object> record = jsonConverter.toStringObjectFlatMap(line);
+
+				collect(ctx, record, System.currentTimeMillis());
+			}
 		} finally {
 			endRun(ctx);
 		}

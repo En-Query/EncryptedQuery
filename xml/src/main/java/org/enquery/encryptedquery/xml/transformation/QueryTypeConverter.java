@@ -142,12 +142,12 @@ public class QueryTypeConverter {
 		result.setPublicKey(queryInfo.getPublicKey().getEncoded());
 		result.setCryptoSchemeId(queryInfo.getCryptoSchemeId());
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
-		// result.setEmbedSelector(queryInfo.getEmbedSelector());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setHashKey(queryInfo.getHashKey());
 		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
 		result.setNumPartitionsPerDataElement(queryInfo.getNumPartitionsPerDataElement());
 		result.setNumSelectors(queryInfo.getNumSelectors());
+		result.setFilterExpression(queryInfo.getFilterExpression());
 		result.setQuerySchema(QuerySchemaTypeConverter.toXMLQuerySchema(queryInfo.getQuerySchema()));
 		return result;
 	}
@@ -168,11 +168,11 @@ public class QueryTypeConverter {
 		result.setNumSelectors(queryInfo.getNumSelectors());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
-		// result.setEmbedSelector(queryInfo.isEmbedSelector());
 		result.setHashKey(queryInfo.getHashKey());
 		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
 		result.setNumPartitionsPerDataElement(queryInfo.getNumPartitionsPerDataElement());
 		result.setNumSelectors(queryInfo.getNumSelectors());
+		result.setFilterExpression(queryInfo.getFilterExpression());
 		result.setQuerySchema(QuerySchemaTypeConverter.fromXMLQuerySchema(queryInfo.getQuerySchema()));
 		return result;
 	}

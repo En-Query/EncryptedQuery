@@ -32,18 +32,13 @@ public class QueueRecord implements Serializable {
 	// Selector Value
 	private String selector;
 
-	// Record data broken into parts
-	// private List<Byte> parts;
-
 	private boolean isEndOfFile;
 
 	private List<byte[]> hitValPartitions;
 
 	public QueueRecord() {}
 
-	public QueueRecord(int rowIndex, String selector, List<byte[]> dataChunks) {// , List<Byte>
-																				// parts)
-																				// {
+	public QueueRecord(int rowIndex, String selector, List<byte[]> dataChunks) {
 		this.rowIndex = rowIndex;
 		this.selector = selector;
 		this.hitValPartitions = dataChunks;
@@ -57,9 +52,6 @@ public class QueueRecord implements Serializable {
 		return selector;
 	}
 
-	// public List<Byte> getParts() {
-	// return parts;
-	// }
 
 	@Override
 	public String toString() {
@@ -87,10 +79,6 @@ public class QueueRecord implements Serializable {
 	public void setSelector(String selector) {
 		this.selector = selector;
 	}
-
-	// public void setParts(List<Byte> parts) {
-	// this.parts = parts;
-	// }
 
 	public boolean isEndOfFile() {
 		return isEndOfFile;

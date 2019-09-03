@@ -94,7 +94,8 @@ public class Responder extends BaseQueryExecutor {
 				maxTimestamp,
 				outputFileName,
 				emissionRatePerSecond,
-				Time.seconds(windowSizeInSeconds));
+				Time.seconds(windowSizeInSeconds),
+				query);
 
 
 		runWithSource(consumer);
@@ -119,8 +120,8 @@ public class Responder extends BaseQueryExecutor {
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime); // TimeCharacteristic.IngestionTime);
 		DataStreamSource<InputRecord> source = env.addSource(consumer);
 
-		run(env, source
-				.name("Kafka source with time limit").map(new ParseJson(dataSchema)).name("ParseJson"));
+		run(env, source.name("Kafka source with time limit"));// .map(new
+																// ParseJson(dataSchema)).name("ParseJson"));
 	}
 
 }

@@ -16,7 +16,6 @@
  */
 package org.enquery.encryptedquery.hadoop.core;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.PublicKey;
@@ -28,32 +27,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.xml.bind.JAXBException;
-
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.Query;
-import org.enquery.encryptedquery.data.RecordEncoding;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.hadoop.core.HadoopConfigurationProperties.MRStats;
 import org.enquery.encryptedquery.responder.ResponderProperties;
-import org.enquery.encryptedquery.utils.ConversionUtils;
-import org.enquery.encryptedquery.utils.PIRException;
-import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,86 +56,66 @@ public class ProcessDataReducer extends Reducer<IntWritable, BytesWritable, Long
 	private LongWritable outputKey = null;
 	private BytesWritable outputValue;
 
-	private MultipleOutputs<LongWritable, BytesWritable> mos = null;
-
 	private HashMap<Integer, List<Pair<Integer, byte[]>>> dataColumns;
 	// the column values for the encrypted query calculations
 	private TreeMap<Integer, CipherText> columns = null;
 	// keeps track of column location for each rowIndex (Selector Hash)
 	private int[] rowColumnCounters;
-	private int rowIndexCount =0;
-	private int computeThreshold=30000;
+	private int rowIndexCount = 0;
+	private int computeThreshold = 30000;
 
 	private Query query = null;
-	private boolean limitHitsPerSelector = true;
 	private int maxHitsPerSelector = -1;
 
-	private Map<String, String> config;
 
 	private CryptoScheme crypto;
-	private ColumnProcessor cec;
+	private ColumnProcessor columnProcessor;
 
-	private QueryTypeConverter queryTypeConverter;
-	
-    transient private Partitioner partitioner;
-    transient private RecordEncoding recordEncoding;
-    transient private byte[] handle;
+	transient private Partitioner partitioner;
+	transient private byte[] handle;
+	private DistCacheLoader loader;
 
 	@Override
 	public void setup(Context ctx) throws IOException, InterruptedException {
 		super.setup(ctx);
 
-		outputKey = new LongWritable();
-		outputValue = new BytesWritable();
-		mos = new MultipleOutputs<>(ctx);
-		
-		if (partitioner == null) {
-			partitioner = new Partitioner();
-		}
-
-		FileSystem fs = FileSystem.newInstance(ctx.getConfiguration());
-		log.info("Hadoop FileSystem Uri( {} )",fs.getUri().toString() );
-		String queryFileName = ctx.getConfiguration().get("queryFileName");
-		String configFileName = ctx.getConfiguration().get("configFileName");
-		String hadoopWorkingFolder = ctx.getConfiguration().get(HadoopConfigurationProperties.HDFSWORKINGFOLDER);
-		computeThreshold = ctx.getConfiguration().getInt(ResponderProperties.COMPUTE_THRESHOLD, 30000);
-				
 		try {
-			Path queryFile = new Path(hadoopWorkingFolder + Path.SEPARATOR + queryFileName);
-			Path configFile = new Path(hadoopWorkingFolder + Path.SEPARATOR + configFileName);
-			log.info("Loading Config File ( {} ).", configFile.toString());
-			config = HDFSFileIOUtils.loadConfig(fs, configFile);
+			Configuration conf = ctx.getConfiguration();
+			loader = new DistCacheLoader();
+			outputKey = new LongWritable();
+			outputValue = new BytesWritable();
 
-			initializeCryptoScheme();
-			
-			log.info("Loading Query File ( {} ).", queryFile.toString());
-			query = loadQuery(fs, queryFile);
+			partitioner = new Partitioner();
+
+			computeThreshold = conf.getInt(ResponderProperties.COMPUTE_THRESHOLD, 30000);
+
+			maxHitsPerSelector = conf.getInt(ResponderProperties.MAX_HITS_PER_SELECTOR, -1);
+			if (maxHitsPerSelector != -1) {
+				log.info("MaxHitsPerSelector ({})", maxHitsPerSelector);
+			}
+
+			query = loader.loadQuery();
+			crypto = loader.getCrypto();
+
 			log.info("Query Id: {}", query.getQueryInfo().getIdentifier());
-			Validate.notNull(query, "Query value cannot be null.");
-			Validate.notNull(config, "Config invalid.");
-			limitHitsPerSelector = ctx.getConfiguration().getBoolean(ResponderProperties.LIMIT_HITS_PER_SELECTOR, true);
-			maxHitsPerSelector = ctx.getConfiguration().getInt(ResponderProperties.MAX_HITS_PER_SELECTOR, 10000);
-	
+
 			handle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
-			cec = crypto.makeColumnProcessor(handle);
-			recordEncoding = new RecordEncoding(query.getQueryInfo());
+			columnProcessor = crypto.makeColumnProcessor(handle);
+
+			dataColumns = new HashMap<>();
+			columns = new TreeMap<>();
+
+			// Initialize row counters
+			final int size = 1 << query.getQueryInfo().getHashBitSize();
+			if (rowColumnCounters == null) {
+				rowColumnCounters = new int[size];
+			} else {
+				Arrays.fill(rowColumnCounters, 0);
+			}
 
 		} catch (Exception e) {
-			log.error("Exception initializing ColumnReducer: {}", e.getMessage());
-			throw new RuntimeException(e.getMessage());
+			throw new RuntimeException("Exception initializing ColumnReducer.", e);
 		}
-		
-		dataColumns = new HashMap<>();
-		columns = new TreeMap<>();
-
-		// Initialize row counters
-		final int size = 1 << query.getQueryInfo().getHashBitSize();
-		if (rowColumnCounters == null) {
-			rowColumnCounters = new int[size];
-		} else {
-			Arrays.fill(rowColumnCounters, 0);
-		}
-
 	}
 
 	@Override
@@ -159,35 +126,27 @@ public class ProcessDataReducer extends Reducer<IntWritable, BytesWritable, Long
 		ctx.getCounter(MRStats.NUM_HASHES_REDUCER).increment(1);
 
 		for (BytesWritable dataElement : dataElements) {
-			if (limitHitsPerSelector && hitCount >= maxHitsPerSelector) {
+			if (maxHitsPerSelector > 0 && hitCount >= maxHitsPerSelector) {
 				if (log.isDebugEnabled()) {
 					log.debug("maxHitsPerSelector limit ({}) reached for rowIndex = {}", maxHitsPerSelector, rowIndex);
 				}
 				ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_HASHS_OVER_MAX_HITS).increment(1);
 				break;
 			}
-			try {
+
 			addDataElement(rowIndex, dataElement.copyBytes());
-			} catch (Exception e) {
-				log.error("Exception adding data element in ColumnReducer: {}", e.getMessage());
-				throw new RuntimeException(e.getMessage());
-			}
-			
 		}
+
 		rowIndexCount++;
 		if ((rowIndexCount % computeThreshold) == 0) {
 			log.info("Processed {} records, compute threshold {} reached, will pause to encrypt/reduce value", numFormat.format(rowIndexCount), numFormat.format(computeThreshold));
 			processColumns();
 			log.info("Compute finished, resuming data processing");
 		}
-		
+
 	}
 
-	public void addDataElement(int rowIndex, byte[] rowParts) throws PIRException {
-		List<Byte> rowPartsList = new ArrayList<Byte>();
-		for (byte b : rowParts) {
-			rowPartsList.add(b);
-		}
+	public void addDataElement(int rowIndex, byte[] rowParts) {
 
 		if (log.isDebugEnabled()) {
 			log.info("RowIndex {} Parts Length {} Parts {}", rowIndex, rowParts.length, Hex.encodeHexString(rowParts));
@@ -230,10 +189,10 @@ public class ProcessDataReducer extends Reducer<IntWritable, BytesWritable, Long
 			final List<Pair<Integer, byte[]>> dataCol = entry.getValue();
 			for (int i = 0; i < dataCol.size(); ++i) {
 				if (null != dataCol.get(i)) {
-					cec.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
+					columnProcessor.insert(dataCol.get(i).getLeft(), dataCol.get(i).getRight());
 				}
 			}
-			final CipherText newValue = cec.computeAndClear();
+			final CipherText newValue = columnProcessor.computeAndClear();
 			CipherText prevValue = columns.get(col);
 			if (prevValue == null) {
 				prevValue = crypto.encryptionOfZero(publicKey);
@@ -243,55 +202,35 @@ public class ProcessDataReducer extends Reducer<IntWritable, BytesWritable, Long
 		}
 	}
 
-	
+
 	@Override
 	public void cleanup(Context ctx) throws IOException, InterruptedException {
-		// Process remaining data in dataColumns array
-		computeEncryptedColumns();
-        // loop trough columns and write to mos
-		for (Map.Entry<Integer, CipherText> entry : columns.entrySet()) {
-			outputKey.set(entry.getKey());
-			byte[] columnBytes = entry.getValue().toBytes();
-			outputValue.set(columnBytes, 0, columnBytes.length);
-            if (log.isDebugEnabled()) {
-            	log.debug("Column {} byteLength {} bytes {}", entry.getKey(), columnBytes.length, Hex.encodeHexString(columnBytes));
-            }
-            
-			mos.write(HadoopConfigurationProperties.EQ_COLS, outputKey, outputValue);
-		     	
-		}
-		
-		mos.close();
-	}
-
-	/**
-	 * @param config2
-	 * @throws Exception
-	 */
-	private void initializeCryptoScheme() throws Exception {
-
-		crypto = CryptoSchemeFactory.make(config);
-
-		CryptoSchemeRegistry cryptoRegistry = new CryptoSchemeRegistry() {
-			@Override
-			public CryptoScheme cryptoSchemeByName(String schemeId) {
-				if (schemeId.equals(crypto.name())) {
-					return crypto;
+		try {
+			// Process remaining data in dataColumns array
+			computeEncryptedColumns();
+			// loop trough columns and write to mos
+			for (Map.Entry<Integer, CipherText> entry : columns.entrySet()) {
+				outputKey.set(entry.getKey());
+				byte[] columnBytes = entry.getValue().toBytes();
+				outputValue.set(columnBytes, 0, columnBytes.length);
+				if (log.isDebugEnabled()) {
+					log.debug("Column {} byteLength {} bytes {}", entry.getKey(), columnBytes.length, Hex.encodeHexString(columnBytes));
 				}
-				return null;
-			}
-		};
 
-		queryTypeConverter = new QueryTypeConverter();
-		queryTypeConverter.setCryptoRegistry(cryptoRegistry);
-		queryTypeConverter.initialize();
-	}
-	
-	protected Query loadQuery(FileSystem fs, Path file) throws IOException, FileNotFoundException, JAXBException {
-		try (FSDataInputStream fis = fs.open(file)) {
-			org.enquery.encryptedquery.xml.schema.Query xml = queryTypeConverter.unmarshal(fis);
-			return queryTypeConverter.toCoreQuery(xml);
+				ctx.write(outputKey, outputValue);
+			}
+
+			if (columnProcessor != null) {
+				columnProcessor.clear();
+				columnProcessor = null;
+			}
+			if (handle != null) {
+				crypto.unloadQuery(handle);
+				handle = null;
+			}
+			if (loader != null) loader.close();
+		} catch (Exception e) {
+			throw new IOException("Error saving response.", e);
 		}
 	}
-
 }

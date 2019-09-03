@@ -1,5 +1,6 @@
 /*
- * EncryptedQuery is an open source project allowing user to query databases with queries under- * homomorphic encryption to securing the query and results set from database owner inspection.
+ * EncryptedQuery is an open source project allowing user to query databases with queries under- *
+ * homomorphic encryption to securing the query and results set from database owner inspection.
  * Copyright (C) 2018 EnQuery LLC
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
@@ -23,16 +24,12 @@ import java.util.Map;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
-
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.enquery.encryptedquery.core.Partitioner;
-
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.RecordEncoding;
 import org.enquery.encryptedquery.json.JSONStringConverter;
@@ -41,54 +38,50 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
-	 * Mapper class for the SortDataIntoRows job
-	 *
-	 * <p> This mapper breaks each input data element into parts and
-	 * computes its selector hash ("row number").  It emits key-value
-	 * pairs {@code (row, parts)} where each value {@code parts} is a byte
-	 * array representing the concatenation of all the parts in the data
-	 * element.
-	 */
-	public class SortDataIntoRowsMapper_v1 extends Mapper<LongWritable, Text, IntWritable, BytesWritable> {
-	  private static final Logger log = LoggerFactory.getLogger(SortDataIntoRowsMapper_v1.class);
+ * Mapper class for the SortDataIntoRows job
+ *
+ * <p>
+ * This mapper breaks each input data element into parts and computes its selector hash ("row
+ * number"). It emits key-value pairs {@code (row, parts)} where each value {@code parts} is a byte
+ * array representing the concatenation of all the parts in the data element.
+ */
+public class SortDataIntoRowsMapper_v1 extends Mapper<LongWritable, Text, IntWritable, BytesWritable> {
+	private static final Logger log = LoggerFactory.getLogger(SortDataIntoRowsMapper_v1.class);
 
-	  private IntWritable keyOut = null;
-	  private BytesWritable valueOut = null;
-	  private QueryInfo queryInfo;
-	  
-      transient private Partitioner partitioner;
-      transient private JSONStringConverter jsonConverter;
-      transient private RecordEncoding recordEncoding;
+	private IntWritable keyOut;
+	private BytesWritable valueOut;
+	private QueryInfo queryInfo;
+	private Partitioner partitioner;
+	private JSONStringConverter jsonConverter;
+	private RecordEncoding recordEncoding;
+
+	private DistCacheLoader loader;
 
 
-	  @Override
-	  public void setup(Context ctx) throws IOException, InterruptedException
-	  {
-	    super.setup(ctx);
-        log.info("SortDataIntoRowsMapper - Setup Running");
-	    keyOut = new IntWritable();
-    valueOut = new BytesWritable();
-	    
-		if (partitioner == null) {
+	@Override
+	public void setup(Context ctx) throws IOException, InterruptedException {
+		super.setup(ctx);
+		try {
+			log.info("SortDataIntoRowsMapper - Setup Running");
+			keyOut = new IntWritable();
+			valueOut = new BytesWritable();
 			partitioner = new Partitioner();
+			loader = new DistCacheLoader();
+
+			queryInfo = loader.loadQueryInfo();
+
+			jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
+			recordEncoding = new RecordEncoding(queryInfo);
+			log.info("Query Identifer: {}", queryInfo.getIdentifier());
+
+		} catch (Exception e) {
+			throw new IOException("Error initializing mapper.", e);
 		}
+	}
 
-		FileSystem fs = FileSystem.newInstance(ctx.getConfiguration());
-
-	    // Can make this so that it reads multiple queries at one time...
-	    String hdfsWorkingFolder = ctx.getConfiguration().get(HadoopConfigurationProperties.HDFSWORKINGFOLDER);
-	    Path queryInfoFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + "query-info");
-	    queryInfo = new HadoopFileSystemStore(fs).recall(queryInfoFile, QueryInfo.class);
-
-	    jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
-	    recordEncoding = new RecordEncoding(queryInfo);
-	    log.info("Query Identifer: {}", queryInfo.getIdentifier());
-
-	  }
-
-	  /**
-	   * The key is the docID/line number and the value is the doc
-	   */
+	/**
+	 * The key is the docID/line number and the value is the doc
+	 */
 	@Override
 	public void map(LongWritable key, Text value, Context ctx) throws IOException, InterruptedException {
 		// Extract the selector, compute the hash, and partition the data element
@@ -141,13 +134,8 @@ import org.slf4j.LoggerFactory;
 			}
 		}
 	}
-	  
-	  @Override
-	  public void cleanup(Context ctx) throws IOException, InterruptedException
-	  {
-	    log.info("Finished with the map - cleaning up ");
-	  }
-	  
+
+
 	private Pair<Integer, byte[]> createRecordPair(Map<String, Object> recordData) throws Exception {
 		Pair<Integer, byte[]> pair = null;
 
@@ -155,23 +143,33 @@ import org.slf4j.LoggerFactory;
 			return pair;
 
 		String selectorValue = recordEncoding.getSelectorStringValue(recordData);
-		if (selectorValue != null && selectorValue.length() > 0) {
-			Integer rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selectorValue);
-			ByteBuffer encoded = recordEncoding.encode(recordData);
-			List<byte[]> recordParts = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
-			
-			ByteArrayOutputStream stream = new ByteArrayOutputStream();
-			for (byte[] ba : recordParts) {
-				stream.write(ba);
-			}
-			byte[] parts = stream.toByteArray();
-			stream.close();
-			pair = Pair.of(rowIndex, parts);
-		} else {
-			if (log.isDebugEnabled()) {
-				log.warn("No Value for Selector field {} / value ({})", queryInfo.getQuerySchema().getSelectorField(), selectorValue);
-			}
+		// if (selectorValue != null && selectorValue.length() > 0) {
+		Integer rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selectorValue);
+		ByteBuffer encoded = recordEncoding.encode(recordData);
+		List<byte[]> recordParts = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
+
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		for (byte[] ba : recordParts) {
+			stream.write(ba);
 		}
+		byte[] parts = stream.toByteArray();
+		stream.close();
+		pair = Pair.of(rowIndex, parts);
+		// } else {
+		// if (log.isDebugEnabled()) {
+		// log.debug("No Value for Selector field {} / value ({})",
+		// queryInfo.getQuerySchema().getSelectorField(), selectorValue);
+		// }
+		// }
 		return pair;
+	}
+
+	@Override
+	public void cleanup(Context ctx) throws IOException, InterruptedException {
+		try {
+			if (loader != null) loader.close();
+		} catch (Exception e) {
+			throw new IOException("Error cleaning up.", e);
+		}
 	}
 }

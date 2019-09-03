@@ -61,7 +61,7 @@ public class HadoopDriver {
 
 		run("bin/hdfs", "namenode", "-format", "-force", "-nonInteractive");
 		run("sbin/start-dfs.sh");
-		run("bin/hdfs", "dfs", "-mkdir", "-p", "/user/enquery/data");
+		run("bin/hdfs", "dfs", "-mkdir", "-p", "/user/enquery/sampledata");
 		// run("bin/hdfs", "dfs", "-chown", "-R", "hadoop", "/user/enquery");
 		run("sbin/start-yarn.sh");
 	}

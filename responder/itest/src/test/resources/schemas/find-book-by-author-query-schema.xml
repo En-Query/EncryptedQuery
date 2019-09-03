@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<querySchema xmlns="http://enquery.net/encryptedquery/queryschema"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<name>Books</name>
+	<selectorField>author</selectorField>
+	<field>
+		<name>price</name>
+	</field>
+	<field>
+		<name>author</name>
+	</field>
+	<field>
+		<name>isNew</name>
+	</field>
+	<field>
+		<name>qty</name>
+	</field>
+	<field>
+		<name>title</name>
+	</field>
+	<field>
+		<name>release date</name>
+	</field>
+	<dataSchema xmlns="http://enquery.net/encryptedquery/dataschema">
+		<name>Books</name>
+		<field> 
+			<name>id</name>
+			<dataType>int</dataType>
+			<position>0</position>
+		</field>
+		<field>
+			<name>title</name>
+			<dataType>string</dataType>
+			<position>1</position>
+		</field>
+		<field>
+			<name>author</name>
+			<dataType>string</dataType>
+			<position>2</position>
+		</field>
+		<field>
+			<name>price</name>
+			<dataType>double</dataType>
+			<position>3</position>
+		</field>
+		<field>
+			<name>qty</name>
+			<dataType>int</dataType>
+			<position>4</position>
+		</field>
+		<field>
+			<name>isNew</name>
+			<dataType>boolean</dataType>
+			<position>5</position>
+		</field>
+		<field>
+			<name>release date</name>
+			<dataType>ISO8601Date</dataType>
+			<position>6</position>
+		</field>
+	</dataSchema>
+</querySchema>

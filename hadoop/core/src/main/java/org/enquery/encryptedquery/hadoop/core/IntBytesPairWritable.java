@@ -21,25 +21,22 @@ import org.apache.hadoop.io.BytesWritable;
 
 
 /**
- *  Represents a serializable pair of type {@code <IntWritable,
+ * Represents a serializable pair of type {@code <IntWritable,
  *  BytesWritable>}.
  */
-public class IntBytesPairWritable extends PairWritable<IntWritable, BytesWritable>
-{
+public class IntBytesPairWritable extends PairWritable<IntWritable, BytesWritable> {
 
-  /**
-   *  Creates a pair with newly initialized storage.
-   */
-  public IntBytesPairWritable()
-  {
-    super(new IntWritable(), new BytesWritable());
-  }
+	/**
+	 * Creates a pair with newly initialized storage.
+	 */
+	public IntBytesPairWritable() {
+		super(new IntWritable(), new BytesWritable());
+	}
 
-  /**
-   *  Creates a pair initialized with the given storage objects.
-   */
-  public IntBytesPairWritable(IntWritable first, BytesWritable second)
-  {
-    super(first, second);
-  }
+	/**
+	 * Creates a pair initialized with the given storage objects.
+	 */
+	public IntBytesPairWritable(IntWritable first, BytesWritable second) {
+		super(first, second);
+	}
 }

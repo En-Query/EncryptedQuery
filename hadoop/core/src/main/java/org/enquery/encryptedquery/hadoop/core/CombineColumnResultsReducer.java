@@ -17,9 +17,9 @@
 package org.enquery.encryptedquery.hadoop.core;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,134 +27,80 @@ import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.Response;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.xml.transformation.QueryTypeConverter;
 import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Reducer class for the CombineColumnResults job
  *
- * <p> It is assumed that this job is run with a single reducer task.
- * The encrypted values from the previous job are inserted into a new
- * {@code Response}, which is written to a file.
+ * <p>
+ * It is assumed that this job is run with a single reducer task. The encrypted values from the
+ * previous job are inserted into a new {@code Response}, which is written to a file.
  */
-public class CombineColumnResultsReducer extends Reducer<LongWritable,BytesWritable,LongWritable,Text>
-{
-  private static final Logger log = LoggerFactory.getLogger(CombineColumnResultsReducer.class);
-  
-  private MultipleOutputs<LongWritable,Text> mos = null;
+public class CombineColumnResultsReducer extends Reducer<LongWritable, BytesWritable, LongWritable, Text> {
 
-  private QueryInfo queryInfo;
-  private Map<String, String> config;
-  private String outputFileName = null;
-  private Path outputFile = null;
-  private TreeMap<Integer, CipherText> treeMap = null;
-  private FileSystem hdfs;
-  private CryptoScheme crypto;
-  @SuppressWarnings("unused")
-  private CryptoSchemeRegistry cryptoRegistry;
+	private QueryInfo queryInfo;
+	private String outputFileName = null;
+	private Path outputFile = null;
+	private TreeMap<Integer, CipherText> treeMap;
+	private DistCacheLoader loader;
 
-  @Override
-  public void setup(Context ctx) throws IOException, InterruptedException
-  {
-    super.setup(ctx);
-
-    mos = new MultipleOutputs<>(ctx);
-
-    hdfs = FileSystem.newInstance(ctx.getConfiguration());
-    
-    String hdfsWorkingFolder = ctx.getConfiguration().get("hadoopWorkingFolder");
-	String configFileName = ctx.getConfiguration().get("configFileName");
-	Path configFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + configFileName);
-	log.info("Loading Config File ( {} ).", configFile.toString());
-	config = HDFSFileIOUtils.loadConfig(hdfs, configFile);
-
-    Path queryInfoFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + "query-info");
-    queryInfo = new HadoopFileSystemStore(hdfs).recall(queryInfoFile, QueryInfo.class);
-
-    log.info("Query Identifer: {}", queryInfo.getIdentifier());
-
-    
-	try {
-		crypto = CryptoSchemeFactory.make(config);
-		cryptoRegistry = new CryptoSchemeRegistry() {
-			@Override
-			public CryptoScheme cryptoSchemeByName(String schemeId) {
-				if (schemeId == null) return null;
-				if (schemeId.equals(crypto.name())) return crypto;
-				return null;
-			}
-		};
-	} catch (Exception e) {
-		throw new IOException("Error creating crypto registry.", e);
+	@Override
+	public void setup(Context ctx) throws IOException, InterruptedException {
+		super.setup(ctx);
+		try {
+			Configuration conf = ctx.getConfiguration();
+			loader = new DistCacheLoader();
+			queryInfo = loader.loadQueryInfo();
+			String hdfsWorkingFolder = conf.get(HadoopConfigurationProperties.HDFSWORKINGFOLDER);
+			outputFileName = conf.get("outputFileName");
+			outputFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName);
+			treeMap = new TreeMap<>();
+		} catch (Exception e) {
+			throw new IOException("Error initializing CombineColumnResultsReducer.", e);
+		}
 	}
 
-    outputFileName = ctx.getConfiguration().get("outputFileName");
-    outputFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName);
+	@Override
+	public void reduce(LongWritable colNum, Iterable<BytesWritable> encryptedColumns, Context ctx) throws IOException, InterruptedException {
+		ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_COLUMNS).increment(1);
+		CipherText finalColumnValue = null;
+		int colIndex = (int) colNum.get();
+		final CryptoScheme crypto = loader.getCrypto();
 
-    treeMap = new TreeMap<>();
-  }
+		boolean first = true;
+		for (BytesWritable encryptedColumnW : encryptedColumns) {
+			ctx.getCounter(HadoopConfigurationProperties.MRStats.TOTAL_COLUMN_COUNT).increment(1);
+			if (first) {
+				finalColumnValue = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
+				first = false;
+			} else {
+				CipherText column = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
+				finalColumnValue = crypto.computeCipherAdd(queryInfo.getPublicKey(), column, finalColumnValue);
+			}
+		}
+		treeMap.put(colIndex, finalColumnValue);
+	}
 
-  @Override
-  public void reduce(LongWritable colNum, Iterable<BytesWritable> encryptedColumns, Context ctx) throws IOException, InterruptedException
-  {
-    ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_COLUMNS).increment(1);
-	CipherText finalColumnValue = null;
-    int colIndex = (int)colNum.get();
-    boolean first = true;
-    for (BytesWritable encryptedColumnW: encryptedColumns)
-    {
-        ctx.getCounter(HadoopConfigurationProperties.MRStats.TOTAL_COLUMN_COUNT).increment(1);
-        if (first) {
-            finalColumnValue = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
-            first = false;
-        } else {
-            CipherText column = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
-            finalColumnValue = crypto.computeCipherAdd(queryInfo.getPublicKey(), column,  finalColumnValue);
-        }
-    }
-    treeMap.put(colIndex, finalColumnValue);
-  }
-
-  @Override
-  public void cleanup(Context ctx) throws IOException, InterruptedException
-  {
+	@Override
+	public void cleanup(Context ctx) throws IOException, InterruptedException {
 		try {
-			crypto = CryptoSchemeFactory.make(config);
-			final CryptoSchemeRegistry registry = new CryptoSchemeRegistry() {
-				@Override
-				public CryptoScheme cryptoSchemeByName(String schemeId) {
-					if (schemeId == null) return null;
-					if (schemeId.equals(crypto.name())) return crypto;
-					return null;
-				}
-			};
+			final ResponseTypeConverter responseConverter = loader.getResponseConverter();
 
-			QueryTypeConverter queryConverter = new QueryTypeConverter();
-			queryConverter.setCryptoRegistry(registry);
-			queryConverter.initialize();
+			FileSystem hdfs = FileSystem.newInstance(ctx.getConfiguration());
+			try (FSDataOutputStream stream = hdfs.create(outputFile);) {
+				Response response = new Response(queryInfo);
+				response.addResponseElements(treeMap);
+				responseConverter.marshal(responseConverter.toXML(response), stream);
+			}
 
-			ResponseTypeConverter converter = new ResponseTypeConverter();
-			converter.setQueryConverter(queryConverter);
-			converter.setSchemeRegistry(registry);
-			converter.initialize();
-			FSDataOutputStream stream = hdfs.create(outputFile);
-			
-			Response response = new Response(queryInfo);
-			response.addResponseElements(treeMap);
-			converter.marshal(converter.toXML(response), stream);
-            stream.close();
+			if (loader != null) loader.close();
+
 		} catch (Exception e) {
 			throw new IOException("Error saving response.", e);
 		}
-    mos.close();
-  }
+	}
 }
