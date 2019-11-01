@@ -51,11 +51,6 @@ public @interface Config {
 			description = "Record type (i.e. json, csv, etc).")
 	String data_source_record_type();
 
-	@AttributeDefinition(name = ".compute.threshold",
-			required = false,
-			description = "Amount of data to process before consolidation.   Larger numbers require more memory per task. Defaults to 30000")
-	String _compute_threshold() default "30000";
-
 	@AttributeDefinition(name = ".hadoop.username",
 			required = false,
 			description = "Username used to access Hadoop. If not specified, the current user account running Responder is used.")
@@ -71,16 +66,6 @@ public @interface Config {
 			description = "Directory where Hadoop runtime is installed.")
 	String _hadoop_install_dir() default "/opt/hadoop";
 
-	@AttributeDefinition(name = ".hadoop.chunking.byte.size",
-			required = false,
-			description = "Chunking size for Hadoop processing.")
-	String _hadoop_chunking_byte_size() default "100";
-
-	@AttributeDefinition(name = ".hadoop.processing.method",
-			required = false,
-			description = "Method for processing data in MR, v1 for processing columns method, v2 for processing by record method.")
-	String _hadoop_processing_method() default "v2";
-
 	@AttributeDefinition(name = ".additional.hadoop.arguments",
 			required = false,
 			description = "Additional arguments to be passed to Hadoop command when executing the query.")
@@ -91,7 +76,7 @@ public @interface Config {
 			description = "Path to the hadoop-map-reduce jar file.  This is the jar file implementing the query execution.")
 	String _application_jar_path();
 
-	@AttributeDefinition(name = "Run Directory",
+	@AttributeDefinition(name = ".run.directory",
 			required = true,
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."
 					+ "Every execution will create temporary directories under this one.")
@@ -101,4 +86,14 @@ public @interface Config {
 			required = false,
 			description = "Hadoop Config File. Optional path to a Hadoop configuration file (in the local machine) containing additional Hadoop settings.")
 	String _hadoop_config_file();
+
+	@AttributeDefinition(name = ".chunk.size",
+			required = false,
+			description = "Overrides the chunk size specified by Querier when processing a query.")
+	String _chunk_size();
+
+	@AttributeDefinition(name = ".column.buffer.memory.mb",
+			required = false,
+			description = "Size of column buffer in MB.  Default is 16 MB.")
+	int _column_buffer_memory_mb() default 16;
 }

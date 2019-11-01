@@ -28,11 +28,13 @@ import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
+import org.enquery.encryptedquery.data.validation.FilterValidator;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
 import org.enquery.encryptedquery.utils.RandomProvider;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -43,12 +45,19 @@ import org.slf4j.LoggerFactory;
  */
 @Component(service = EncryptQuery.class)
 public class EncryptQuery {
-	private static final Logger logger = LoggerFactory.getLogger(EncryptQuery.class);
+	private static final Logger log = LoggerFactory.getLogger(EncryptQuery.class);
 
 	@Reference
 	private CryptoScheme crypto;
 	@Reference
 	private RandomProvider randomProvider;
+	@Reference
+	private FilterValidator filterValidator;
+
+	@Activate
+	void init() {
+		log.info("Initialized EncryptQuery with crypto: {}.", crypto.name());
+	}
 
 	public CryptoScheme getCrypto() {
 		return crypto;
@@ -64,6 +73,23 @@ public class EncryptQuery {
 
 	public void setRandomProvider(RandomProvider randomProvider) {
 		this.randomProvider = randomProvider;
+	}
+
+	public FilterValidator getFilterValidator() {
+		return filterValidator;
+	}
+
+	public void setFilterValidator(FilterValidator filterValidator) {
+		this.filterValidator = filterValidator;
+	}
+
+	public Querier encrypt(QuerySchema querySchema,
+			List<String> selectors,
+			int hashBitSize, String filterExpression) throws InterruptedException, PIRException {
+
+		// let the crypto scheme select an optimal data chunk size
+		final int dataChunkSize = crypto.maximumChunkSize(querySchema, selectors.size());
+		return encrypt(querySchema, selectors, dataChunkSize, hashBitSize, filterExpression);
 	}
 
 	public Querier encrypt(QuerySchema querySchema,
@@ -82,9 +108,18 @@ public class EncryptQuery {
 		querySchema.validate();
 		Validate.notNull(crypto);
 
-		logger.info("Encrypting query {} with crypto scheme {}.", querySchema, crypto.name());
+		log.info("Encrypting query {} with crypto scheme {}.", querySchema, crypto.name());
 
-		int numSelectors = selectors.size();
+		// Validate the filter if any
+		if (filterExpression != null) {
+			filterValidator.validate(filterExpression, querySchema.getDataSchema());
+		}
+
+		final int numSelectors = selectors.size();
+
+		// the number of selectors must be at least 1 and not greater than the total number of hash
+		// values, that is, 1 << hashBitSize,
+		Validate.inclusiveBetween(1, 1 << hashBitSize, numSelectors);
 
 		KeyPair keyPair = crypto.generateKeyPair();
 
@@ -112,7 +147,6 @@ public class EncryptQuery {
 				queryInfo,
 				selectorQueryVecMapping);
 
-		logger.info("Completed creation of encrypted query vectors");
 
 		Query query = new Query(queryInfo, queryElements);
 
@@ -122,6 +156,7 @@ public class EncryptQuery {
 				query.getQueryInfo().getIdentifier(),
 				crypto.name());
 
+		log.info("Finished encrypting query: " + queryInfo.toString());
 		return new Querier(query, queryKey);
 	}
 
@@ -173,7 +208,7 @@ public class EncryptQuery {
 			// All keyed hashes of the selectors must be unique
 			if (selectorQueryVecMapping.put(hash, index) == null) {
 				// The hash is unique
-				logger.debug("index = " + index + "selector = " + selector + " hash = " + hash);
+				log.debug("index = " + index + "selector = " + selector + " hash = " + hash);
 			} else {
 				// Hash collision. Each selectors hash needs to be unique. If not then try a new key
 				// to calculate the hash with
@@ -182,11 +217,11 @@ public class EncryptQuery {
 				if (attempts < maxAttempts) {
 					selectorQueryVecMapping.clear();
 					hashKey = getRandByteString(10);
-					logger.info("Attempt " + attempts + " resulted in a collision for index = " + index + "selector = " + selector + " hash collision = " + hash + " new key = " + hashKey);
+					log.info("Attempt " + attempts + " resulted in a collision for index = " + index + "selector = " + selector + " hash collision = " + hash + " new key = " + hashKey);
 					index = -1;
 					attempts++;
 				} else {
-					logger.info("Max Attempts reached ( " + attempts + " ) skipping selector = " + selector + " hash collision = " + hash + " new key = " + hashKey + " Index = " + index);
+					log.info("Max Attempts reached ( " + attempts + " ) skipping selector = " + selector + " hash collision = " + hash + " new key = " + hashKey + " Index = " + index);
 				}
 			}
 		}

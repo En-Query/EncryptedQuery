@@ -21,6 +21,8 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParser.AndExprContext;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParser.AvgExprContext;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParser.BooleanExprContext;
@@ -52,6 +54,7 @@ import org.enquery.encryptedquery.filter.antlr4.PredicateParser.SumExprContext;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParser.VariableExprContext;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParser.WrapListExprContext;
 import org.enquery.encryptedquery.filter.antlr4.PredicateParserBaseVisitor;
+import org.enquery.encryptedquery.filter.error.ErrorListener;
 import org.enquery.encryptedquery.filter.node.AvgExpressionNode;
 import org.enquery.encryptedquery.filter.node.CharacterLenExpressionNode;
 import org.enquery.encryptedquery.filter.node.CompareExpressionNode;
@@ -80,24 +83,54 @@ import org.joo.libra.sql.node.NumberExpressionNode;
 import org.joo.libra.sql.node.ObjectExpressionNode;
 import org.joo.libra.sql.node.OrExpressionNode;
 import org.joo.libra.sql.node.StringExpressionNode;
-import org.joo.libra.sql.node.TempVariableExpressionNode;
 import org.joo.libra.sql.node.VariableExpressionNode;
-import org.joo.libra.support.exceptions.MalformedSyntaxException;
 
 /**
  *
  */
 public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 
+	private final DataSchema dataSchema;
+	private final ErrorListener listener;
+
+	/**
+	 * @param dataSchema
+	 */
+	public Evaluator(DataSchema dataSchema, ErrorListener listener) {
+		this.dataSchema = dataSchema;
+		this.listener = listener;
+	}
+
+	/**
+	 * 
+	 */
+	public Evaluator(ErrorListener listener) {
+		dataSchema = null;
+		this.listener = listener;
+	}
+
+
 	@Override
 	public ExpressionNode visitVariableExpr(VariableExprContext ctx) {
-		VariableExpressionNode node = new VariableExpressionNode();
 		String value = ctx.getText();
 
 		// variables can be quoted, remove the quotes if so
 		if (value.startsWith("\"")) {
 			value = value.substring(1, value.length() - 1);
 		}
+
+		if (dataSchema != null) {
+			DataSchemaElement element = dataSchema.elementByName(value);
+			if (element == null) {
+				listener.semanticError(ctx,
+						String.format("Field name '%s' not found in data schema '%s'.",
+								value, dataSchema.getName()));
+			}
+			// Validate.isTrue(element != null, "Field name '%s' not found in data schema '%s'.",
+			// value, dataSchema.getName());
+		}
+
+		VariableExpressionNode node = new VariableExpressionNode();
 		node.setVariableName(value);
 		return node;
 	}
@@ -109,7 +142,7 @@ public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 			Number num = NumberFormat.getInstance().parse(ctx.getText());
 			node.setValue(num);
 		} catch (ParseException e) {
-			throw new RuntimeException("Error parsing number: " + ctx.getText(), e);
+			listener.semanticError(ctx, "Error parsing number: " + ctx.getText());
 		}
 		return node;
 	}
@@ -179,15 +212,6 @@ public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 		String value = ctx.value.getText();
 		value = value.substring(1, value.length() - 1);
 		return new TimestampExpressionNode(value);
-		// // need to be ISO8601 timestamp
-		// try {
-		// long longDate = ISO8601DateParser.getLongDate(value);
-		// NumberExpressionNode node = new NumberExpressionNode();
-		// node.setValue(longDate);
-		// return node;
-		// } catch (DateTimeParseException e) {
-		// // Ok, it is not a valid timestamp
-		// }
 	}
 
 	@Override
@@ -209,8 +233,11 @@ public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 	public ExpressionNode visitListFactorExpr(ListFactorExprContext ctx) {
 		ListItemExpressionNode node = new ListItemExpressionNode();
 		ExpressionNode innerNode = visitChildren(ctx);
-		if (!(innerNode instanceof HasValue))
-			throw new MalformedSyntaxException("Inner node must be value type: " + ctx.getChild(0).getText());
+		if (!(innerNode instanceof HasValue)) {
+			listener.semanticError(ctx, "List elements must be value type: " + ctx.getChild(0).getText());
+			// throw new MalformedSyntaxException("Inner node must be value type: " +
+			// ctx.getChild(0).getText());
+		}
 		node.getInnerNode().add(innerNode);
 		return node;
 	}
@@ -271,10 +298,6 @@ public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 		node.setLeft((HasValue<String>) visit(ctx.left));
 		node.setRight((HasValue<String>) visit(ctx.right));
 		node.setOp(ctx.op.getType());
-
-		if (!isStringNode(node.getLeft()) || !isStringNode(node.getRight()))
-			throw new MalformedSyntaxException("Malformed syntax at visit node, string node expected");
-
 		return node;
 	}
 
@@ -340,11 +363,6 @@ public class Evaluator extends PredicateParserBaseVisitor<ExpressionNode> {
 	@Override
 	public ExpressionNode visitSqrtExpr(SqrtExprContext ctx) {
 		return new SqrtExpressionNode((HasValue<Number>) visit(ctx.inner));
-	}
-
-	private boolean isStringNode(final Object node) {
-		return node instanceof StringExpressionNode || node instanceof VariableExpressionNode
-				|| node instanceof TempVariableExpressionNode;
 	}
 
 }

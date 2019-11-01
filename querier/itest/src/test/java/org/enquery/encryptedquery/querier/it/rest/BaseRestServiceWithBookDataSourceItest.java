@@ -224,7 +224,7 @@ public class BaseRestServiceWithBookDataSourceItest extends BaseRestServiceItest
 
 		// TODO: replace params with specific properties
 		Map<String, String> params = new HashMap<>();
-		params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
+		// params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
 		params.put(QuerierProperties.HASH_BIT_SIZE, "8");
 		query.setParameters(params);
 

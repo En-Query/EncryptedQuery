@@ -104,10 +104,7 @@ public class ResponseWriter implements Closeable {
 		writeElement(QueryNames.NUM_SELECTORS, queryInfo.getNumSelectors());
 		writeElement(QueryNames.HASH_BIT_SIZE, queryInfo.getHashBitSize());
 		writeElement(QueryNames.HASH_KEY, queryInfo.getHashKey());
-		writeElement(QueryNames.NUM_BITS_PER_DATA_ELEMENT, queryInfo.getNumBitsPerDataElement());
 		writeElement(QueryNames.DATA_CHUNK_SIZE, queryInfo.getDataChunkSize());
-		writeElement(QueryNames.NUM_PARTITIONS_PER_DATA_ELEMENT, queryInfo.getNumPartitionsPerDataElement());
-		// writeElement(QueryNames.EMBED_SELECTOR, queryInfo.isEmbedSelector());
 
 		write(queryInfo.getQuerySchema());
 

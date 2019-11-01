@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.QuerySchema;
 
 /**
  * Each instance of this class encapsulates both a choice of Crypto scheme, plus a set of
@@ -81,14 +82,14 @@ public interface CryptoScheme extends AutoCloseable {
 	 * processes associated to this query will be interrupted. The handle becomes invalid and can't
 	 * be used any longer.
 	 * 
-	 * @param handle Handle obtained from <code>createQuery</code>
+	 * @param handle Handle obtained from <code>loadQuery</code>
 	 */
 	void unloadQuery(byte[] handle);
 
 	/**
 	 * Initializes and return a new instance of ColumnProcessor.
 	 * 
-	 * @param handle Handle obtained from <code>createQuery</code>
+	 * @param handle Handle obtained from <code>loadQuery</code>
 	 * @return a column processor
 	 */
 	ColumnProcessor makeColumnProcessor(byte[] handle);
@@ -161,4 +162,26 @@ public interface CryptoScheme extends AutoCloseable {
 	 * @return
 	 */
 	byte[] plainTextChunk(QueryInfo queryInfo, PlainText plainText, int chunkIndex);
+
+	// /**
+	// * Optimal data chunk size.
+	// *
+	// * @param querySchema
+	// * @param numberOfSelectors
+	// * @return
+	// */
+	// int recommendedChunkSize(QuerySchema querySchema, int numberOfSelectors);
+
+	/**
+	 * The maximum chunk size this Crytpo Scheme can handle. In some cases, for example: Paillier
+	 * using GPU, there is a maximum chunk size. Since the maximum chunk size may be machine
+	 * dependent, the Querier may select a chunk size that is higher than what the Responder can
+	 * handle. The responder should, therefore, compare this maximum value to the one received from
+	 * the Querier before processing, and use the minimum of the two.
+	 * 
+	 * @param querySchema
+	 * @param numberOfSelectors
+	 * @return
+	 */
+	int maximumChunkSize(QuerySchema querySchema, int numberOfSelectors);
 }

@@ -27,7 +27,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-querier-parent</artifactId>
-		<version>2.2.2</version>
+		<version>2.2.3</version>
 	</parent>
 
 	<artifactId>encryptedquery-querier-integration</artifactId>
@@ -58,6 +58,17 @@
 			<groupId>javax.mail</groupId>
 			<artifactId>mail</artifactId>
 			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.aries.jpa.javax.persistence</groupId>
+			<artifactId>javax.persistence_2.1</artifactId>
+			<scope>compile</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 	</dependencies>
 	

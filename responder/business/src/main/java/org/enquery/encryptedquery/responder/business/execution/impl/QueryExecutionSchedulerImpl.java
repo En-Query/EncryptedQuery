@@ -114,7 +114,9 @@ public class QueryExecutionSchedulerImpl implements JobFactory, Job, QueryExecut
 		properties.putAll(config);
 
 		outputPath = Paths.get(config.getOrDefault("query.execution.results.path", "data/responses")).toAbsolutePath();
-		Files.createDirectories(outputPath);
+		if (!Files.exists(outputPath)) {
+			Files.createDirectories(outputPath);
+		}
 
 		SchedulerFactory schedFact = new org.quartz.impl.StdSchedulerFactory(properties);
 

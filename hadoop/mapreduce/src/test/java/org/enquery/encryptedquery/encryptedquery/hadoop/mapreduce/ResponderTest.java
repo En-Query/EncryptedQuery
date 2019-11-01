@@ -51,6 +51,7 @@ import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
 import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.data.validation.FilterValidator;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
@@ -89,6 +90,8 @@ public class ResponderTest {
 	private static final String SELECTOR = "275-913-7889";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
 
+	private static final int QUERIER_CHUNK_SIZE = 8;
+
 	private QuerySchema querySchema;
 	private PaillierCryptoScheme crypto;
 	private ResponseTypeConverter responseConverter;
@@ -113,9 +116,6 @@ public class ResponderTest {
 		File testDataCluster1 = new File(testDataPath, CLUSTER_1);
 		String c1Path = testDataCluster1.getAbsolutePath();
 		conf.set(MiniDFSCluster.HDFS_MINIDFS_BASEDIR, c1Path);
-		conf.set("hadoop.tmp.dir", "target/tmp");
-		// System.setProperty("hadoop.tmp.dir", "target/tmp");
-		conf.set("mapreduce.jobtracker.staging.root.dir", "target/tmp");
 		cluster = new MiniDFSCluster.Builder(conf).build();
 
 		fs = FileSystem.get(conf);
@@ -281,7 +281,22 @@ public class ResponderTest {
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
-		return queryEnc.encrypt(querySchema, selectors, 1, 9, filter);
+		queryEnc.setFilterValidator(new FilterValidator() {
+
+			@Override
+			public void validate(String exp, DataSchema dataSchema) {}
+
+			@Override
+			public boolean isValid(String exp, DataSchema dataSchema) {
+				return true;
+			}
+
+			@Override
+			public List<String> collectErrors(String exp, DataSchema dataSchema) {
+				return null;
+			}
+		});
+		return queryEnc.encrypt(querySchema, selectors, QUERIER_CHUNK_SIZE, 9, filter);
 	}
 
 

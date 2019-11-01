@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  EncryptedQuery is an open source project allowing user to query databases 
+  with queries under homomorphic encryption to securing the query and
+  results set from database owner inspection.
+    
+  Copyright (C) 2018  EnQuery LLC 
+ 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+ 
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+ 
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.enquery.encryptedquery</groupId>
+		<artifactId>encryptedquery-parent</artifactId>
+		<version>2.2.3</version>
+		<relativePath>../parent</relativePath>
+	</parent>
+	<artifactId>encryptedquery-seal-bfv-encryption</artifactId>
+	
+	
+	<name>EncryptedQuery :: SEAL Brakerski-Fan-Vercauteren Encryption</name>
+
+	<scm>
+		<connection>scm:git:https://github.com/Microsoft/SEAL.git</connection>
+		<url>https://github.com/Microsoft/SEAL/tree/3.2.0</url>
+	</scm>
+	
+	
+	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>osgi.cmpn</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-core</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.enquery.encryptedquery</groupId>
+			<artifactId>encryptedquery-json</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+            <scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+	</dependencies>
+	
+	<build>
+		<extensions>
+	      <extension>
+	        <groupId>kr.motd.maven</groupId>
+	        <artifactId>os-maven-plugin</artifactId>
+	        <version>1.6.1</version>
+	      </extension>
+	    </extensions>
+	    <plugins>
+		    <plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.0.0-M2</version>
+				<executions>
+					<execution>
+						<id>enforce-all-profiles-are-activated</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireActiveProfile>
+									<profiles>native-libs,with-precompiled-native-libs</profiles>
+									<all>false</all>
+								</requireActiveProfile>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+	    </plugins>
+	</build>
+	<profiles>
+		<profile>
+			<id>macosx</id>
+			<activation>
+				<os>
+					<family>mac</family>
+				</os>
+			</activation>
+			<properties>
+				<native.library.ext>dylib</native.library.ext>
+				<native.resource.dir>darwin</native.resource.dir>
+				<cmake.path>/usr/local/bin/</cmake.path>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>biz.aQute.bnd</groupId>
+						<artifactId>bnd-maven-plugin</artifactId>
+						<configuration>
+							<bndfile>bnd-osx.bnd</bndfile>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>linux</id>
+			<activation>
+				<os>
+					<family>linux</family>
+				</os>
+			</activation>
+			<properties>
+				<native.library.ext>so</native.library.ext>
+				<native.resource.dir>linux-x86-64</native.resource.dir>
+				<cmake.path></cmake.path>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>biz.aQute.bnd</groupId>
+						<artifactId>bnd-maven-plugin</artifactId>
+						<configuration>
+							<bndfile>bnd-linux.bnd</bndfile>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>native-libs</id>
+			<properties>
+				<native.build.dir>${project.build.directory}/native-builds</native.build.dir>
+				<jni.headers.dir>${native.build.dir}/generated-headers</jni.headers.dir>
+				<seal.build.dir>${native.build.dir}/seal</seal.build.dir>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<configuration>
+							<compilerArgs>
+								<arg>-h</arg>
+								<arg>${jni.headers.dir}</arg>
+							</compilerArgs>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-scm-plugin</artifactId>
+						<version>1.11.2</version>
+						<executions>
+							<execution>
+								<phase>compile</phase>
+								<id>get-microsoft-seal</id>
+								<goals>
+									<goal>checkout</goal>
+								</goals>
+								<configuration>
+									<connectionType>connection</connectionType>
+									<useExport>false</useExport>
+									<checkoutDirectory>${project.build.directory}/seal</checkoutDirectory>
+									<scmVersion>3.2.0</scmVersion>
+									<scmVersionType>branch</scmVersionType>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<!-- build native C code -->
+						<groupId>org.apache.maven.plugins</groupId>
+	          			<artifactId>maven-antrun-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<phase>compile</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target name="build-native" description="compiles native code">
+										<property name="msseal.src.dir" value="${project.build.directory}/seal/native/src" />
+										<property name="msseal.lib" value="${project.build.directory}/seal/native/lib/libseal.a" />
+										<property name="seal.src.dir" value="src/main/native" />
+										
+									    <mkdir dir="${native.build.dir}" />
+										<mkdir dir="${seal.build.dir}" />
+
+										<echo>Path: ${env.PATH}</echo>
+										
+										<!-- Patch Microsoft Seal library -->
+										<copy todir="${msseal.src.dir}/seal" overwrite="true">
+ 											<fileset dir="${project.basedir}/src/main/native/SEALChanges" includes="relinkeys.*"/>
+ 										</copy>
+ 										<copy todir="${msseal.src.dir}/seal/util" overwrite="true">
+ 											<fileset dir="${project.basedir}/src/main/native/SEALChanges" includes="smallntt.*"/>
+ 										</copy>
+										<copy todir="${msseal.src.dir}/seal/util" overwrite="true">
+ 											<fileset dir="${project.basedir}/src/main/native/SEALChanges" includes="defines.h"/>
+ 										</copy>										
+ 										
+										<!-- Build Microsoft Seal library -->
+										<exec dir="${msseal.src.dir}" searchpath="true" executable="${cmake.path}cmake" failonerror="true">
+											<arg line="." />
+										</exec>
+										<exec dir="${msseal.src.dir}" searchpath="true" executable="make" failonerror="true">
+										</exec>
+										<exec dir="${seal.src.dir}" searchpath="true" executable="make" failonerror="true">
+											<arg line="JAVA_HOME=${java.home}/.." />
+											<arg line="JNI_HEADERS_DIR=${jni.headers.dir}" />
+											<arg line="BUILD_DIR=${seal.build.dir}" />
+											<arg line="SEAL_HEADERS_DIR=${msseal.src.dir}" />
+											<arg line="SEAL_LIB=${msseal.lib}" />
+										</exec>
+
+										<copy todir="${project.build.directory}/classes/native/${native.resource.dir}">
+ 											<fileset dir="${seal.build.dir}" includes="libseal.${native.library.ext}"/>
+ 										</copy>
+									</target>
+								</configuration>
+							</execution>
+						</executions>
+						<dependencies>
+							<dependency>
+								<groupId>org.apache.ant</groupId>
+								<artifactId>ant</artifactId>
+								<version>1.10.3</version>
+							</dependency>
+						</dependencies>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-assembly-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>native-assembly</id>
+								<phase>package</phase>
+								<goals>
+									<goal>single</goal>
+								</goals>
+								<configuration>
+									<descriptors>
+										<descriptor>src/assembly/native-${os.detected.name}.xml</descriptor>
+									</descriptors>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>with-precompiled-native-libs</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-dependency-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>unpack</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>unpack</goal>
+								</goals>
+								<configuration>
+									<artifactItems>
+										<artifactItem>
+											<groupId>${project.groupId}</groupId>
+											<artifactId>${project.artifactId}</artifactId>
+											<version>${project.version}</version>
+											<classifier>native-${os.detected.name}</classifier>
+											<type>tar.gz</type>
+											<overWrite>false</overWrite>
+											<outputDirectory>${project.build.directory}/classes/native</outputDirectory>
+											<excludes>includes/</excludes>
+										</artifactItem>
+									</artifactItems>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>

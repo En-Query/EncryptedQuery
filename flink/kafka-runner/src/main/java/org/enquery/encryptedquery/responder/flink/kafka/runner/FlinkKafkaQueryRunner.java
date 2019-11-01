@@ -87,10 +87,9 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 	private QueryTypeConverter queryTypeConverter;
 	@Reference
 	private CryptoSchemeRegistry cryptoRegistry;
-
 	private JobStatusQuerier statusQuerier;
-
 	private String kafkaEmissionRate;
+	private String chunkSize;
 
 	@Activate
 	void activate(ComponentContext cc, Config config) throws Exception {
@@ -141,6 +140,13 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 		Validate.notBlank(historyServerUri, ".flink.history.server.uri cannot be blank.");
 
 		statusQuerier = new JobStatusQuerier(cc.getBundleContext(), historyServerUri);
+
+		chunkSize = config._chunk_size();
+		if (chunkSize != null) {
+			int intChunkSize = Integer.parseInt(chunkSize);
+			Validate.isTrue(intChunkSize > 0);
+			log.info("chunk.size = {}", intChunkSize);
+		}
 	}
 
 	@Deactivate
@@ -289,7 +295,9 @@ public class FlinkKafkaQueryRunner implements QueryRunner {
 			p.setProperty(ResponderProperties.COLUMN_BUFFER_MEMORY_MB, columnBufferMemory.toString());
 		}
 
-
+		if (chunkSize != null) {
+			p.put(FlinkConfigurationProperties.CHUNK_SIZE, chunkSize);
+		}
 
 		// Pass the CryptoScheme configuration to the external application,
 		// the external application needs to instantiate the CryptoScheme whit these

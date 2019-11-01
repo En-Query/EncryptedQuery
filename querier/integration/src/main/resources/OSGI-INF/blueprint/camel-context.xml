@@ -242,7 +242,8 @@
 			</get>
 			
 			<post type="org.enquery.encryptedquery.querier.data.entity.json.Query"
-				outType="org.enquery.encryptedquery.querier.data.entity.json.QueryResponse">
+				outType="org.enquery.encryptedquery.querier.data.entity.json.QueryResponse"
+				skipBindingOnErrorCode="false">
 				
 				<description>Create a new Query</description>
 				
@@ -746,7 +747,7 @@
 					<simple>{{responder.api.media.type}}; version={{responder.api.version}}</simple>
 				</setHeader>
 				
-				<to uri="http4://{{responder.host}}:{{responder.port}}?bridgeEndpoint=true&amp;headerFilterStrategy=#clientHeaderFilter&amp;disableStreamCache=true" />
+				<to uri="{{responder.scheme}}4://{{responder.host}}:{{responder.port}}?bridgeEndpoint=true&amp;headerFilterStrategy=#clientHeaderFilter&amp;disableStreamCache=true" />
 				<!-- <log message="Received: ${body}"/> -->
 			</filter>
 		</route>

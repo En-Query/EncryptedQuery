@@ -85,11 +85,15 @@ public @interface Config {
 			required = true,
 			description = "Fully Qualified application jar file name.")
 	String _application_jar_path();
-	
+
 	@AttributeDefinition(name = "Run Directory",
 			required = true,
 			description = "Path to a directory to use as the parent directory to store temporary files during the execution of the query."
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
 
+	@AttributeDefinition(name = ".chunk.size",
+			required = false,
+			description = "Overrides the chunk size specified by Querier when processing a query.")
+	String _chunk_size();
 }

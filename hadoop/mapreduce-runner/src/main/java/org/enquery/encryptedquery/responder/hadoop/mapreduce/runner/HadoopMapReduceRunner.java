@@ -70,7 +70,6 @@ public class HadoopMapReduceRunner implements QueryRunner {
 	private String dataSchemaName;
 	private String dataSourceFilePath;
 	private String dataSourceRecordType;
-	private String computeThreshold;
 	private Path programPath;
 	private Path jarPath;
 	private Path runDir;
@@ -78,8 +77,9 @@ public class HadoopMapReduceRunner implements QueryRunner {
 	private String hadoopRunDir;
 	private String hdfsUsername;
 	private String additionalHadoopArguments;
-	private String processingMethod;
-	private String chunkingByteSize; // This is for v1 processing only
+	private String chunkSize;
+	private int columnBufferMemoryMB;
+
 
 	@Reference
 	private DataSchemaService dss;
@@ -126,13 +126,6 @@ public class HadoopMapReduceRunner implements QueryRunner {
 
 		additionalHadoopArguments = config._additional_hadoop_arguments();
 
-		chunkingByteSize = config._hadoop_chunking_byte_size(); // Used for v1 processing, ignored
-																// for rest
-		computeThreshold = config._compute_threshold();
-		processingMethod = config._hadoop_processing_method();
-
-		Validate.isTrue(processingMethod.equalsIgnoreCase("v1") || processingMethod.equalsIgnoreCase("v2"), "Invalid Processing Method (v1 or v2) only.");
-
 		Validate.notBlank(config._hadoop_install_dir(), "Hadoop install dir cannot be blank.");
 		Validate.notBlank(config._application_jar_path(), "Hadoop jar path cannot be blank.");
 		Validate.notBlank(config._run_directory(), "Run directory cannot be blank.");
@@ -143,6 +136,14 @@ public class HadoopMapReduceRunner implements QueryRunner {
 		programPath = Paths.get(config._hadoop_install_dir(), "bin", "hadoop");
 		Validate.isTrue(Files.exists(programPath), "Does not exists: " + programPath);
 
+		chunkSize = config._chunk_size();
+		if (chunkSize != null) {
+			int intChunkSize = Integer.parseInt(chunkSize);
+			Validate.isTrue(intChunkSize > 0);
+			log.info("chunk.size = {}", intChunkSize);
+		}
+
+		columnBufferMemoryMB = config._column_buffer_memory_mb();
 	}
 
 	@Override
@@ -269,12 +270,15 @@ public class HadoopMapReduceRunner implements QueryRunner {
 			}
 		}
 		p.setProperty(ResponderProperties.DATA_SOURCE_RECORD_TYPE, dataSourceRecordType);
-		if (computeThreshold != null) p.setProperty(ResponderProperties.COMPUTE_THRESHOLD, computeThreshold);
 		p.setProperty(HadoopConfigurationProperties.HDFSWORKINGFOLDER, hadoopRunDir);
-		p.setProperty(HadoopConfigurationProperties.PROCESSING_METHOD, processingMethod);
 
-		// Used for v1 processing
-		p.setProperty(HadoopConfigurationProperties.CHUNKING_BYTE_SIZE, chunkingByteSize);
+		if (chunkSize != null) {
+			p.setProperty(HadoopConfigurationProperties.CHUNK_SIZE, chunkSize);
+		}
+
+		if (columnBufferMemoryMB > 0) {
+			p.put(HadoopConfigurationProperties.COLUMN_BUFFER_MEMORY_MB, Integer.toString(columnBufferMemoryMB));
+		}
 
 		// Pass the CryptoScheme configuration to the external application,
 		// the external application needs to instantiate the CryptoScheme with these parameters

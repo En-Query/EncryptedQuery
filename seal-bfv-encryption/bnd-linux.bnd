@@ -1,0 +1,5 @@
+Bundle-NativeCode: native/linux-x86-64/libseal.so;\
+			osname=Linux;\
+ 			processor=x86-64,\
+ 			*
+

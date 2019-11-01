@@ -8,4 +8,5 @@ Export-Package: \
 	org.enquery.encryptedquery.querier.decrypt,\
 	org.enquery.encryptedquery.responder,\
 	org.enquery.encryptedquery.utils,\
-	org.enquery.encryptedquery.encryption.impl
+	org.enquery.encryptedquery.encryption.impl,\
+	org.enquery.encryptedquery.data.validation

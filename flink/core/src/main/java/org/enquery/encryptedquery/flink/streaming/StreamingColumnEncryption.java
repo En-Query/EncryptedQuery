@@ -22,7 +22,7 @@ import java.util.Map;
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.configuration.Configuration;
-import org.enquery.encryptedquery.data.Query;
+import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
@@ -37,30 +37,33 @@ public class StreamingColumnEncryption extends RichMapFunction<WindowAndColumn, 
 
 	private static final Logger log = LoggerFactory.getLogger(StreamingColumnEncryption.class);
 
-	private final Query query;
-
 	private long columnsProcessed;
 	private transient CryptoScheme crypto;
 
 	private Map<String, String> config;
 	private byte[] handle;
 	private ColumnProcessor columnProcessor;
+	private final Map<Integer, CipherText> queryElements;
+	private final QueryInfo queryInfo;
 
-	public StreamingColumnEncryption(Query query,
+	public StreamingColumnEncryption(QueryInfo queryInfo,
+			Map<Integer, CipherText> queryElements,
 			Map<String, String> config) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
 
-		Validate.notNull(query, "Query cannot be null!");
+		Validate.notNull(queryInfo, "QueryInfo cannot be null!");
+		Validate.notNull(queryElements, "queryElements cannot be null!");
 		Validate.notNull(config, "Config cannot be null!");
 
-		this.query = query;
 		this.config = config;
+		this.queryInfo = queryInfo;
+		this.queryElements = queryElements;
 	}
 
 	@Override
 	public void open(Configuration parameters) throws Exception {
 		super.open(parameters);
 		crypto = CryptoSchemeFactory.make(config);
-		handle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
+		handle = crypto.loadQuery(queryInfo, queryElements);
 		columnProcessor = crypto.makeColumnProcessor(handle);
 		columnsProcessed = 0L;
 		log.info("Column processor initialized");

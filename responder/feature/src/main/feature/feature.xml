@@ -116,7 +116,7 @@
 		</config>
 		
 		<config name="org.enquery.encryptedquery.querier.encrypt.EncryptQuery">
-     		cryptoScheme.target=(name=Null)
+     		crypto.target=(name=Null)
      	</config>
 
      	<!-- needed for XML generation see data-schema module -->
@@ -171,6 +171,7 @@
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
   		<bundle>mvn:${project.groupId}/encryptedquery-paillier-encryption/${project.version}</bundle>
 		<bundle>mvn:${project.groupId}/encryptedquery-null-encryption/${project.version}</bundle>
+		<bundle>mvn:${project.groupId}/encryptedquery-seal-bfv-encryption/${project.version}</bundle>
   
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}$Bundle-SymbolicName=JnaGmp&amp;Bundle-Version=${jnagmp.version}&amp;Import-Package=com.sun.jna,com.sun.jna.ptr,com.sun.jna.win32</bundle>

@@ -130,8 +130,6 @@ public class ResponseWriterTest {
 		queryInfo.setDataChunkSize(3);
 		queryInfo.setCryptoSchemeId(crypto.name());
 		queryInfo.setHashKey("hash key");
-		queryInfo.setNumBitsPerDataElement(10);
-		queryInfo.setNumPartitionsPerDataElement(12);
 		queryInfo.setNumSelectors(1);
 		queryInfo.setQuerySchema(makeSampleQuerySchema());
 

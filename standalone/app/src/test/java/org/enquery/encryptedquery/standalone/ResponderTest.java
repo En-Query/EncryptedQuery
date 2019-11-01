@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
@@ -45,6 +46,7 @@ import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
 import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.data.validation.FilterValidator;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
@@ -68,6 +70,8 @@ public class ResponderTest {
 	private static final Path RESPONSE_FILE_NAME = Paths.get("target/response.xml");
 	private static final Path QUERY_FILE_NAME = Paths.get("target/query.xml");
 	private static final Path CONFIG_FILE_NAME = Paths.get("target/test-classes/", "config.cfg");
+
+	private static final int QUERIER_CHUNK_SIZE = 5;
 
 	// private static final List<String> SELECTORS = Arrays.asList(new String[] {"31"});
 
@@ -152,7 +156,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/phone-calls.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -187,7 +191,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/xerta-50.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -227,7 +231,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/pcap-data-test.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -266,7 +270,7 @@ public class ResponderTest {
 
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/people.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -313,7 +317,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/people.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -337,7 +341,7 @@ public class ResponderTest {
 		queryKey = querier.getQueryKey();
 		saveQuery(querier.getQuery());
 
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(Paths.get("target/test-classes/people.json"));
 			responder.setQueryFileName(QUERY_FILE_NAME);
@@ -390,7 +394,23 @@ public class ResponderTest {
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
-		return queryEnc.encrypt(querySchema, Arrays.asList(selectors), 2, 9, filterExpr);
+		queryEnc.setFilterValidator(new FilterValidator() {
+
+			@Override
+			public void validate(String exp, DataSchema dataSchema) {}
+
+			@Override
+			public boolean isValid(String exp, DataSchema dataSchema) {
+				return true;
+			}
+
+			@Override
+			public List<String> collectErrors(String exp, DataSchema dataSchema) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+		});
+		return queryEnc.encrypt(querySchema, Arrays.asList(selectors), QUERIER_CHUNK_SIZE, 9, filterExpr);
 	}
 
 	private DataSchema createPeopleDataSchema() {

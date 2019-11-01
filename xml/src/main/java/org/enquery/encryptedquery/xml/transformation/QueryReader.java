@@ -55,9 +55,15 @@ public class QueryReader extends BaseReader implements QueryNames {
 		queryInfo.setNumSelectors(parseInteger(NUM_SELECTORS, true));
 		queryInfo.setHashBitSize(parseInteger(HASH_BIT_SIZE, true));
 		queryInfo.setHashKey(parseString(HASH_KEY, true));
-		queryInfo.setNumBitsPerDataElement(parseInteger(NUM_BITS_PER_DATA_ELEMENT, true));
+
+		// this is obsolete
+		parseInteger(NUM_BITS_PER_DATA_ELEMENT, false);
+
 		queryInfo.setDataChunkSize(parseInteger(DATA_CHUNK_SIZE, true));
-		queryInfo.setNumPartitionsPerDataElement(parseInteger(NUM_PARTITIONS_PER_DATA_ELEMENT, true));
+
+		// this is obsolete
+		parseInteger(NUM_PARTITIONS_PER_DATA_ELEMENT, false);
+
 		queryInfo.setFilterExpression(parseString(FILTER_EXPRESSION, false));
 		queryInfo.setQuerySchema(parseQuerySchema());
 	}

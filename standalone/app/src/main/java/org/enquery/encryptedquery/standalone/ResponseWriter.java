@@ -16,52 +16,35 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
-import java.security.PublicKey;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
-import javax.xml.bind.JAXBException;
-import javax.xml.stream.XMLStreamException;
-
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.QueryInfo;
-import org.enquery.encryptedquery.data.Response;
-import org.enquery.encryptedquery.encryption.CipherText;
-import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ResponseWriter implements Callable<Integer> {
 
-	private static final Logger log = LoggerFactory.getLogger(ResponseWriter.class);
+	// private static final Logger log = LoggerFactory.getLogger(ResponseWriter.class);
 
-	private final CryptoScheme crypto;
 	private final QueryInfo queryInfo;
-	private final BlockingQueue<Response> queue;
+	private final BlockingQueue<ColumnNumberAndCipherText> inputQueue;
 	private final Path outputFileName;
 
 	/**
 	 * 
 	 */
-	public ResponseWriter(CryptoScheme crypto,
-			BlockingQueue<Response> queue,
+	public ResponseWriter(BlockingQueue<ColumnNumberAndCipherText> inputQueue,
 			QueryInfo queryInfo,
 			Path outputFileName) {
 
-		Validate.notNull(crypto);
-		Validate.notNull(queue);
+		Validate.notNull(inputQueue);
 		Validate.notNull(queryInfo);
 		Validate.notNull(outputFileName);
 
-		this.crypto = crypto;
-		this.queue = queue;
+		this.inputQueue = inputQueue;
 		this.queryInfo = queryInfo;
 		this.outputFileName = outputFileName;
 	}
@@ -76,76 +59,39 @@ public class ResponseWriter implements Callable<Integer> {
 	@Override
 	public Integer call() {
 
-		final Map<Integer, CipherText> columns = new TreeMap<>();
-		final PublicKey publicKey = queryInfo.getPublicKey();
-
 		int count = 0;
-		log.info("Aggregating responses from column processors");
-		try {
-			Response r = queue.take();
-			while (!endOfQueue(r)) {
-				collect(columns, publicKey, r);
+		try (OutputStream output = new FileOutputStream(outputFileName.toFile());
+				org.enquery.encryptedquery.xml.transformation.ResponseWriter rw = new org.enquery.encryptedquery.xml.transformation.ResponseWriter(output);) {
+
+			rw.writeBeginDocument();
+			rw.writeBeginResponse();
+			rw.write(queryInfo);
+			rw.writeBeginResultSet();
+
+			ColumnNumberAndCipherText data = inputQueue.take();
+			while (!endOfQueue(data)) {
+				rw.writeResponseItem((int) data.columnNumber, data.cipherText);
 				count++;
-				r = queue.take();
+				data = inputQueue.take();
 			}
+
+			rw.writeEndResultSet();
+			rw.writeEndResponse();
+			rw.writeEndDocument();
+
 		} catch (Exception e) {
 			throw new RuntimeException("Exception consolidating response.", e);
 		}
 
-		final Response result = new Response(queryInfo);
-		result.addResponseElements(columns);
-		log.info("Combined {} responses into one.", count);
-
-		try {
-			outputResponse(result);
-		} catch (IOException | JAXBException | XMLStreamException e) {
-			throw new RuntimeException("Error saving response file.", e);
-		}
-
 		return count;
-	}
-
-	// Compile the results from all the threads into one response file.
-	private void outputResponse(Response outputResponse) throws FileNotFoundException, IOException, JAXBException, XMLStreamException {
-		log.info("Writing response to file: '{}'", outputFileName);
-
-		try (OutputStream output = new FileOutputStream(outputFileName.toFile());
-				org.enquery.encryptedquery.xml.transformation.ResponseWriter rw = new org.enquery.encryptedquery.xml.transformation.ResponseWriter(output);) {
-			rw.writeBeginDocument();
-			rw.writeBeginResponse();
-			rw.write(queryInfo);
-			for (Map<Integer, CipherText> group : outputResponse.getResponseElements()) {
-				if (group.size() > 0) {
-					rw.writeBeginResultSet();
-					for (Map.Entry<Integer, CipherText> entry : group.entrySet()) {
-						rw.writeResponseItem(entry.getKey(), entry.getValue());
-					}
-					rw.writeEndResultSet();
-				}
-			}
-			rw.writeEndResponse();
-			rw.writeEndDocument();
-		}
 	}
 
 	/**
 	 * @param r
 	 * @return
 	 */
-	private boolean endOfQueue(Response r) {
-		return r instanceof EofReponse;
-	}
-
-	private void collect(final Map<Integer, CipherText> columns, final PublicKey publicKey, Response response) {
-		for (Map<Integer, CipherText> nextItem : response.getResponseElements()) {
-			nextItem.forEach((k, v) -> {
-				CipherText column = columns.get(k);
-				if (column != null) {
-					v = crypto.computeCipherAdd(publicKey, column, v);
-				}
-				columns.put(k, v);
-			});
-		}
+	private boolean endOfQueue(ColumnNumberAndCipherText r) {
+		return r instanceof ColumnNumberAndCipherTextEof;
 	}
 
 }

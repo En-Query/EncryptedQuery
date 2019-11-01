@@ -7,4 +7,12 @@
         <name>mapreduce.job.reduces</name>
         <value>1</value>
     </property>
+    <property>
+    	<name>hadoop.tmp.dir</name>
+    	<value>${project.build.directory}/hadoop</value>
+    </property>
+    <property>
+    	<name>mapreduce.jobtracker.staging.root.dir</name>
+    	<value>${project.build.directory}/hadoop</value>
+    </property>
 </configuration>

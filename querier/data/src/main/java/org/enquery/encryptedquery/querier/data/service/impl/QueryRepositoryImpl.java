@@ -19,6 +19,7 @@ import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
 import org.enquery.encryptedquery.querier.data.service.BlobRepository;
+import org.enquery.encryptedquery.querier.data.service.DuplicateQueryNameException;
 import org.enquery.encryptedquery.querier.data.service.QueryRepository;
 import org.enquery.encryptedquery.querier.data.service.ResourceUriRegistry;
 import org.enquery.encryptedquery.querier.data.transformation.URIUtils;
@@ -65,12 +66,20 @@ public class QueryRepositoryImpl implements QueryRepository {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Query findByName(String name) {
+	public Query findByName(QuerySchema querySchema, String name) {
+		Validate.notNull(querySchema);
+		Validate.notNull(querySchema.getId());
+		Validate.notNull(name);
+
 		return (Query) txControl
 				.build()
 				.readOnly()
 				.supports(() -> em
-						.createQuery("Select q From Query q Where q.name = :name")
+						.createQuery("Select q From Query q "
+								+ "  Join q.querySchema qs "
+								+ "  Where qs = :querySchema"
+								+ "  And   q.name = :name")
+						.setParameter("querySchema", em.find(QuerySchema.class, querySchema.getId()))
 						.setParameter("name", name)
 						.getResultList()
 						.stream()
@@ -89,9 +98,14 @@ public class QueryRepositoryImpl implements QueryRepository {
 
 	@Override
 	public Query add(Query q) {
+		Validate.notNull(q);
 		return txControl
 				.build()
 				.required(() -> {
+					Query prev = findByName(q.getQuerySchema(), q.getName());
+					if (prev != null) {
+						throw new DuplicateQueryNameException(q);
+					}
 					em.persist(q);
 					return q;
 				});
@@ -193,6 +207,7 @@ public class QueryRepositoryImpl implements QueryRepository {
 	@Override
 	public Query findForQuerySchema(QuerySchema querySchema, int id) {
 		Validate.notNull(querySchema);
+		Validate.notNull(querySchema.getId());
 
 		return txControl
 				.build()

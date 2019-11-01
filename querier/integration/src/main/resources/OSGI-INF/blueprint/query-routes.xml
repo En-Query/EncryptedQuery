@@ -64,13 +64,66 @@
 			<to uri="direct:success"/>
 		</route>
 	
+		<route id="create-query-failed">
+			<from uri="direct:create-query-failed"/>
+			
+			<log loggingLevel="ERROR" message="${exception.stacktrace}." />
+
+			<setHeader headerName="CamelHttpResponseCode">
+				<constant>400</constant>
+			</setHeader>
+			<setHeader headerName="Content-Type">
+				<simple>{{api.media.type}}; version={{api.latest.version}}</simple>
+			</setHeader>
+			<stop/>
+		</route>
+		
 		<route id="create-query">
 			<from uri="direct:create-query"/>
 			
+			<onException>
+				<exception>org.enquery.encryptedquery.querier.data.service.DuplicateQueryNameException</exception>
+				<handled><constant>true</constant></handled>
+				<bean ref="queryConverter" method="makeNameAlreadyExistsErrorResponse(${header.querySchema.name}, ${body.name})"/>
+				<to uri="direct:create-query-failed"/>
+			</onException>
+			<onException>
+				<exception>javax.persistence.PersistenceException</exception>
+				<handled><constant>true</constant></handled>
+				<bean ref="queryConverter" method="makePersistenceErrorResponse"/>
+				<to uri="direct:create-query-failed"/>
+			</onException>
+		
 			<to uri="direct:resolve-query-parents"/>
 			
 			<bean ref="queryConverter" method="toJPA(${header.querySchema}, ${body})"/>
+			
+			<!-- make sure the filter is valid -->
+			<filter>
+				<simple>${body.filterExpression} != null</simple>
+				
+				<setHeader headerName="dataSchemaCore">
+					<method ref="dataSchemaConverter" method="toCoreDataSchema(${header.dataSchema})"/>
+				</setHeader>
 
+				<setHeader headerName="filterParseErrors">
+					<method ref="filterValidator"  method="collectErrors(${body.filterExpression}, ${header.dataSchemaCore})"/>
+				</setHeader>
+				
+				<filter>
+					<simple>${header.filterParseErrors.isEmpty()} == false</simple>
+					<log loggingLevel="ERROR" message="Query Filter has erros: ${header.filterParseErrors}."/>
+					<setHeader headerName="CamelHttpResponseCode">
+						<constant>400</constant>
+					</setHeader>
+					<setHeader headerName="Content-Type">
+						<simple>{{api.media.type}}; version={{api.latest.version}}</simple>
+					</setHeader>
+					<bean ref="queryConverter" method="makeSyntaxErrorResponse(${header.filterParseErrors})"/>
+					<stop/>
+				</filter>
+			</filter>
+			
 			<bean ref="queryRepo" method="add"/>
 			
 			<inOnly uri="seda:encrypt-query"/>

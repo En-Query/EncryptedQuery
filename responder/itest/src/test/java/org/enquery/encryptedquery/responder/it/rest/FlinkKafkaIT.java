@@ -44,7 +44,6 @@ import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.Response;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.flink.FlinkConfigurationProperties;
 import org.enquery.encryptedquery.flink.KafkaConfigurationProperties;
 import org.enquery.encryptedquery.loader.SchemaLoader;
@@ -85,7 +84,7 @@ import org.osgi.framework.Constants;
 @ExamReactorStrategy(PerClass.class)
 public class FlinkKafkaIT extends BaseRestServiceItest {
 
-	private static final Integer DATA_CHUNK_SIZE = 1;
+	private static final Integer DATA_CHUNK_SIZE = 32;
 	private static final Integer HASH_BIT_SIZE = 9;
 	private static final List<String> BOOK_TITLE_SELECTORS = Arrays.asList(new String[] {"A Cup of Java"});
 	private static final List<String> BOOK_AUTHOR_SELECTORS = Arrays.asList(new String[] {"Kevin Jones"});
@@ -98,14 +97,13 @@ public class FlinkKafkaIT extends BaseRestServiceItest {
 	@Inject
 	private DecryptResponse decryptor;
 	@Inject
-	private CryptoSchemeRegistry cryptoSchemeRegistry;
+	private ResponseTypeConverter responseConverter;
 
 	private DataSchemaResource booksDataSchema;
 	private DataSourceResource dataSourceResource;
 	private static FlinkDriver flinkDriver = new FlinkDriver();
 	private static KafkaDriver kafkaDriver = new KafkaDriver();
 	private Querier querier;
-	private ResponseTypeConverter responseConverter;
 
 	@Configuration
 	public Option[] configuration() {
@@ -145,15 +143,6 @@ public class FlinkKafkaIT extends BaseRestServiceItest {
 
 		kafkaDriver.init();
 		flinkDriver.init();
-
-		queryConverter = new QueryTypeConverter();
-		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
-		queryConverter.initialize();
-
-		responseConverter = new ResponseTypeConverter();
-		responseConverter.setQueryConverter(queryConverter);
-		responseConverter.setSchemeRegistry(cryptoSchemeRegistry);
-		responseConverter.initialize();
 	}
 
 	@After

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,6 @@ public class QueryInfo implements Serializable {
 	private static final Logger logger = LoggerFactory.getLogger(QueryInfo.class);
 
 	private String identifier;
-	// the number of selectors in the query, given by
-	// \floor{paillerBitSize/dataPartitionBitSize}
 	private int numSelectors;
 	private String cryptoSchemeId;
 	private String queryName;
@@ -55,15 +54,35 @@ public class QueryInfo implements Serializable {
 	// element
 	private int dataChunkSize;
 
-	private int numBitsPerDataElement;
-
-	// number of partitions of size dataPartitionBitSize per data element
-	private int numPartitionsPerDataElement;
-
 	// optional SQL-like filter expression to filter out records
 	private String filterExpression;
 
 	private QuerySchema querySchema;
+
+	/**
+	 * 
+	 */
+	public QueryInfo() {}
+
+	/**
+	 * Copy constructor
+	 * 
+	 * @param other
+	 */
+	public QueryInfo(QueryInfo other) {
+		Validate.notNull(other);
+		this.identifier = other.identifier;
+		this.numSelectors = other.numSelectors;
+		this.cryptoSchemeId = other.cryptoSchemeId;
+		this.queryName = other.queryName;
+		this.publicKey = other.publicKey;
+		this.hashBitSize = other.hashBitSize;
+		this.hashKey = other.hashKey;
+		this.dataChunkSize = other.dataChunkSize;
+		this.filterExpression = other.filterExpression;
+		this.querySchema = other.querySchema;
+	}
+
 
 	public String getIdentifier() {
 		return identifier;
@@ -89,14 +108,6 @@ public class QueryInfo implements Serializable {
 		this.hashKey = hashKey;
 	}
 
-	public int getNumBitsPerDataElement() {
-		return numBitsPerDataElement;
-	}
-
-	public int getNumPartitionsPerDataElement() {
-		return numPartitionsPerDataElement;
-	}
-
 	public int getDataChunkSize() {
 		return dataChunkSize;
 	}
@@ -108,8 +119,6 @@ public class QueryInfo implements Serializable {
 		queryInfo.put("numSelectors", numSelectors);
 		queryInfo.put("hashBitSize", hashBitSize);
 		queryInfo.put("hashKey", hashKey);
-		queryInfo.put("numBitsPerDataElement", numBitsPerDataElement);
-		queryInfo.put("numPartitionsPerDataElement", numPartitionsPerDataElement);
 		queryInfo.put("dataChunkSize", dataChunkSize);
 		queryInfo.put("filterExpression", filterExpression);
 		return queryInfo;
@@ -127,23 +136,7 @@ public class QueryInfo implements Serializable {
 	}
 
 	public void printQueryInfo() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Query Info [UUID=").append(identifier).append("]");
-		builder.append("\n      numSelectors (" + numSelectors + ") ");
-		builder.append("\n      hashBitSize (" + hashBitSize + ")");
-		builder.append("\n      hashKey (" + hashKey + ")");
-		builder.append("\n      dataChunkSize (" + dataChunkSize + ")");
-		builder.append("\n      Query Name (" + queryName + ")");
-		// builder.append("\n embedSelector (" + embedSelector + ")");
-		logger.info(builder.toString());
-	}
-
-	public void setNumBitsPerDataElement(int numBitsPerDataElement) {
-		this.numBitsPerDataElement = numBitsPerDataElement;
-	}
-
-	public void setNumPartitionsPerDataElement(int numPartitionsPerDataElement) {
-		this.numPartitionsPerDataElement = numPartitionsPerDataElement;
+		logger.info(this.toString());
 	}
 
 	public void setNumSelectors(int numSelectors) {
@@ -202,12 +195,9 @@ public class QueryInfo implements Serializable {
 		int result = 1;
 		result = prime * result + ((cryptoSchemeId == null) ? 0 : cryptoSchemeId.hashCode());
 		result = prime * result + dataChunkSize;
-		// result = prime * result + (embedSelector ? 1231 : 1237);
 		result = prime * result + hashBitSize;
 		result = prime * result + ((hashKey == null) ? 0 : hashKey.hashCode());
 		result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
-		result = prime * result + numBitsPerDataElement;
-		result = prime * result + numPartitionsPerDataElement;
 		result = prime * result + numSelectors;
 		result = prime * result + ((queryName == null) ? 0 : queryName.hashCode());
 		result = prime * result + ((querySchema == null) ? 0 : querySchema.hashCode());
@@ -252,12 +242,6 @@ public class QueryInfo implements Serializable {
 				return false;
 			}
 		} else if (!identifier.equals(other.identifier)) {
-			return false;
-		}
-		if (numBitsPerDataElement != other.numBitsPerDataElement) {
-			return false;
-		}
-		if (numPartitionsPerDataElement != other.numPartitionsPerDataElement) {
 			return false;
 		}
 		if (numSelectors != other.numSelectors) {
@@ -311,5 +295,18 @@ public class QueryInfo implements Serializable {
 				Objects.equals(pk1.getAlgorithm(), pk2.getAlgorithm()) &&
 				Objects.equals(pk1.getFormat(), pk2.getFormat());
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Query Info [UUID=").append(identifier).append("]");
+		builder.append("\n      numSelectors (" + numSelectors + ") ");
+		builder.append("\n      hashBitSize (" + hashBitSize + ")");
+		builder.append("\n      hashKey (" + hashKey + ")");
+		builder.append("\n      dataChunkSize (" + dataChunkSize + ")");
+		builder.append("\n      Query Name (" + queryName + ")");
+		return builder.toString();
+	}
+
 
 }

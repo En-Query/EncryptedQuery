@@ -73,20 +73,18 @@ public class StandaloneQueryRunner implements QueryRunner {
 	private Path runDir;
 	private String javaOptions;
 	private int numberOfThreads;
-	private int maxQueueSize;
-	private long computeThreshold;
-	private String algorithmVersion;
 	private int columnBufferMemoryMB;
 	private int maxRecordQueueSize;
 	private int maxColumnQueueSize;
 	private int maxResponseQueueSize;
-	
+
 	@Reference
 	private ExecutorService threadPool;
 	@Reference
 	private QueryTypeConverter queryTypeConverter;
 	@Reference
 	private CryptoSchemeRegistry cryptoRegistry;
+	private String chunkSize;
 
 	@Activate
 	void activate(final Config config) {
@@ -122,13 +120,16 @@ public class StandaloneQueryRunner implements QueryRunner {
 		javaOptions = config._java_options();
 
 		numberOfThreads = config._number_of_threads();
-		maxQueueSize = config._max_queue_size();
-		computeThreshold = config._compute_threshold();
-		algorithmVersion = config._algorithm_version();
 		columnBufferMemoryMB = config._column_buffer_memory_mb();
 		maxRecordQueueSize = config._max_record_queue_size();
 		maxColumnQueueSize = config._max_column_queue_size();
-		maxResponseQueueSize = config._max_response_queue_size();		
+		maxResponseQueueSize = config._max_response_queue_size();
+		chunkSize = config._chunk_size();
+		if (chunkSize != null) {
+			int intChunkSize = Integer.parseInt(chunkSize);
+			Validate.isTrue(intChunkSize > 0);
+			log.info("chunk.size = {}", intChunkSize);
+		}
 	}
 
 	@Override
@@ -156,7 +157,7 @@ public class StandaloneQueryRunner implements QueryRunner {
 
 		Validate.notNull(query);
 		Validate.notNull(outputFileName);
-		Validate.isTrue(!Files.exists(Paths.get(outputFileName)), "Folder/file: " +Paths.get(outputFileName).toString() + " already exists.");
+		Validate.isTrue(!Files.exists(Paths.get(outputFileName)), "Folder/file: " + Paths.get(outputFileName).toString() + " already exists.");
 
 		Path workingTempDir = null;
 		try {
@@ -232,11 +233,9 @@ public class StandaloneQueryRunner implements QueryRunner {
 			}
 		}
 		p.put(StandaloneConfigurationProperties.PROCESSING_THREADS, Integer.toString(numberOfThreads));
-		p.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, Integer.toString(maxQueueSize));
-		p.put(StandaloneConfigurationProperties.COMPUTE_THRESHOLD, Long.toString(computeThreshold));
 
-		if (algorithmVersion != null) {
-			p.put(StandaloneConfigurationProperties.ALG_VERSION, algorithmVersion);
+		if (chunkSize != null) {
+			p.put(StandaloneConfigurationProperties.CHUNK_SIZE, chunkSize);
 		}
 
 		// V2-specific configurations
@@ -247,12 +246,12 @@ public class StandaloneQueryRunner implements QueryRunner {
 			p.put(StandaloneConfigurationProperties.MAX_RECORD_QUEUE_SIZE, Integer.toString(maxRecordQueueSize));
 		}
 		if (maxColumnQueueSize > 0) {
-			p.put(StandaloneConfigurationProperties.MAX_COLUMN_QUEUE_SIZE, Integer.toString(maxColumnQueueSize));	
+			p.put(StandaloneConfigurationProperties.MAX_COLUMN_QUEUE_SIZE, Integer.toString(maxColumnQueueSize));
 		}
 		if (maxResponseQueueSize > 0) {
-			p.put(StandaloneConfigurationProperties.MAX_RESPONSE_QUEUE_SIZE, Integer.toString(maxResponseQueueSize));	
+			p.put(StandaloneConfigurationProperties.MAX_RESPONSE_QUEUE_SIZE, Integer.toString(maxResponseQueueSize));
 		}
-		
+
 		// Pass the CryptoScheme configuration to the external application,
 		// the external application needs to instantiate the CryptoScheme whit these parameters
 		final String schemeId = query.getQueryInfo().getCryptoSchemeId();

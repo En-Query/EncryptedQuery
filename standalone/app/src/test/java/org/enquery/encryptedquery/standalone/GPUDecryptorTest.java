@@ -215,7 +215,7 @@ public class GPUDecryptorTest {
 	public void test() throws Exception {
 
 		saveQuery();
-		try (ResponderV2 responder = new ResponderV2()) {
+		try (Responder responder = new Responder()) {
 			responder.setOutputFileName(RESPONSE_FILE_NAME);
 			responder.setInputDataFile(DATA_FILE_NAME);
 			responder.setQueryFileName(QUERY_FILE_NAME);

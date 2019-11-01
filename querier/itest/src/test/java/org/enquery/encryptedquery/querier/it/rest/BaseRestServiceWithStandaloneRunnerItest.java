@@ -37,7 +37,6 @@ import org.enquery.encryptedquery.querier.data.entity.json.ResultResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.Retrieval;
 import org.enquery.encryptedquery.querier.data.entity.json.RetrievalResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.ScheduleResponse;
-import org.enquery.encryptedquery.responder.ResponderProperties;
 import org.enquery.encryptedquery.standalone.StandaloneConfigurationProperties;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -87,9 +86,6 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 
 		// TODO: replace params with specific properties
 		Map<String, String> params = new HashMap<>();
-		// params.put(QuerierProperties.DATA_CHUNK_SIZE, "1");
-		// params.put(QuerierProperties.HASH_BIT_SIZE, "9");
-		// params.put(QuerierProperties.CERTAINTY, "128");
 		q.setParameters(params);
 
 		List<String> selectorValues = new ArrayList<>();
@@ -151,20 +147,14 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 
 		QuerySchemaField field1 = new QuerySchemaField();
 		field1.setName("name");
-		// field1.setSize(128);
-		// field1.setMaxArrayElements(1);
 		fields.add(field1);
 
 		QuerySchemaField field2 = new QuerySchemaField();
 		field2.setName("children");
-		// field2.setSize(128);
-		// field2.setMaxArrayElements(3);
 		fields.add(field2);
 
 		QuerySchemaField field3 = new QuerySchemaField();
 		field3.setName("age");
-		// field3.setSize(4);
-		// field3.setMaxArrayElements(1);
 		fields.add(field3);
 
 
@@ -174,8 +164,8 @@ public class BaseRestServiceWithStandaloneRunnerItest extends BaseRestServiceIte
 	protected Map<String, String> dataSourceParams() {
 		Map<String, String> map = new HashMap<>();
 
-		map.put(ResponderProperties.COMPUTE_THRESHOLD, "10000");
-		map.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, "100");
+		// map.put(ResponderProperties.COMPUTE_THRESHOLD, "10000");
+		// map.put(StandaloneConfigurationProperties.MAX_QUEUE_SIZE, "100");
 		map.put(StandaloneConfigurationProperties.PROCESSING_THREADS, "8");
 		return map;
 	}

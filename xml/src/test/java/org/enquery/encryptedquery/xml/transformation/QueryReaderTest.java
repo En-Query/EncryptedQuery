@@ -36,9 +36,7 @@ public class QueryReaderTest {
 			assertEquals(1, (int) queryInfo.getNumSelectors());
 			assertEquals(9, queryInfo.getHashBitSize());
 			assertEquals("f47dae006b08cf4ebd0c", queryInfo.getHashKey());
-			assertEquals(0, (int) queryInfo.getNumBitsPerDataElement());
 			assertEquals(1, queryInfo.getDataChunkSize());
-			assertEquals(0, (int) queryInfo.getNumPartitionsPerDataElement());
 			assertEquals("price > 10", queryInfo.getFilterExpression());
 
 			QuerySchema querySchema = queryInfo.getQuerySchema();

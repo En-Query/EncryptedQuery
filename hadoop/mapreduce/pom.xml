@@ -11,7 +11,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-hadoop-parent</artifactId>
-		<version>2.2.2</version>
+		<version>2.2.3</version>
 	</parent>
 
 
@@ -66,6 +66,12 @@
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>encryptedquery-null-encryption</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-seal-bfv-encryption</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
@@ -129,6 +135,12 @@
 
 	</dependencies>
 	<build>
+		<testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
 		<plugins>
 			<plugin>
 				<!-- We use the maven-shade plugin to create a fat jar that contains all necessary dependencies. -->

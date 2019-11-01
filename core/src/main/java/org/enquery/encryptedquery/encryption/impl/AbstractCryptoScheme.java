@@ -92,15 +92,25 @@ public abstract class AbstractCryptoScheme implements CryptoScheme {
 			}
 		}
 
-		QueryData queryData = new QueryData();
-		queryData.handle = nextHandle++;
-		queryData.queryInfo = queryInfo;
-		queryData.queryElements = queryElements;
-		queryData.referenceCount = 1;
+		QueryData queryData = makeQueryData();
+		initQueryData(queryData, queryInfo, queryElements);
 
 		log.info("Created query with handle {}.", queryData.handle);
 		queries.put(queryData.handle, queryData);
 		return toByteArray(queryData.handle);
+	}
+
+
+	protected void initQueryData(QueryData queryData, QueryInfo queryInfo, Map<Integer, CipherText> queryElements) {
+		queryData.handle = nextHandle++;
+		queryData.queryInfo = queryInfo;
+		queryData.queryElements = queryElements;
+		queryData.referenceCount = 1;
+	}
+
+
+	protected QueryData makeQueryData() {
+		return new QueryData();
 	}
 
 	/*
@@ -114,9 +124,17 @@ public abstract class AbstractCryptoScheme implements CryptoScheme {
 		QueryData queryData = findQueryFromHandle(handle);
 		queryData.referenceCount--;
 		if (queryData.referenceCount == 0) {
+			cleanupQuery(queryData);
 			queries.remove(queryData.handle);
 		}
 	}
+
+	/**
+	 * @param queryData
+	 * 
+	 */
+	protected void cleanupQuery(QueryData queryData) {}
+
 
 	synchronized protected QueryData findQueryFromHandle(byte[] handle) {
 		Validate.notNull(handle);

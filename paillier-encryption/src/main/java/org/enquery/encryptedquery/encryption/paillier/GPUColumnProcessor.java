@@ -48,11 +48,6 @@ public class GPUColumnProcessor implements ColumnProcessor {
 		Validate.isTrue(hColproc != 0L);
 	}
 
-	private void validateParameters(int dataChunkSize) {
-		Validate.isTrue(dataChunkSize >= 0, "dataChunkSize must be a positive number of bytes");
-		Validate.isTrue(dataChunkSize <= 4, "GPU responder method currently requires dataChunkSize <= 4");
-	}
-
 	/*
 	 * (non-Javadoc)
 	 * 

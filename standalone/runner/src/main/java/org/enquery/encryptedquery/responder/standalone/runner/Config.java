@@ -57,13 +57,13 @@ public @interface Config {
 					+ "Every execution will create temporary directories under this one.")
 	String _run_directory();
 
-	@AttributeDefinition(name = "Java executable path",
-			required = true,
-			description = "Path to the java executable program.")
+	@AttributeDefinition(name = ".java.path",
+			required = false,
+			description = "Path to the java executable program. Defaults to '/usr/bin/java'")
 	String _java_path() default "/usr/bin/java";
 
 	@AttributeDefinition(name = "Java runtime options.",
-			required = true,
+			required = false,
 			description = "Options to Java runtime, such as Heap size, etc.")
 	String _java_options();
 
@@ -77,38 +77,28 @@ public @interface Config {
 			description = "Number of threads to use for processing of the Query.")
 	int _number_of_threads() default 1;
 
-	@AttributeDefinition(name = "Internal Max Queue Size.",
-			required = false,
-			description = "(v1 only) Internal processing maximum queue size.")
-	int _max_queue_size() default 1000;
-
-	@AttributeDefinition(name = "Compute threshold.",
-			required = false,
-			description = "(v1 only) Compute threshold.")
-	long _compute_threshold() default 30000L;
-
-	@AttributeDefinition(name = "Algorithm version",
-			required = false,
-			description = "Either 'v1' or 'v2'. Default is version 1. ")
-	String _algorithm_version();
-	
 	@AttributeDefinition(name = "Column buffer memory MB",
 			required = false,
-			description = "(v2 only) Size of column buffer in MB.  Default is 2048 MB.")
+			description = "Size of column buffer in MB.  Default is 2048 MB.")
 	int _column_buffer_memory_mb() default 2048;
 
 	@AttributeDefinition(name = "Record max queue size",
 			required = false,
-			description = "(v2 only) Max queue size for input records.  Default is 100.")
+			description = "Max queue size for input records.  Default is 100.")
 	int _max_record_queue_size() default 100;
 
 	@AttributeDefinition(name = "Column max queue size",
 			required = false,
-			description = "(v2 only) Max queue size for multithreading.  Default is 2 * Number of Threads.")
+			description = "Max queue size for multithreading.  Default is 2 * Number of Threads.")
 	int _max_column_queue_size();
 
 	@AttributeDefinition(name = "Response max queue size",
 			required = false,
-			description = "(v2 only) Max queue size for output ciphertexts.  Default is 10 * Number of Threads.")
+			description = "Max queue size for output ciphertexts.  Default is 10 * Number of Threads.")
 	int _max_response_queue_size();
+
+	@AttributeDefinition(name = ".chunk.size",
+			required = false,
+			description = "Overrides the chunk size specified by Querier when processing a query.")
+	String _chunk_size();
 }

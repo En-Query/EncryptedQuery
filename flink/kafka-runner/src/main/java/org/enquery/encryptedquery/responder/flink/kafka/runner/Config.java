@@ -91,4 +91,9 @@ public @interface Config {
 			required = true,
 			description = "URI to Flink's history server, including scheme, host and port.  Example: http://flink.local:8095")
 	String _flink_history_server_uri() default "localhost:8095";
+
+	@AttributeDefinition(name = ".chunk.size",
+			required = false,
+			description = "Overrides the chunk size specified by Querier when processing a query.")
+	String _chunk_size();
 }

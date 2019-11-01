@@ -41,12 +41,13 @@ class CreateQuery extends Component {
       queryschemas: [],
       selectorField: "",
       queriesUri: "",
-      dataChunkSize: 3,
       selectorValue: "",
       selectorValues: [],
       isLoading: true,
       filterExpression: "",
-      open: false
+      open: false,
+      errorMessage: "",
+      errorMessages: []
     };
   }
 
@@ -205,11 +206,6 @@ class CreateQuery extends Component {
     }
   };
 
-  handleChange = (e, { value }) => {
-    this.setState({ dataChunkSize: value }, () => {
-      console.log("dataChunkSize ---> ", this.state.dataChunkSize);
-    });
-  };
 
   handleQueryNameChange = (e, { value }) => {
     this.setState({ queryName: value }, () => {
@@ -232,38 +228,70 @@ class CreateQuery extends Component {
 
   close = () => this.setState({ open: false });
 
-  handleSubmit = e => {
+  handleSubmit = async e => {
     e.preventDefault();
     const {
       queryName,
-      dataChunkSize,
       selectorValues,
       filterExpression
     } = this.state;
     console.log(this.state);
     const queriesUri = localStorage.getItem("queriesUri");
-    axios({
-      method: "post",
-      url: `${queriesUri}`,
-      headers: {
-        Accept: "application/vnd.encryptedquery.enclave+json; version=1",
-        "Content-Type": "application/json"
-      },
-      data: JSON.stringify({
-        name: queryName,
-        parameters: {
-          dataChunkSize: dataChunkSize
+
+    //new async/await to handle errors
+    try {
+      // attempt request
+      const { data } = await axios({
+        method: "post",
+        url: `${queriesUri}`,
+        headers: {
+          Accept: "application/vnd.encryptedquery.enclave+json; version=1",
+          "Content-Type": "application/json"
         },
-        selectorValues: selectorValues,
-        filterExpression:
-          filterExpression.length > 0 ? filterExpression : undefined
-      })
-    })
-      .then(response => {
-        console.log(response);
-      })
-      .catch(error => console.log(error.response));
-    this.props.history.push("/querystatus");
+        data: JSON.stringify({
+          name: queryName,
+          selectorValues: selectorValues,
+          filterExpression:
+            filterExpression.length > 0 ? filterExpression : undefined
+        })
+      });
+      //push to next page if successful?
+      this.props.history.push("/querystatus");
+    } catch (error) {
+      if (error.response) {
+        // The request was made and the server responded with statuse code that falls outside of the 2xx range.
+        // console.log(error.response.data);
+        console.log(error.response);
+        console.log(error.response.status);
+        console.log(error.response.headers);
+
+        let errorMessages = error.response.data.errors.map(error => {
+          return {
+            value: { title: error.title, detail: error.detail }
+          };
+        });
+
+        console.log("multiple error messages -->", errorMessages);
+
+        this.setState({ errorMessages: errorMessages });
+
+        // this.setState(
+        //   { errorMessage: error.response.data.errors[0].detail },
+        //   () => {
+        //     console.log(
+        //       "error state update call back",
+        //       this.state.errorMessage
+        //     );
+        //   }
+        // );
+      } else if (error.request) {
+        // Request was made but no response was recieved.
+        console.log(error.request);
+      } else {
+        //something happened in setting up the request and triggered an error
+        console.log("Error", error.message);
+      }
+    }
   };
 
   render() {
@@ -275,11 +303,12 @@ class CreateQuery extends Component {
       querySchemaName,
       selectorField,
       value,
-      dataChunkSize,
       selectorValues,
       filterExpression,
       closeOnDimmerClick,
-      open
+      open,
+      errorMessage,
+      errorMessages
     } = this.state;
 
     return (
@@ -372,30 +401,6 @@ class CreateQuery extends Component {
                 <Segment style={{ padding: "5em 1em" }} vertical>
                   <Divider horizontal>RUN PARAMETERS</Divider>
                   <Form.Field required>
-                    <label>Data Chunk Size:</label>
-
-                    <div style={{ display: "flex" }}>
-                      <Input
-                        value={dataChunkSize}
-                        onChange={this.handleChange}
-                        type="number"
-                        min="1"
-                        required
-                      />
-                      <Popup
-                        trigger={
-                          <Button
-                            icon="info"
-                            size="mini"
-                            circular
-                            style={{ margin: "5px" }}
-                          />
-                        }
-                        content="Description about what size does"
-                      />
-                    </div>
-                  </Form.Field>
-                  <Form.Field required>
                     <label>Selector Values:</label>
                     <TextArea
                       type="text"
@@ -432,6 +437,18 @@ class CreateQuery extends Component {
                       })}
                     </ul>
                   </Form.Field>
+                  {errorMessages && (
+                    <div>
+                      {errorMessages.map(value => {
+                        return (
+                          <Message negative>
+                            <Message.Header>{value.value.title}</Message.Header>
+                            {value.value.detail}
+                          </Message>
+                        );
+                      })}
+                    </div>
+                  )}
                   <Form.Field>
                     <label>SQL Filter Expression:</label>
 

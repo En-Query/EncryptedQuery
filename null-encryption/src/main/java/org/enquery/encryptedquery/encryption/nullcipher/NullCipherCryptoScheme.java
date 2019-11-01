@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
@@ -281,9 +282,9 @@ public class NullCipherCryptoScheme extends AbstractCryptoScheme implements Cryp
 		Validate.notNull(plainText);
 
 		final int dataChunkSize = queryInfo.getDataChunkSize();
-		NullCipherPublicKey pub = NullCipherPublicKey.from(queryInfo.getPublicKey());
 		Validate.isTrue(0 <= chunkIndex);
-		Validate.isTrue((chunkIndex + 1) * dataChunkSize <= pub.getPlainTextByteSize());
+		// NullCipherPublicKey pub = NullCipherPublicKey.from(queryInfo.getPublicKey());
+		// Validate.isTrue((chunkIndex + 1) * dataChunkSize <= pub.getPlainTextByteSize());
 
 		NullCipherPlainText ppt = NullCipherPlainText.from(plainText);
 
@@ -347,6 +348,19 @@ public class NullCipherCryptoScheme extends AbstractCryptoScheme implements Cryp
 				this);
 
 		return result;
+	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#maximumChunkSize(org.enquery.
+	 * encryptedquery.data.QuerySchema, int)
+	 */
+	@Override
+	public int maximumChunkSize(QuerySchema querySchema, int numberOfSelectors) {
+		// TODO: fix me
+		return 16;
 	}
 
 

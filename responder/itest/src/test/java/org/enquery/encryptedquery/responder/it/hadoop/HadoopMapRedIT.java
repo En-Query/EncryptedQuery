@@ -75,7 +75,7 @@ import org.ops4j.pax.exam.util.Filter;
 @ExamReactorStrategy(PerClass.class)
 public class HadoopMapRedIT extends BaseRestServiceItest {
 
-	private static final Integer DATA_CHUNK_SIZE = 1;
+	private static final Integer DATA_CHUNK_SIZE = 32;
 	private static final Integer HASH_BIT_SIZE = 9;
 	private static final String SELECTOR = "A Cup of Java";
 	private static final List<String> SELECTORS = Arrays.asList(new String[] {SELECTOR});
@@ -123,25 +123,17 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 	}
 
 	@Test
-	public void happyPathV1() throws Exception {
+	public void happyPath() throws Exception {
 		querier = createQuerier();
-		installHadoopDataSource(true);
+		installHadoopDataSource();
 		ExecutionResource execution = runQuery();
 		validateSingleResult(execution);
 	}
 
 	@Test
-	public void happyPathV2() throws Exception {
-		querier = createQuerier();
-		installHadoopDataSource(false);
-		ExecutionResource execution = runQuery();
-		validateSingleResult(execution);
-	}
-
-	@Test
-	public void withFilterV2() throws Exception {
+	public void withFilter() throws Exception {
 		querier = createQuerier("qty > 100");
-		installHadoopDataSource(false);
+		installHadoopDataSource();
 		ExecutionResource execution = runQuery();
 		validateNoResult(execution);
 	}
@@ -270,15 +262,14 @@ public class HadoopMapRedIT extends BaseRestServiceItest {
 	}
 
 
-	private void installHadoopDataSource(boolean useVersion1) throws Exception {
+	private void installHadoopDataSource() throws Exception {
 		final String dataSchemaName = booksDataSchema.getDataSchema().getName();
-		final String dataSourceName = "hadoop-books-json" + ((useVersion1) ? "-v1" : "v2");
+		final String dataSourceName = "hadoop-books-json";// + ((useVersion1) ? "-v1" : "v2");
 
 		// Add a QueryRunner
 		HadoopJsonRunnerConfigurator runnerConfigurator = new HadoopJsonRunnerConfigurator(confAdmin);
 		runnerConfigurator.create(dataSourceName,
 				dataSchemaName,
-				useVersion1,
 				null,
 				null);
 

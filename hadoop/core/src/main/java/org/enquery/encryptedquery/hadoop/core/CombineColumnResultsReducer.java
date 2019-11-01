@@ -17,90 +17,90 @@
 package org.enquery.encryptedquery.hadoop.core;
 
 import java.io.IOException;
-import java.util.TreeMap;
+import java.util.Iterator;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.commons.lang3.Validate;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.enquery.encryptedquery.data.QueryInfo;
-import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.encryption.CipherText;
+import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
-import org.enquery.encryptedquery.xml.transformation.ResponseTypeConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reducer class for the CombineColumnResults job
- *
- * <p>
- * It is assumed that this job is run with a single reducer task. The encrypted values from the
- * previous job are inserted into a new {@code Response}, which is written to a file.
  */
-public class CombineColumnResultsReducer extends Reducer<LongWritable, BytesWritable, LongWritable, Text> {
+public class CombineColumnResultsReducer extends Reducer<IntWritable, ColumnWritable, IntWritable, BytesWritable> {
 
-	private QueryInfo queryInfo;
-	private String outputFileName = null;
-	private Path outputFile = null;
-	private TreeMap<Integer, CipherText> treeMap;
-	private DistCacheLoader loader;
+	private static final Logger log = LoggerFactory.getLogger(CombineColumnResultsReducer.class);
+
+	private CryptoScheme crypto;
+	private ColumnProcessor columnProcessor;
+	private BytesWritable outputValue;
+	private byte[] handle;
 
 	@Override
 	public void setup(Context ctx) throws IOException, InterruptedException {
 		super.setup(ctx);
 		try {
-			Configuration conf = ctx.getConfiguration();
-			loader = new DistCacheLoader();
-			queryInfo = loader.loadQueryInfo();
-			String hdfsWorkingFolder = conf.get(HadoopConfigurationProperties.HDFSWORKINGFOLDER);
-			outputFileName = conf.get("outputFileName");
-			outputFile = new Path(hdfsWorkingFolder + Path.SEPARATOR + outputFileName);
-			treeMap = new TreeMap<>();
+			DistCacheLoader loader = new DistCacheLoader();
+			crypto = loader.getCrypto();
+			Query query = loader.loadQuery();
+
+			handle = crypto.loadQuery(query.getQueryInfo(), query.getQueryElements());
+			columnProcessor = crypto.makeColumnProcessor(handle);
+			outputValue = new BytesWritable();
+
+			log.info("finished setup");
 		} catch (Exception e) {
 			throw new IOException("Error initializing CombineColumnResultsReducer.", e);
 		}
 	}
 
 	@Override
-	public void reduce(LongWritable colNum, Iterable<BytesWritable> encryptedColumns, Context ctx) throws IOException, InterruptedException {
-		ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_COLUMNS).increment(1);
-		CipherText finalColumnValue = null;
-		int colIndex = (int) colNum.get();
-		final CryptoScheme crypto = loader.getCrypto();
+	public void reduce(IntWritable columnNumber, Iterable<ColumnWritable> cipherTexts, Context ctx) throws IOException, InterruptedException {
+		Iterator<ColumnWritable> iter = cipherTexts.iterator();
+		ColumnWritable column = iter.next();
+		Validate.isTrue(!iter.hasNext(), "Unexpected more than one cipher text per column.");
 
-		boolean first = true;
-		for (BytesWritable encryptedColumnW : encryptedColumns) {
-			ctx.getCounter(HadoopConfigurationProperties.MRStats.TOTAL_COLUMN_COUNT).increment(1);
-			if (first) {
-				finalColumnValue = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
-				first = false;
-			} else {
-				CipherText column = crypto.cipherTextFromBytes(encryptedColumnW.copyBytes());
-				finalColumnValue = crypto.computeCipherAdd(queryInfo.getPublicKey(), column, finalColumnValue);
-			}
-		}
-		treeMap.put(colIndex, finalColumnValue);
+		column.get().forEachRow((row, data) -> {
+			columnProcessor.insert(row, data);
+		});
+		CipherText cipherText = columnProcessor.computeAndClear();
+
+		byte[] bytes = cipherText.toBytes();
+		outputValue.set(bytes, 0, bytes.length);
+
+		ctx.write(columnNumber, outputValue);
 	}
 
 	@Override
 	public void cleanup(Context ctx) throws IOException, InterruptedException {
 		try {
-			final ResponseTypeConverter responseConverter = loader.getResponseConverter();
+			log.info("cleaning up");
 
-			FileSystem hdfs = FileSystem.newInstance(ctx.getConfiguration());
-			try (FSDataOutputStream stream = hdfs.create(outputFile);) {
-				Response response = new Response(queryInfo);
-				response.addResponseElements(treeMap);
-				responseConverter.marshal(responseConverter.toXML(response), stream);
+			if (columnProcessor != null) {
+				columnProcessor.clear();
+				columnProcessor = null;
 			}
 
-			if (loader != null) loader.close();
+			if (handle != null) {
+				crypto.unloadQuery(handle);
+				handle = null;
+			}
+
+			if (crypto != null) {
+				crypto.close();
+				crypto = null;
+			}
+
+			log.info("finished cleaning up");
 
 		} catch (Exception e) {
-			throw new IOException("Error saving response.", e);
+			throw new IOException("Error cleaning up.", e);
 		}
 	}
 }

@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.querier.it.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -28,10 +29,13 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
+import org.apache.camel.Message;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.sshd.common.util.io.IoUtils;
 import org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema;
 import org.enquery.encryptedquery.querier.data.entity.jpa.Query;
 import org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema;
+import org.enquery.encryptedquery.querier.data.entity.json.Error;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryCollectionResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QueryResponse;
 import org.enquery.encryptedquery.querier.data.entity.json.QuerySchemaResponse;
@@ -131,12 +135,12 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		configuration.update(properties);
 		waitForHealthyStatus();
 
-		QueryResponse queryResponse = createQueryAndWaitForEncryption();
+		QueryResponse queryResponse = createQueryAndWaitForEncryption((String) null);
 		assertNotNull(queryResponse);
 		assertEquals("Encrypted", queryResponse.getData().getStatus().toString());
 	}
 
-	protected org.enquery.encryptedquery.querier.data.entity.json.Query createQuery() {
+	protected org.enquery.encryptedquery.querier.data.entity.json.Query createQuery(String filterExp) {
 		org.enquery.encryptedquery.querier.data.entity.json.Query q = new org.enquery.encryptedquery.querier.data.entity.json.Query();
 		q.setName("Test Query " + ++queryCount);
 
@@ -145,18 +149,109 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		selectorValues.add("432-567-3945");
 		selectorValues.add("534-776-3672");
 		q.setSelectorValues(selectorValues);
-		q.setFilterExpression("duration > 10");
+		q.setFilterExpression(filterExp);
 		return q;
 	}
 
-	private QueryResponse createQueryAndWaitForEncryption() throws Exception {
-		return createQueryAndWaitForEncryption(createQuery());
+	private QueryResponse createQueryAndWaitForEncryption(String filterExp) throws Exception {
+		return createQueryAndWaitForEncryption(createQuery(filterExp));
 	}
+
+	@Test
+	public void badFilterFails() throws Exception {
+		org.enquery.encryptedquery.querier.data.entity.json.Query query = createQuery("duration =--+ 10");
+
+		org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema ds = sampleData.createDataSchema();
+		dataSchemaRepo.add(ds);
+
+		org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema qs1 = sampleData.createJPAQuerySchema(ds);
+		querySchemaRepo.add(qs1);
+
+		org.enquery.encryptedquery.querier.data.entity.json.DataSchemaResponse dataSchema =
+				retrieveDataSchemaForName(ds.getName());
+
+		org.enquery.encryptedquery.querier.data.entity.json.QuerySchema querySchema =
+				retrieveQuerySchemaForName(qs1.getName(), dataSchema).getData();
+
+		Message message = invoke(querySchema.getQueriesUri(),
+				400,
+				null,
+				itCamelContext.getEndpoint("mock:query-create-result", MockEndpoint.class),
+				"direct:create-query", query)
+						.getReceivedExchanges()
+						.get(0)
+						.getMessage();
+
+		log.info("Returned message: " + message.getBody(String.class));
+
+		QueryResponse body = message.getBody(QueryResponse.class);
+		assertNotNull(body);
+		assertNull(body.getData());
+		assertNotNull(body.getErrors());
+		assertFalse(body.getErrors().isEmpty());
+		body.getErrors().forEach(e -> {
+			log.info(e.getDetail());
+			assertEquals("Syntax Error", e.getTitle());
+			assertEquals("/filterExpression", e.getSource().getPointer());
+		});
+	}
+
+	@Test
+	public void duplicateQueryNameFails() throws Exception {
+		org.enquery.encryptedquery.querier.data.entity.json.Query query = createQuery(null);
+		query.setName("test");
+
+		org.enquery.encryptedquery.querier.data.entity.jpa.DataSchema ds = sampleData.createDataSchema();
+		dataSchemaRepo.add(ds);
+
+		org.enquery.encryptedquery.querier.data.entity.jpa.QuerySchema qs1 = sampleData.createJPAQuerySchema(ds);
+		querySchemaRepo.add(qs1);
+
+		org.enquery.encryptedquery.querier.data.entity.json.DataSchemaResponse dataSchema =
+				retrieveDataSchemaForName(ds.getName());
+
+		org.enquery.encryptedquery.querier.data.entity.json.QuerySchema querySchema =
+				retrieveQuerySchemaForName(qs1.getName(), dataSchema).getData();
+
+		Message message = invoke(querySchema.getQueriesUri(),
+				201,
+				null,
+				itCamelContext.getEndpoint("mock:query-create-result", MockEndpoint.class),
+				"direct:create-query", query)
+						.getReceivedExchanges()
+						.get(0)
+						.getMessage();
+
+		QueryResponse body = message.getBody(QueryResponse.class);
+		assertNotNull(body);
+		assertNotNull(body.getData());
+		assertNull(body.getErrors());
+
+		message = invoke(querySchema.getQueriesUri(),
+				400,
+				null,
+				itCamelContext.getEndpoint("mock:query-create-result", MockEndpoint.class),
+				"direct:create-query", query)
+						.getReceivedExchanges()
+						.get(0)
+						.getMessage();
+
+		body = message.getBody(QueryResponse.class);
+		assertNotNull(body);
+		assertNull(body.getData());
+		assertNotNull(body.getErrors());
+		assertEquals(1, body.getErrors().size());
+		Error e = body.getErrors().iterator().next();
+		log.info(e.getDetail());
+		assertEquals("Duplicate Name", e.getTitle());
+		assertEquals("/name", e.getSource().getPointer());
+	}
+
 
 	@Test
 	public void create() throws Exception {
 
-		QueryResponse created = createQueryAndWaitForEncryption();
+		QueryResponse created = createQueryAndWaitForEncryption("field1 > 10");
 		assertNotNull(created);
 		validateIncluded(created);
 
@@ -166,7 +261,7 @@ public class QueryRestServiceIT extends BaseRestServiceItest {
 		assertNotNull(persisted);
 		assertNotNull(persisted.getQueryUrl());
 		assertNotNull(persisted.getQueryKeyUrl());
-		assertEquals(persisted.getFilterExpression(), "duration > 10");
+		assertEquals(persisted.getFilterExpression(), "field1 > 10");
 
 
 		byte[] bytes = IoUtils.toByteArray(queryRepo.loadQueryBytes(id));

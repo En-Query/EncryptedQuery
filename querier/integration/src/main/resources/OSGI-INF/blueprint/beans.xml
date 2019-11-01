@@ -23,12 +23,13 @@
 	xsi:schemaLocation="
            http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
 
-	<cm:property-placeholder persistent-id="encrypted.query.querier.rest" 
+	<cm:property-placeholder persistent-id="encrypted.query.querier.integration" 
 		update-strategy="reload" 
 		placeholder-prefix="#{" placeholder-suffix="}">
 		
 		<cm:default-properties>
 			<cm:property name="responder.offline" value="false"/>
+	        <cm:property name="responder.scheme" value="http"/>
 	        <cm:property name="responder.host" value="localhost"/>
 	        <cm:property name="responder.port" value="8181"/>
 	        <cm:property name="responder.api.media.type" value="application/vnd.encryptedquery.responder+xml"/>
@@ -99,6 +100,7 @@
 	<reference id="dataSourceImporter" interface="org.encryptedquery.querier.business.DataSourceImporter" ext:proxy-method="classes"/>
 	<reference id="datSourceUploader" interface="org.encryptedquery.querier.integration.DataSourceUploader" ext:proxy-method="classes"/>
 	<reference id="resultUploader" interface="org.encryptedquery.querier.integration.ResultsUploader" ext:proxy-method="classes"/>
+	<reference id="filterValidator" interface="org.enquery.encryptedquery.data.validation.FilterValidator"/>
 	
 	<bean
 		class="org.apache.camel.component.servlet.osgi.OsgiServletRegisterer"

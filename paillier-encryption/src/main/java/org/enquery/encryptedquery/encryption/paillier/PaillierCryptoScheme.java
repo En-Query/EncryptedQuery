@@ -39,6 +39,7 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.concurrency.ThreadPool;
 import org.enquery.encryptedquery.data.QueryInfo;
+import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.ColumnProcessor;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
@@ -916,5 +917,21 @@ public class PaillierCryptoScheme extends AbstractCryptoScheme implements Crypto
 	private long longFromByteArray(byte[] handle) {
 		ByteBuffer result = ByteBuffer.wrap(handle);
 		return result.getLong();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.enquery.encryptedquery.encryption.CryptoScheme#maximumChunkSize(org.enquery.
+	 * encryptedquery.data.QuerySchema, int)
+	 */
+	@Override
+	public int maximumChunkSize(QuerySchema querySchema, int numberOfSelectors) {
+		// TODO: fix this
+		return 384 / numberOfSelectors;
+		// if (columnProcessorId == ColumnProcessorId.GPU) {
+		// return 4;
+		// }
+		// return 4;
 	}
 }

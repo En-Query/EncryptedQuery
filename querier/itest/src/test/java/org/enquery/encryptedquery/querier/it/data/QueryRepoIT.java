@@ -112,7 +112,7 @@ public class QueryRepoIT extends AbstractQuerierItest {
 		assertEquals(1, list.size());
 		assertEquals(QUERY_NAME, list.iterator().next().getName());
 
-		Query query1 = queryRepo.findByName(QUERY_NAME);
+		Query query1 = queryRepo.findByName(qs, QUERY_NAME);
 		assertNotNull(query1);
 		assertEquals(QUERY_NAME, query1.getName());
 

@@ -8,8 +8,9 @@ The overall project structure is as:
 |---------------------- | ---------------------------------------------------------------------------------|
 | /   					| License information, read me files, disclaimers, etc.|
 | parent				| Root parent POM. |
-| doc						| Documentation. |
 | core					| Core module, contains common code, referenced by most all other modules. |
+| doc					| Documentation. |
+| deployment			| Deployment scripts |
 | examples				| Some examples|
 | flink 				| Parent POM for all Flink modules.|
 | flink/core			| Flink Core module, base classes, data source agnostic.| 

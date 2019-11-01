@@ -177,10 +177,11 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 						.to("mock:queryschema-result");
 
 				from("direct:create-queryschema")
+						.streamCaching()
 						.marshal(querySchemaFormat)
-						// .log("${body}")
+						.log("${body}")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
-						// .log("${body}")
+						.log("${body}")
 						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(querySchemaFormat)
 						.end()
@@ -218,13 +219,13 @@ public class BaseRestServiceItest extends AbstractQuerierItest {
 
 				from("direct:create-query")
 						.streamCaching()
-						.log("${body}")
 						.marshal(queryFormat)
+						.log("${body}")
 						.to("http4://localhost:8182?throwExceptionOnFailure=false")
 						.log("${body}")
-						.filter(simple("${header.CamelHttpResponseCode} == 201"))
 						.unmarshal(queryFormat)
-						.end()
+						// .filter(simple("${header.CamelHttpResponseCode} != 500"))
+						// .end()
 						.to("mock:query-create-result");
 
 				from("direct:retrieve-schedules")

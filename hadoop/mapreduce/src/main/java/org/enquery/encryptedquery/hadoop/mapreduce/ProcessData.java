@@ -19,16 +19,16 @@ package org.enquery.encryptedquery.hadoop.mapreduce;
 import java.nio.file.Path;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.enquery.encryptedquery.hadoop.core.ColumnWritable;
 import org.enquery.encryptedquery.hadoop.core.ProcessDataMapper;
 import org.enquery.encryptedquery.hadoop.core.ProcessDataReducer;
+import org.enquery.encryptedquery.hadoop.core.RowHashAndChunksWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class ProcessData {
 	public static boolean run(Configuration conf, String inputFile, Path outputPath) throws Exception {
 
 		Job job = Job.getInstance(conf, "EQ-MR-ProcessData");
-		job.setSpeculativeExecution(false);
+		// job.setSpeculativeExecution(false);
 
 		job.setInputFormatClass(TextInputFormat.class);
 		FileInputFormat.setInputPaths(job, inputFile);
@@ -46,13 +46,15 @@ public class ProcessData {
 		job.setJarByClass(ProcessDataMapper.class);
 		job.setMapperClass(ProcessDataMapper.class);
 
-		// mapper outputs (hash, dataElement)
+		// mapper outputs (row hash, data chunks)
 		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(BytesWritable.class);
+		job.setMapOutputValueClass(RowHashAndChunksWritable.class);
 
 		job.setReducerClass(ProcessDataReducer.class);
-		job.setOutputKeyClass(LongWritable.class);
-		job.setOutputValueClass(BytesWritable.class);
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(ColumnWritable.class);
+		// must be a single reducer
+		job.setNumReduceTasks(1);
 
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		FileOutputFormat.setOutputPath(job, new org.apache.hadoop.fs.Path(outputPath.toString()));

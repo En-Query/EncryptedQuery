@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * OSGi Service that encrypts Queries. Thread-safe.
- *
  */
 @Component(service = QueryCipher.class)
 public class QueryCipher {
@@ -77,24 +76,27 @@ public class QueryCipher {
 			List<String> selectors = JSONConverter.toList(jpaQuery.getSelectorValues());
 			Validate.notNull(selectors, "No selector values, aborting query generation. At least one selector required.");
 
-			// TODO: get from JPA Query record as individual fields, we should move away from
-			// generic maps
-			Map<String, String> parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
-			// boolean embedSelector = jpaQuery.getEmbedSelector();
-			int dataChunkSize = Integer.valueOf(parameters.getOrDefault(QuerierProperties.DATA_CHUNK_SIZE, "1"));
-			if (parameters.containsKey(QuerierProperties.HASH_BIT_SIZE)) {
-				hashBitSize = Integer.parseInt(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, hashBitSize.toString()));
-			}
 
+			Map<String, String> parameters = null;
+			if (jpaQuery.getParameters() != null) {
+				// TODO: get from JPA Query record as individual fields, we should move away from
+				// generic maps
+				parameters = JSONConverter.toMapStringString(jpaQuery.getParameters());
+				if (parameters != null && parameters.containsKey(QuerierProperties.HASH_BIT_SIZE)) {
+					hashBitSize = Integer.parseInt(parameters.getOrDefault(QuerierProperties.HASH_BIT_SIZE, hashBitSize.toString()));
+				}
+			}
 			logger.info("  - HashBitSize: {}", hashBitSize);
 			logger.info("  - Number of Selectors: {}", selectors.size());
 			logger.info("  - Filter Expression: {}", jpaQuery.getFilterExpression());
-			logger.info("  - Additional Parameters:");
-			for (Map.Entry<String, String> entry : parameters.entrySet()) {
-				logger.info("     {} = {}", entry.getKey(), entry.getValue());
+			if (parameters != null) {
+				logger.info("  - Additional Parameters:");
+				for (Map.Entry<String, String> entry : parameters.entrySet()) {
+					logger.info("     {} = {}", entry.getKey(), entry.getValue());
+				}
 			}
 
-			Querier querier = encryptQuery.encrypt(querySchema, selectors, dataChunkSize, hashBitSize, jpaQuery.getFilterExpression());
+			Querier querier = encryptQuery.encrypt(querySchema, selectors, hashBitSize, jpaQuery.getFilterExpression());
 
 			logger.info("Finished encrypting {}.", jpaQuery);
 			return querier;

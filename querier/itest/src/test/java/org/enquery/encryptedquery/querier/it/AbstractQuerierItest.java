@@ -82,7 +82,7 @@ public abstract class AbstractQuerierItest {
 
 	public static final Logger log = LoggerFactory.getLogger(AbstractQuerierItest.class);
 
-	private static final String REST_CONFIG_PID = "encrypted.query.querier.rest";
+	private static final String REST_CONFIG_PID = "encrypted.query.querier.integration";
 
 	private static final int DEFAULT_RESPONDER_PORT = 8181;
 	protected static final String QUERIES_DATA_DIR = "target/query-data";
@@ -194,7 +194,7 @@ public abstract class AbstractQuerierItest {
 				editConfigurationFilePut("etc/org.apache.karaf.shell.cfg",
 						"sshPort", "8102"),
 
-				editConfigurationFilePut("etc/encrypted.query.querier.rest.cfg",
+				editConfigurationFilePut("etc/encrypted.query.querier.integration.cfg",
 						"camel.trace.enabled", "true"),
 
 				// editConfigurationFilePut("etc/org.enquery.encryptedquery.querier.wideskies.encrypt.EncryptQuery.cfg",
@@ -204,10 +204,11 @@ public abstract class AbstractQuerierItest {
 						getResourceAsFile("/etc/org.ops4j.datasource-querier-" + dbEngine + ".cfg")),
 
 				replaceConfigurationFile("etc/org.enquery.encryptedquery.jpa.config.EMConfigurator.cfg",
-						getResourceAsFile("/etc/org.enquery.encryptedquery.jpa.config.EMConfigurator.cfg"))
+						getResourceAsFile("/etc/org.enquery.encryptedquery.jpa.config.EMConfigurator.cfg")),
 
-		);
 
+				replaceConfigurationFile("etc/org.enquery.encryptedquery.querier.encrypt.EncryptQuery.cfg",
+						getResourceAsFile("/etc/org.enquery.encryptedquery.querier.encrypt.EncryptQuery.cfg")));
 	}
 
 	@Before

@@ -36,8 +36,12 @@
 			<xs:element name="numSelectors" type="xs:int" minOccurs="0" />
 			<xs:element name="hashBitSize" type="xs:int" />
 			<xs:element name="hashKey" type="xs:string" minOccurs="0" />
+			
+			<!-- numBitsPerDataElement is obsolete -->
 			<xs:element name="numBitsPerDataElement" type="xs:int" minOccurs="0" />
 			<xs:element name="dataChunkSize" type="xs:int" />
+			
+			<!-- numPartitionsPerDataElement is obsolete -->
 			<xs:element name="numPartitionsPerDataElement" type="xs:int" minOccurs="0" />
 			<xs:element name="filterExpression" type="xs:string" minOccurs="0" />
 			<xs:element ref="qschema:querySchema" />

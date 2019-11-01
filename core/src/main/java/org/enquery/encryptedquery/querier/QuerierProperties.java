@@ -20,6 +20,6 @@ package org.enquery.encryptedquery.querier;
  * Properties constants for the Querier
  */
 public interface QuerierProperties {
-	String DATA_CHUNK_SIZE = "dataChunkSize";
+	// String DATA_CHUNK_SIZE = "dataChunkSize";
 	String HASH_BIT_SIZE = "hashBitSize";
 }

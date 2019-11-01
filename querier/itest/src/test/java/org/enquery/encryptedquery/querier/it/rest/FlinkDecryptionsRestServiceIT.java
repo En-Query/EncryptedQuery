@@ -121,7 +121,7 @@ public class FlinkDecryptionsRestServiceIT extends BaseRestServiceWithFlinkRunne
 		validateClearTextResponse(decryptionJson, "title", "A Cup of Java", "author", "Kumar");
 
 		// this will return no data since the book has qty = 44
-		fullRetrieval = submitQueryAndRetrieveResult("WHERE qty > 100");
+		fullRetrieval = submitQueryAndRetrieveResult("qty > 100");
 		decryptionResponse = createDecryption(fullRetrieval.getDecryptionsUri());
 
 		tryUntilTrue(90,

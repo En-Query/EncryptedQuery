@@ -16,15 +16,12 @@
  */
 package org.enquery.encryptedquery.hadoop.core;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.io.BytesWritable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -39,41 +36,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Mapper class for the SortDataIntoRows job
- *
- * <p>
- * This mapper breaks each input data element into parts and computes its selector hash ("row
- * number"). It emits key-value pairs {@code (row, parts)} where each value {@code parts} is a byte
- * array representing the concatenation of all the parts in the data element.
+ * This mapper breaks each input data element into chunks and computes its row hash. It emits
+ * key-value pairs {@code (row hash, data chunks)}
  */
-public class ProcessDataMapper extends Mapper<LongWritable, Text, IntWritable, BytesWritable> {
+public class ProcessDataMapper extends Mapper<LongWritable, Text, IntWritable, RowHashAndChunksWritable> {
 
 	private static final Logger log = LoggerFactory.getLogger(ProcessDataMapper.class);
 
-	private IntWritable keyOut = null;
-	private BytesWritable valueOut = null;
+	private IntWritable keyOut;
+	private RowHashAndChunksWritable valueOut;
 	private QueryInfo queryInfo;
 	private Partitioner partitioner;
 	private JSONStringConverter jsonConverter;
 	private RecordEncoding recordEncoding;
-	private DistCacheLoader loader;
 	private RecordFilter recordFilter;
 
 	@Override
 	public void setup(Context ctx) throws IOException, InterruptedException {
 		super.setup(ctx);
 		try {
-			log.info("SortDataIntoRowsMapper - Setup Running");
-			loader = new DistCacheLoader();
+			log.info("ProcessDataMapper - Setup Running");
+			DistCacheLoader loader = new DistCacheLoader();
 			keyOut = new IntWritable();
-			valueOut = new BytesWritable();
+			valueOut = new RowHashAndChunksWritable();
 			partitioner = new Partitioner();
 			queryInfo = loader.loadQueryInfo();
+
+			// override Querier chunk size if needed
+			int overrideChunkSize = ctx.getConfiguration().getInt(HadoopConfigurationProperties.CHUNK_SIZE, 0);
+			if (overrideChunkSize > 0 && overrideChunkSize < queryInfo.getDataChunkSize()) {
+				queryInfo.setDataChunkSize(overrideChunkSize);
+			}
+
 			jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
 			recordEncoding = new RecordEncoding(queryInfo);
 			String filterExpr = queryInfo.getFilterExpression();
 			if (filterExpr != null) {
-				recordFilter = new RecordFilter(filterExpr);
+				recordFilter = new RecordFilter(filterExpr, queryInfo.getQuerySchema().getDataSchema());
 				log.info("Initialized using filter expression: '{}'", filterExpr);
 			} else {
 				recordFilter = null;
@@ -91,83 +90,48 @@ public class ProcessDataMapper extends Mapper<LongWritable, Text, IntWritable, B
 	@Override
 	public void map(LongWritable key, Text value, Context ctx) throws IOException, InterruptedException {
 
-		Pair<Integer, byte[]> returnTuple;
-		ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_RECORDS_INIT_MAPPER).increment(1);
+		// ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_RECORDS_INIT_MAPPER).increment(1);
 
 		if (log.isDebugEnabled()) {
 			log.debug("Input Line: {}", value.toString());
 		}
 
-		Map<String, Object> recordData = jsonConverter.toStringObjectFlatMap(value.toString());
-		if (recordFilter == null || recordFilter.satisfiesFilter(recordData)) {
-			try {
-				returnTuple = createRecordPair(recordData);
-			} catch (Exception e) {
-				// There may be some records we cannot process, swallowing exception here to
-				// continue processing
-				// rest of records.
-				log.error("Error in partitioning data element value {} ", value.toString());
-				e.printStackTrace();
-				returnTuple = null;
-			}
-			if (returnTuple != null) {
-				if (log.isDebugEnabled()) {
-					log.debug("rowIndex ( {} ) bytes: ( {} )", returnTuple.getLeft(),
-							Hex.encodeHexString(returnTuple.getRight()));
-				}
-				Integer rowIndex = returnTuple.getLeft();
-				byte[] data = returnTuple.getRight();
-
-				keyOut.set(rowIndex);
-				valueOut.set(data, 0, data.length);
-				ctx.write(keyOut, valueOut);
-				if (log.isDebugEnabled()) {
-					log.debug("Writing rowIndex {} parts {} length {}", rowIndex, Hex.encodeHexString(data), data.length);
-				}
-				ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_RECORDS_PROCESSED_INIT_MAPPER).increment(1);
-			} else {
-				log.warn("Input Record not processed: {}", value.toString());
-				// Not an error, just bad input data probably
-			}
-		}
-	}
-
-	@Override
-	public void cleanup(Context ctx) throws IOException, InterruptedException {
 		try {
-			log.info("Finished with the map - cleaning up ");
-			if (loader != null) {
-				loader.close();
-				loader = null;
+			Map<String, Object> recordData = jsonConverter.toStringObjectFlatMap(value.toString());
+			if (recordData == null) return;
+
+			// filter record if needed
+			if (recordFilter != null && !recordFilter.satisfiesFilter(recordData)) return;
+
+			final String selectorValue = recordEncoding.getSelectorStringValue(recordData);
+			if (StringUtils.isEmpty(selectorValue)) {
+				if (log.isWarnEnabled()) {
+					log.warn("No Value for Selector field {} / value ({})", queryInfo.getQuerySchema().getSelectorField(), selectorValue);
+				}
+				return;
 			}
-		} catch (Exception e) {
-			throw new IOException("Exception cleaning up.", e);
-		}
-	}
 
-	private Pair<Integer, byte[]> createRecordPair(Map<String, Object> recordData) throws Exception {
-		Pair<Integer, byte[]> pair = null;
-
-		if (recordData == null)
-			return pair;
-
-		String selectorValue = recordEncoding.getSelectorStringValue(recordData);
-		if (selectorValue != null && selectorValue.length() > 0) {
-			Integer rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selectorValue);
+			Integer rowHash = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selectorValue);
 			ByteBuffer encoded = recordEncoding.encode(recordData);
-			List<byte[]> recordParts = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
-			ByteArrayOutputStream stream = new ByteArrayOutputStream();
-			for (byte[] ba : recordParts) {
-				stream.write(ba);
-			}
-			byte[] parts = stream.toByteArray();
-			stream.close();
-			pair = Pair.of(rowIndex, parts);
-		} else {
-			if (log.isDebugEnabled()) {
-				log.warn("No Value for Selector field {} / value ({})", queryInfo.getQuerySchema().getSelectorField(), selectorValue);
-			}
+			List<byte[]> chunks = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
+
+			RowHashAndChunks data = new RowHashAndChunks();
+			data.setRowHash(rowHash);
+			data.setChunks(chunks);
+
+			// set key to fix value (0), the row hash is in the data to minimize the
+			// number of calls to the reducer to one, since there is only one reducer for this map
+			keyOut.set(0);
+			valueOut.set(data);
+			ctx.write(keyOut, valueOut);
+			// ctx.getCounter(HadoopConfigurationProperties.MRStats.NUM_RECORDS_PROCESSED_INIT_MAPPER).increment(1);
+		} catch (Exception e) {
+			// There may be some records we cannot process, swallowing exception here to
+			// continue processing
+			// rest of records.
+			log.error("Error in partitioning data element value {} ", value.toString());
+			e.printStackTrace();
+			return;
 		}
-		return pair;
 	}
 }

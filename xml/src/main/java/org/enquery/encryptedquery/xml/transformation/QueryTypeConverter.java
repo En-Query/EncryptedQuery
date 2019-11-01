@@ -144,8 +144,6 @@ public class QueryTypeConverter {
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setHashKey(queryInfo.getHashKey());
-		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
-		result.setNumPartitionsPerDataElement(queryInfo.getNumPartitionsPerDataElement());
 		result.setNumSelectors(queryInfo.getNumSelectors());
 		result.setFilterExpression(queryInfo.getFilterExpression());
 		result.setQuerySchema(QuerySchemaTypeConverter.toXMLQuerySchema(queryInfo.getQuerySchema()));
@@ -169,8 +167,6 @@ public class QueryTypeConverter {
 		result.setHashBitSize(queryInfo.getHashBitSize());
 		result.setDataChunkSize(queryInfo.getDataChunkSize());
 		result.setHashKey(queryInfo.getHashKey());
-		result.setNumBitsPerDataElement(queryInfo.getNumBitsPerDataElement());
-		result.setNumPartitionsPerDataElement(queryInfo.getNumPartitionsPerDataElement());
 		result.setNumSelectors(queryInfo.getNumSelectors());
 		result.setFilterExpression(queryInfo.getFilterExpression());
 		result.setQuerySchema(QuerySchemaTypeConverter.fromXMLQuerySchema(queryInfo.getQuerySchema()));

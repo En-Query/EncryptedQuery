@@ -159,6 +159,7 @@ public class ScheduleRestServiceIT extends BaseRestServiceWithFlinkRunnerItest {
 		// emulate Responder not reachable when submitting a Schedule
 		int oldPort = responderPort();
 		configureResponderPort(oldPort + 10);
+		assertEquals(oldPort + 10, responderPort());
 		try {
 			ScheduleResponse returned = postSchedule();
 

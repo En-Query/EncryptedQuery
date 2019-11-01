@@ -16,7 +16,6 @@
  */
 package org.enquery.encryptedquery.standalone;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +31,7 @@ import java.util.stream.Stream;
 import org.enquery.encryptedquery.core.Partitioner;
 import org.enquery.encryptedquery.data.QueryInfo;
 import org.enquery.encryptedquery.data.RecordEncoding;
+import org.enquery.encryptedquery.filter.RecordFilter;
 import org.enquery.encryptedquery.json.JSONStringConverter;
 import org.enquery.encryptedquery.utils.KeyedHash;
 import org.enquery.encryptedquery.utils.PIRException;
@@ -49,8 +49,9 @@ public class FileReader implements Callable<Long> {
 	private long selectorNullCount;
 	private final Path inputDataFile;
 	private final Integer maxHitsPerSelector;
-	private final AtomicLong recordsRead;
+	private final AtomicLong globalRecordsRead;
 	private AtomicLong lineNumber = new AtomicLong(0);
+	private long skippedCount;
 
 	// keeps track of how many hits a given
 	// selector has
@@ -60,9 +61,10 @@ public class FileReader implements Callable<Long> {
 	// Log how many records exceeded the maxHitsPerSelector limit
 	private HashMap<Integer, Integer> rowIndexOverflowCounter = new HashMap<>();
 	private final QueryInfo queryInfo;
-	private final List<BlockingQueue<QueueRecord>> queues;
+	private final BlockingQueue<Record> outputQueue;
 	private final RecordEncoding recordEncoding;
 	private final JSONStringConverter jsonConverter;
+	private final RecordFilter recordFilter;
 
 	/**
 	 * 
@@ -70,18 +72,26 @@ public class FileReader implements Callable<Long> {
 	public FileReader(Path inputDataFile,
 			QueryInfo queryInfo,
 			Integer maxHitsPerSelector,
-			List<BlockingQueue<QueueRecord>> queues,
+			BlockingQueue<Record> outputQueue,
 			Partitioner partitioner,
-			AtomicLong recordsReadCounter) {
+			AtomicLong globalRecordsRead) {
 		this.inputDataFile = inputDataFile;
 		this.queryInfo = queryInfo;
 		this.maxHitsPerSelector = maxHitsPerSelector;
-		this.queues = queues;
+		this.outputQueue = outputQueue;
 		this.partitioner = partitioner;
-		this.recordsRead = recordsReadCounter;
+		this.globalRecordsRead = globalRecordsRead;
 
 		recordEncoding = new RecordEncoding(queryInfo);
 		jsonConverter = new JSONStringConverter(queryInfo.getQuerySchema().getDataSchema());
+
+		String filterExpr = queryInfo.getFilterExpression();
+		if (filterExpr != null) {
+			recordFilter = new RecordFilter(filterExpr, queryInfo.getQuerySchema().getDataSchema());
+			log.info("Initialized using filter expression: '{}'", filterExpr);
+		} else {
+			recordFilter = null;
+		}
 	}
 
 	/*
@@ -94,15 +104,20 @@ public class FileReader implements Callable<Long> {
 		log.info("Start reading file: " + inputDataFile);
 
 		lineNumber.set(0);
-		recordsRead.set(0);
+		globalRecordsRead.set(0);
+		skippedCount = 0;
 
 		try (Stream<String> lines = Files.lines(inputDataFile)) {
-			lines.forEach(line -> processLine(line));
+			lines.forEach(line -> {
+				try {
+					processLine(line);
+				} catch (PIRException | InterruptedException e) {
+					throw new RuntimeException("Error in file '" + inputDataFile + "' line number: " + lineNumber.get(), e);
+				}
+				lineNumber.incrementAndGet();
+			});
 			sendEof();
-		} catch (IOException | InterruptedException e) {
-			throw new RuntimeException("Error processing file: " + inputDataFile, e);
 		}
-
 
 		if (log.isWarnEnabled()) {
 			if (selectorNullCount > 0) {
@@ -111,7 +126,11 @@ public class FileReader implements Callable<Long> {
 		}
 
 		if (log.isInfoEnabled()) {
-			log.info("Imported {} records for processing", numFormat.format(lineNumber.get()));
+			log.info("Read {}, processed {}, and skipped {} records.",
+					numFormat.format(lineNumber.get()),
+					numFormat.format(globalRecordsRead.get()),
+					numFormat.format(skippedCount));
+
 			if (rowIndexOverflowCounter.size() > 0) {
 				log.warn("{} Row Hashs overflowed because of MaxHitsPerSelector.  Increase MaxHitsPerSelector to reduce this if resources allow.", rowIndexOverflowCounter.size());
 				if (log.isDebugEnabled()) {
@@ -123,7 +142,7 @@ public class FileReader implements Callable<Long> {
 			}
 		}
 
-		return recordsRead.get();
+		return globalRecordsRead.get();
 	}
 
 
@@ -133,35 +152,27 @@ public class FileReader implements Callable<Long> {
 	 */
 	private void sendEof() throws InterruptedException {
 		// All data has been submitted to the queue so send an EOF marker
-		QueueRecord eof = new QueueRecord();
-		eof.setIsEndOfFile(true);
-		for (BlockingQueue<QueueRecord> q : queues) {
-			q.put(eof);
-		}
+		outputQueue.put(new EofRecord());
 	}
 
-	private void processLine(String line) {
-		Map<String, Object> jsonData = null;
+	private void processLine(String line) throws PIRException, InterruptedException {
+		Map<String, Object> record = null;
 		try {
-			jsonData = jsonConverter.toStringObjectFlatMap(line);
+			record = jsonConverter.toStringObjectFlatMap(line);
 		} catch (Exception e) {
+			skippedCount++;
 			log.warn("Failed to parse input record. Skipping. Line number: {}, Error: {}", lineNumber.get(), e.getMessage());
 			return;
 		}
 
-		if (jsonData != null && jsonData.size() > 0) {
-			processRow(jsonData);
-			lineNumber.incrementAndGet();
-		} else if (jsonData.size() < 1) {
-			log.warn("jsonData has no data, input line: {}", line);
-			return;
+		if (recordFilter == null || recordFilter.satisfiesFilter(record)) {
+			processRow(record);
 		} else {
-			log.warn("jsonData is null, input line: {}", line);
-			return;
+			skippedCount++;
 		}
 	}
 
-	private void processRow(Map<String, Object> rowData) {
+	private void processRow(Map<String, Object> rowData) throws PIRException, InterruptedException {
 
 		final String selector = recordEncoding.getSelectorStringValue(rowData);
 		// log.info("Selector Value {}", selector);
@@ -170,53 +181,40 @@ public class FileReader implements Callable<Long> {
 			return;
 		}
 
-		try {
-			final int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
-			// logger.info("Selector {} / Hash {}", selector, rowIndex);
+		final int rowIndex = KeyedHash.hash(queryInfo.getHashKey(), queryInfo.getHashBitSize(), selector);
 
-			if (maxHitsPerSelector == null) {
-				ingestRecord(rowData, selector, rowIndex);
+		if (maxHitsPerSelector == null) {
+			ingestRecord(rowData, rowIndex);
+		} else {
+			// Track how many "hits" there are for each selector (Converted into rowIndex)
+			Integer accumulator = incrementCounter(rowIndexCounter, rowIndex);
+			if (accumulator <= maxHitsPerSelector) {
+				ingestRecord(rowData, rowIndex);
 			} else {
-				// Track how many "hits" there are for each selector (Converted into
-				// rowIndex)
-				if (rowIndexCounter.containsKey(rowIndex)) {
-					rowIndexCounter.put(rowIndex, (rowIndexCounter.get(rowIndex) + 1));
-				} else {
-					rowIndexCounter.put(rowIndex, 1);
-				}
-
-				// If we are not over the max hits value add the record to the
-				// appropriate queue
-				if (rowIndexCounter.get(rowIndex) <= maxHitsPerSelector) {
-					ingestRecord(rowData, selector, rowIndex);
-				} else {
-					if (rowIndexOverflowCounter.containsKey(rowIndex)) {
-						rowIndexOverflowCounter.put(rowIndex, (rowIndexOverflowCounter.get(rowIndex) + 1));
-					} else {
-						rowIndexOverflowCounter.put(rowIndex, 1);
-					}
-				}
+				incrementCounter(rowIndexOverflowCounter, rowIndex);
 			}
-		} catch (Exception e) {
-			log.error("Exception adding record selector {} / line number {}, Exception: {}", selector, lineNumber.get(), e.getMessage(), e);
 		}
+
 	}
 
-	private void ingestRecord(Map<String, Object> rowData, final String selector, int rowIndex) throws PIRException, InterruptedException {
+	private Integer incrementCounter(Map<Integer, Integer> map, int rowIndex) {
+		Integer accumulator = map.get(rowIndex);
+		if (accumulator == null) {
+			accumulator = 1;
+		} else {
+			accumulator = accumulator + 1;
+		}
+		map.put(rowIndex, accumulator);
+		return accumulator;
+	}
 
-		ByteBuffer encoded = recordEncoding.encode(rowData);
+	private void ingestRecord(Map<String, Object> recordData, int rowIndex) throws PIRException, InterruptedException {
+		// List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, queryInfo, jsonData);
+
+		ByteBuffer encoded = recordEncoding.encode(recordData);
 		List<byte[]> dataChunks = partitioner.createPartitions(encoded, queryInfo.getDataChunkSize());
-		QueueRecord record = new QueueRecord(rowIndex, selector, dataChunks);
-
-		// List<Byte> parts = RecordPartitioner.partitionRecord(partitioner, queryInfo, rowData);
-		// QueueRecord qr = new QueueRecord(rowIndex, selector, parts);
-		int whichQueue = rowIndex % queues.size();
-		// log.info("Hash {} going to queue {} with {} bytes", rowIndex, whichQueue,
-		// parts.size());
-
-		// insert element in queue, waits until space is available
-		queues.get(whichQueue).put(record);
-		recordsRead.incrementAndGet();
+		outputQueue.put(new Record(rowIndex, dataChunks));
+		globalRecordsRead.incrementAndGet();
 	}
 
 }

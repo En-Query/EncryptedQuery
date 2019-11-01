@@ -142,9 +142,11 @@ public class QuerySchema implements Serializable {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("QuerySchema [name=").append(name).append("]");
-		builder.append("\n      [Elements=").append(elements.size()).append("]");
-		builder.append("\n      [ElementList=").append(elementList.size()).append("]");
+		builder
+				.append("QuerySchema [name=").append(name)
+				.append(", dataSchema=").append((dataSchema != null) ? dataSchema.getName() : null)
+				.append(", selectorField=").append(selectorField)
+				.append("]");
 		return builder.toString();
 	}
 

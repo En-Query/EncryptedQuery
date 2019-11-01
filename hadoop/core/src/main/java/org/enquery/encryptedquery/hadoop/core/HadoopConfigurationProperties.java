@@ -22,24 +22,8 @@ package org.enquery.encryptedquery.hadoop.core;
 // TODO: move from here
 public interface HadoopConfigurationProperties {
 	String HDFSWORKINGFOLDER = "hadoop.working.folder";
-	String DATA_SOURCE_RECORD_TYPE = "data.source.record.type";
-	String RESPONSE_FILE = "response.file";
-	String CHUNKING_BYTE_SIZE = "chunkingByteSize";
-	String PROCESSING_METHOD = "processing.method";
-
-	// For general output
-	String COUNTS = "counts";
-	String DETAILS = "details";
-
-	public enum MRStats {
-		NUM_RECORDS_INIT_MAPPER, //
-		NUM_RECORDS_PROCESSED_INIT_MAPPER, //
-		NUM_RECORDS_INIT_REDUCER, //
-		NUM_HASHS_INIT_REDUCER, //
-		NUM_HASHS_OVER_MAX_HITS, //
-		NUM_HASHES_REDUCER, //
-		NUM_COLUMNS, //
-		TOTAL_COLUMN_COUNT//
-	}
-
+	String DATA_SOURCE_RECORD_TYPE = "hadoop.record.type";
+	String RESPONSE_FILE = "hadoop.response.file";
+	String CHUNK_SIZE = "hadoop.chunk.size";
+	String COLUMN_BUFFER_MEMORY_MB = "hadoop.column.buffer.memory.mb";
 }

@@ -76,7 +76,6 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	private Path runDir;
 	private Integer flinkParallelism;
 	private Integer columnBufferMemory;
-	// private Integer columnEncryptionPartitionCount;
 
 	@Reference
 	private DataSchemaService dss;
@@ -87,6 +86,8 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 	@Reference
 	private CryptoSchemeRegistry cryptoRegistry;
 	private DataSourceType type;
+
+	private String chunkSize;
 
 
 	@Activate
@@ -139,6 +140,12 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 			columnBufferMemory = Integer.valueOf(config._column_buffer_memory_mb());
 		}
 
+		chunkSize = config._chunk_size();
+		if (chunkSize != null) {
+			int intChunkSize = Integer.parseInt(chunkSize);
+			Validate.isTrue(intChunkSize > 0);
+			log.info("chunk.size = {}", intChunkSize);
+		}
 	}
 
 	@Override
@@ -247,6 +254,10 @@ public class FlinkJdbcQueryRunner implements QueryRunner {
 
 		if (columnBufferMemory != null) {
 			p.setProperty(ResponderProperties.COLUMN_BUFFER_MEMORY_MB, columnBufferMemory.toString());
+		}
+
+		if (chunkSize != null) {
+			p.put(FlinkConfigurationProperties.CHUNK_SIZE, chunkSize);
 		}
 
 		// Pass the CryptoScheme configuration to the external application,

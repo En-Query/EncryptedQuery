@@ -156,7 +156,6 @@ class BatchParams extends React.Component {
             placeholder="10000"
             min="1"
             step="1"
-            required
           />
         </div>
       </div>
@@ -178,7 +177,7 @@ class ScheduleQuery extends React.Component {
       processingMode: "",
       description: "",
       kafkaOffset: "",
-      maxHitsPerSelector: 10000,
+      maxHitsPerSelector: "",
       windowLengthSeconds: 1,
       runTimeSeconds: 1,
       submissionValue: "",
@@ -365,11 +364,17 @@ class ScheduleQuery extends React.Component {
           Accept: "application/vnd.encryptedquery.enclave+json; version=1",
           "Content-Type": "application/json"
         },
+
         data: JSON.stringify({
           startTime: date,
-          parameters: {
-            maxHitsPerSelector: maxHitsPerSelector
-          },
+          ...(maxHitsPerSelector.trim().length !== 0
+            ? {
+                parameters: {
+                  maxHitsPerSelector
+                }
+              }
+            : {}),
+
           dataSource: {
             id: dataSourceId,
             selfUri: dataSourceSelfUri
@@ -396,7 +401,10 @@ class ScheduleQuery extends React.Component {
           data: JSON.stringify({
             startTime: date,
             parameters: {
-              maxHitsPerSelector: maxHitsPerSelector,
+              maxHitsPerSelector:
+                maxHitsPerSelector.trim().length === 0
+                  ? undefined
+                  : maxHitsPerSelector,
               "stream.window.length.seconds": windowLengthSeconds,
               "kafka.start.offset": kafkaOffset,
               "stream.runtime.seconds": !checked ? runTimeSeconds : undefined
@@ -560,73 +568,77 @@ class ScheduleQuery extends React.Component {
                         checked={this.state.checked}
                         handleChange={this.handleChange}
                         handleCheckboxChange={newCheckState =>
-                          this.setState({ checked: newCheckState })
-                        }
+                          this.setState({ checked: newCheckState })}
                       />
                     ) : null}
                   </Segment>
                 )}
 
-                <Segment style={{ padding: "5em 1em" }} vertical>
-                  <Divider horizontal>Choose a Date </Divider>
-                  <Container style={{ width: "255px" }}>
-                    <div>
-                      <Datetime
-                        onChange={this.dateChange}
-                        value={this.state.date}
-                        input={false}
-                        isValidDate={validDate}
-                        open={true}
-                        utc={false}
-                        onClickDay={value => alert("day" + value + "clicked")}
-                      />
-                    </div>
-                  </Container>
-                </Segment>
-
-                <Segment style={{ padding: "5em 1em" }} vertical>
-                  <Form.Field>
-                    <div style={{ display: "flex" }}>
-                      <label>Submission Choice:</label>
-                      <Popup
-                        trigger={
-                          <Button
-                            icon="info"
-                            type="button"
-                            circular
-                            style={{ marginLeft: "10px", padding: "5px" }}
+                {dataSourceName && (
+                  <div>
+                    <Segment style={{ padding: "5em 1em" }} vertical>
+                      <Divider horizontal>Choose a Date </Divider>
+                      <Container style={{ width: "255px" }}>
+                        <div>
+                          <Datetime
+                            onChange={this.dateChange}
+                            value={this.state.date}
+                            input={false}
+                            isValidDate={validDate}
+                            open={true}
+                            utc={false}
+                            onClickDay={value =>
+                              alert("day" + value + "clicked")}
                           />
-                        }
-                        content="Online does this, Offline does this.."
+                        </div>
+                      </Container>
+                    </Segment>
+
+                    <Segment style={{ padding: "5em 1em" }} vertical>
+                      <Form.Field>
+                        <div style={{ display: "flex" }}>
+                          <label>Submission Choice:</label>
+                          <Popup
+                            trigger={
+                              <Button
+                                icon="info"
+                                type="button"
+                                circular
+                                style={{ marginLeft: "10px", padding: "5px" }}
+                              />
+                            }
+                            content="Online does this, Offline does this.."
+                          />
+                        </div>
+                      </Form.Field>
+                      <Form.Field>
+                        <Radio
+                          label="Online (default)"
+                          name="radioGroup"
+                          value="online"
+                          defaultChecked={true}
+                          checked={submissionRadioValue === "online"}
+                          onChange={this.handleRadio}
+                        />
+                      </Form.Field>
+                      <Form.Field>
+                        <Radio
+                          label="Offline"
+                          name="radioGroup"
+                          value="offline"
+                          checked={submissionRadioValue === "offline"}
+                          onChange={this.handleRadio}
+                        />
+                      </Form.Field>
+                      <Form.Button
+                        positive
+                        fluid
+                        content="Submit Schedule"
+                        style={{ marginTop: "50px" }}
                       />
-                    </div>
-                  </Form.Field>
-                  <Form.Field>
-                    <Radio
-                      label="Online (default)"
-                      name="radioGroup"
-                      value="online"
-                      defaultChecked={true}
-                      checked={submissionRadioValue === "online"}
-                      onChange={this.handleRadio}
-                    />
-                  </Form.Field>
-                  <Form.Field>
-                    <Radio
-                      label="Offline"
-                      name="radioGroup"
-                      value="offline"
-                      checked={submissionRadioValue === "offline"}
-                      onChange={this.handleRadio}
-                    />
-                  </Form.Field>
-                  <Form.Button
-                    positive
-                    fluid
-                    content="Submit Schedule"
-                    style={{ marginTop: "50px" }}
-                  />
-                </Segment>
+                    </Segment>
+                  </div>
+                )}
               </Form>
             </div>
           </div>

@@ -31,6 +31,7 @@ import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.filter.RecordFilter;
 import org.enquery.encryptedquery.flink.TimestampFormatter;
@@ -63,6 +64,7 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 	private long windowCount;
 	private final String selectorFieldName;
 	private final String filterExpr;
+	private final DataSchema dataSchema;
 
 	private transient volatile boolean isRunning = true;
 	private transient volatile boolean failed = false;
@@ -82,7 +84,7 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 
 		Validate.notNull(query);
 		this.selectorFieldName = query.getQueryInfo().getQuerySchema().getSelectorField();
-
+		this.dataSchema = query.getQueryInfo().getQuerySchema().getDataSchema();
 		this.maxTimestamp = maxTimestamp;
 		this.responseFilePath = responseFilePath.toString();
 		this.windowSize = windowSize.toMilliseconds();
@@ -152,7 +154,7 @@ public abstract class TimeBoundStoppableConsumer extends RichSourceFunction<Inpu
 		createJobRunningFileMarker();
 		isRunning = true;
 		if (filterExpr != null) {
-			recordFilter = new RecordFilter(filterExpr);
+			recordFilter = new RecordFilter(filterExpr, dataSchema);
 			log.info("Initialized using filter expression: '{}'", filterExpr);
 		}
 	}

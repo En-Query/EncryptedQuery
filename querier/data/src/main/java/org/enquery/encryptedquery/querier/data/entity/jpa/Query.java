@@ -190,10 +190,7 @@ public class Query {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Query [id=").append(id)
-				.append(", name=").append(name).append("]");
+		builder.append("Query [id=").append(id).append(", name=").append(name).append(", querySchema=").append(querySchema).append("]");
 		return builder.toString();
 	}
-
-
 }

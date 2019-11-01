@@ -73,7 +73,7 @@
      	-->
      	
      	<!-- Set the context path from Maven property -->
-     	<config name="encrypted.query.querier.rest">
+     	<config name="encrypted.query.querier.integration">
      		context.path=${context.path}
      	</config>
      	<config name="org.enquery.encryptedquery.health.status">
@@ -112,10 +112,9 @@
     	
   		<!-- needed for XML generation see data-schema module -->
   	    <bundle>mvn:com.sun.xml.bind/jaxb-core/2.3.0</bundle>
-  	
+  		
      	<feature>standard</feature>
 		<feature>apache-commons</feature>
-		<feature>aries-blueprint</feature>
 		<feature>war</feature>
 		<feature>webconsole</feature>
  		<feature>camel-core</feature>
@@ -134,7 +133,7 @@
       
 		<feature>encryptedquery-jdbc</feature>
 		<feature>encryptedquery-jackson</feature>
-				
+		
 		<bundle dependency="true">mvn:org.apache.aries.tx-control/tx-control-service-local/${aries.tx-control.version}</bundle>
         <bundle dependency="true">mvn:org.apache.aries.tx-control/tx-control-provider-jpa-local/${aries.tx-control.version}</bundle>
 		
@@ -155,6 +154,7 @@
         <bundle>mvn:${project.groupId}/encryptedquery-json/${project.version}</bundle>
 		<bundle>mvn:${project.groupId}/encryptedquery-paillier-encryption/${project.version}</bundle>
 		<bundle>mvn:${project.groupId}/encryptedquery-null-encryption/${project.version}</bundle>
+		<bundle>mvn:${project.groupId}/encryptedquery-seal-bfv-encryption/${project.version}</bundle>
 
         <bundle dependency="true">mvn:net.java.dev.jna/jna/${jna.version}</bundle>
         <bundle>wrap:mvn:com.squareup.jnagmp/jnagmp/${jnagmp.version}$Bundle-SymbolicName=JnaGmp&amp;Bundle-Version=${jnagmp.version}&amp;Import-Package=com.sun.jna,com.sun.jna.ptr,com.sun.jna.win32</bundle>

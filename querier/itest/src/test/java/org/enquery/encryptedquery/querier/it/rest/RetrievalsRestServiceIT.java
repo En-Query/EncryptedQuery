@@ -58,7 +58,7 @@ public class RetrievalsRestServiceIT extends BaseRestServiceWithFlinkRunnerItest
 	@Configuration
 	public Option[] configuration() {
 		return ArrayUtils.add(super.configuration(),
-				editConfigurationFilePut("etc/encrypted.query.querier.rest.cfg",
+				editConfigurationFilePut("etc/encrypted.query.querier.integration.cfg",
 						"retrieve.result.delay.ms", "1000"));
 	}
 

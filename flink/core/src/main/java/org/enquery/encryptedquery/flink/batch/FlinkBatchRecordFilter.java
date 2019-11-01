@@ -18,8 +18,10 @@ package org.enquery.encryptedquery.flink.batch;
 
 import java.util.Map;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.configuration.Configuration;
+import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.filter.RecordFilter;
 
@@ -30,6 +32,7 @@ public class FlinkBatchRecordFilter extends RichFilterFunction<Map<String, Objec
 	private static final long serialVersionUID = 1L;
 	private final String filterExpr;
 	private final String selectorFieldName;
+	private final DataSchema dataSchema;
 	private transient RecordFilter recordFilter;
 
 	/**
@@ -37,15 +40,17 @@ public class FlinkBatchRecordFilter extends RichFilterFunction<Map<String, Objec
 	 * @param sfn
 	 */
 	public FlinkBatchRecordFilter(Query query) {
+		Validate.notNull(query);
 		this.filterExpr = query.getQueryInfo().getFilterExpression();
 		this.selectorFieldName = query.getQueryInfo().getQuerySchema().getSelectorField();
+		this.dataSchema = query.getQueryInfo().getQuerySchema().getDataSchema();
 	}
 
 	@Override
 	public void open(Configuration parameters) throws Exception {
 		super.open(parameters);
 		if (filterExpr != null) {
-			this.recordFilter = new RecordFilter(filterExpr);
+			this.recordFilter = new RecordFilter(filterExpr, dataSchema);
 		}
 	}
 

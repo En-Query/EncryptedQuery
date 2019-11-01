@@ -20,13 +20,11 @@ package org.enquery.encryptedquery.standalone;
  * Properties constants for the Standalone Executor
  */
 public interface StandaloneConfigurationProperties {
-	String MAX_QUEUE_SIZE = "standalone.max.queue.size";
 	String MAX_RECORD_QUEUE_SIZE = "standalone.max.record.queue.size";
 	String MAX_COLUMN_QUEUE_SIZE = "standalone.max.column.queue.size";
 	String MAX_RESPONSE_QUEUE_SIZE = "standalone.max.response.queue.size";
 	String PROCESSING_THREADS = "standalone.thread.count";
-	String COMPUTE_THRESHOLD = "standalone.compute.threshold";
 	String MAX_HITS_PER_SELECTOR = "standalone.max.hits.per.selector";
-	String ALG_VERSION = "standalone.algorithm.version";
 	String COLUMN_BUFFER_MEMORY_MB = "standalone.column.buffer.memory.mb";
+	String CHUNK_SIZE = "standalone.chunk.size";
 }

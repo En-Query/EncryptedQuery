@@ -42,7 +42,7 @@ import org.enquery.encryptedquery.encryption.CipherText;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeFactory;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
-import org.enquery.encryptedquery.flink.batch.ColumnReduceFunctionV2;
+import org.enquery.encryptedquery.flink.batch.ColumnReduceFunction;
 import org.enquery.encryptedquery.flink.batch.Dispatcher;
 import org.enquery.encryptedquery.flink.batch.FlinkBatchRecordFilter;
 import org.enquery.encryptedquery.flink.batch.ResponseFileOutputFormat;
@@ -86,6 +86,8 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 	private CryptoScheme crypto;
 	private Integer maxRecordCountPerWindow;
 
+	private QueryInfo queryInfo;
+
 	public Map<String, String> getConfig() {
 		return config;
 	}
@@ -119,11 +121,10 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		initializeCommon();
 		initializeStreaming();
 
-		final QueryInfo queryInfo = query.getQueryInfo();
 		final InputRecordToQueueRecordMap createQueueRecords = new InputRecordToQueueRecordMap(queryInfo);
 		final String outFileName = outputFileName.toString();
 		final ColumnBufferMap columnBufferMap = new ColumnBufferMap(bufferSize, queryInfo.getHashBitSize(), maxHitsPerSelector, outFileName, maxRecordCountPerWindow);
-		final StreamingColumnEncryption columnEncryption = new StreamingColumnEncryption(query, config);
+		final StreamingColumnEncryption columnEncryption = new StreamingColumnEncryption(queryInfo, query.getQueryElements(), config);
 		final IncrementalResponseSink sinkFunction = new IncrementalResponseSink(queryInfo, config, outFileName);
 
 		source.map(createQueueRecords).name("Create data chunks")
@@ -142,16 +143,9 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		final QueryInfo queryInfo = query.getQueryInfo();
 
 		final RowHashMapFunction rowHash = new RowHashMapFunction(queryInfo);
-		final Dispatcher dispatcher = new Dispatcher(bufferSize, query.getQueryInfo().getHashBitSize());
-		final ColumnReduceFunctionV2 columnProcessor = new ColumnReduceFunctionV2(query, config);
+		final Dispatcher dispatcher = new Dispatcher(bufferSize, queryInfo.getHashBitSize());
+		final ColumnReduceFunction columnProcessor = new ColumnReduceFunction(queryInfo, query.getQueryElements(), config);
 		final FileOutputFormat<Tuple2<Integer, CipherText>> outputFormat = new ResponseFileOutputFormat(queryInfo);
-
-		// final String sfn = selectorFieldName;
-		// final String filter = query.getQueryInfo().getFilterExpression();
-		// FlinkStreamingRecordFilter rf = null;
-		// if (filter != null) {
-		// rf = new FlinkStreamingRecordFilter(filter);
-		// }
 
 		source.filter(new FlinkBatchRecordFilter(query))
 				// shuffle input records for better parallelism
@@ -187,9 +181,20 @@ public class BaseQueryExecutor implements FlinkTypes, AutoCloseable {
 		query = loadQuery(inputFileName);
 		Validate.notNull(query);
 		Validate.notNull(query.getQueryInfo());
-		log.info("Loaded query with filter expression: {}", query.getQueryInfo().getFilterExpression());
 
-		QueryInfo queryInfo = query.getQueryInfo();
+		queryInfo = query.getQueryInfo();
+
+		// override chunk size if needed
+		String chunkSizeStr = config.get(FlinkConfigurationProperties.CHUNK_SIZE);
+		if (chunkSizeStr != null) {
+			int overrideChunkSize = Integer.valueOf(chunkSizeStr);
+			if (overrideChunkSize > 0 && overrideChunkSize < queryInfo.getDataChunkSize()) {
+				queryInfo.setDataChunkSize(overrideChunkSize);
+			}
+		}
+
+		log.info("Loaded query {}", query.getQueryInfo());
+
 		querySchema = queryInfo.getQuerySchema();
 		Validate.notNull(querySchema);
 		querySchema.validate();

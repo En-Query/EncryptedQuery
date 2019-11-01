@@ -16,20 +16,12 @@
  */
 package org.enquery.encryptedquery.utils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.nio.file.Path;
-import java.util.AbstractCollection;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 
@@ -37,79 +29,6 @@ import java.util.Properties;
  * Class holding basic fileIO utils
  */
 public class FileIOUtils {
-
-	public interface Callable<V> {
-		V call(String line) throws Exception;
-	}
-
-	public static ArrayList<String> readToArrayList(String filepath) {
-		return (ArrayList<String>) read(filepath, new ArrayList<>(), new Callable<String>() {
-			@Override
-			public String call(String line) {
-				return line;
-			}
-		});
-	}
-
-	public static ArrayList<String> readToArrayList(String filepath, Callable<String> function) {
-		return (ArrayList<String>) read(filepath, new ArrayList<>(), function);
-	}
-
-	public static HashSet<String> readToHashSet(String filepath) {
-		return (HashSet<String>) read(filepath, new HashSet<>(), new Callable<String>() {
-			@Override
-			public String call(String line) {
-				return line;
-			}
-		});
-	}
-
-	public static HashSet<String> readToHashSet(String filepath, Callable<String> function) {
-		return (HashSet<String>) read(filepath, new HashSet<>(), function);
-	}
-
-	public static AbstractCollection<String> read(String filepath, AbstractCollection<String> collection, Callable<String> function) {
-		File file = new File(filepath);
-
-		// if file does not exist, output error and return null
-		if (!file.exists()) {
-			throw new RuntimeException("file at " + filepath + " does not exist");
-		}
-
-		// if file cannot be read, output error and return null
-		if (!file.canRead()) {
-			throw new RuntimeException("cannot read file at " + filepath);
-		}
-
-		// create buffered reader
-		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-			// read through the file, line by line
-			String line;
-			while ((line = br.readLine()) != null) {
-				String item = function.call(line);
-				if (item != null) {
-					collection.add(item);
-				}
-			}
-		} catch (Exception e) {
-			throw new RuntimeException("unable to read file");
-		}
-
-		return collection;
-	}
-
-	public static void writeArrayList(ArrayList<String> aList, File file) throws IOException {
-		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)))) {
-			for (String s : aList) {
-				bw.write(s);
-				bw.newLine();
-			}
-		}
-	}
-
-	public static void writeArrayList(ArrayList<String> aList, String filename) throws IOException {
-		writeArrayList(aList, new File(filename));
-	}
 
 	public static Map<String, String> loadPropertyFile(Path file) throws FileNotFoundException, IOException {
 		Properties properties = new Properties();

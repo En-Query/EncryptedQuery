@@ -12,7 +12,7 @@ public interface QueryRepository {
 
 	Query findForQuerySchema(QuerySchema querySchema, int id);
 
-	Query findByName(String name);
+	Query findByName(QuerySchema querySchema, String name);
 
 	Collection<Query> list();
 

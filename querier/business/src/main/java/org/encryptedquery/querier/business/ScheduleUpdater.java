@@ -66,7 +66,9 @@ public class ScheduleUpdater {
 		result.setUuid(UUID.randomUUID().toString().replace("-", ""));
 		// JSON Dates are in UTC, database timestamps also in UTC
 		result.setStartTime(json.getStartTime());
-		result.setParameters(JSONConverter.toString(json.getParameters()));
+		if (json.getParameters() != null) {
+			result.setParameters(JSONConverter.toString(json.getParameters()));
+		}
 
 		Integer dataSourceId = Integer.valueOf(json.getDataSource().getId());
 		DataSource dataSource = dataSourceRepo.find(dataSourceId);

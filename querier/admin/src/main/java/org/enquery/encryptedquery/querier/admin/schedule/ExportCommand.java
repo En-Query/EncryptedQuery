@@ -34,7 +34,6 @@ import org.apache.karaf.shell.api.action.lifecycle.Reference;
 import org.apache.karaf.shell.api.action.lifecycle.Service;
 import org.apache.karaf.shell.support.completers.FileCompleter;
 import org.enquery.encryptedquery.querier.admin.common.BaseCommand;
-import org.enquery.encryptedquery.querier.admin.common.ScheduleCompleter;
 import org.enquery.encryptedquery.querier.data.transformation.ExecutionExporter;
 
 /**
@@ -53,7 +52,6 @@ public class ExportCommand extends BaseCommand implements Action {
 			// aliases = {"-s", "Schedule IDs."},
 			multiValued = true,
 			description = "Ids of schedules to export.")
-	@Completion(ScheduleCompleter.class)
 	private List<Integer> scheduleIds;
 
 	@Option(name = "--output-file",

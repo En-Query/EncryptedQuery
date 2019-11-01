@@ -18,52 +18,48 @@ package org.enquery.encryptedquery.filter;
 
 import java.util.Map;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.commons.lang3.Validate;
-import org.enquery.encryptedquery.filter.antlr4.PredicateLexer;
-import org.enquery.encryptedquery.filter.antlr4.PredicateParser;
-import org.enquery.encryptedquery.filter.antlr4.PredicateParser.ExpressionContext;
-import org.enquery.encryptedquery.filter.eval.ErrorListener;
-import org.enquery.encryptedquery.filter.eval.Evaluator;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.filter.error.ErrorListener;
+import org.enquery.encryptedquery.filter.predicate.PredicateFactory;
 import org.joo.libra.Predicate;
 import org.joo.libra.PredicateContext;
-import org.joo.libra.sql.node.ExpressionNode;
 
 /**
  * Filter input records using SQL-like expression
  */
 public class RecordFilter {
 
-	private ExpressionContext expression;
 	private Predicate predicate;
 
 	/**
 	 * 
 	 */
 	public RecordFilter(String filterExp) {
-		CharStream stream = CharStreams.fromString(filterExp);
-		PredicateLexer lexer = new PredicateLexer(stream);
-		lexer.removeErrorListeners();
-		lexer.addErrorListener(new ErrorListener());
+		this(filterExp, null);
+	}
 
-		CommonTokenStream tokens = new CommonTokenStream(lexer);
-		PredicateParser parser = new PredicateParser(tokens);
-		parser.removeErrorListeners();
-		parser.addErrorListener(new ErrorListener());
-
-		expression = parser.expression();
-		Evaluator evaluator = new Evaluator();
-		ExpressionNode node = evaluator.visit(expression);
-		Validate.notNull(node, "Error evaluating filter expression.");
-		predicate = node.buildPredicate();
-		Validate.notNull(predicate, "Error evaluating filter expression.");
+	/**
+	 * 
+	 */
+	public RecordFilter(String filterExp, DataSchema dataSchema) {
+		ErrorListener listener = new ErrorListener();
+		predicate = PredicateFactory.make(filterExp, dataSchema, listener);
+		Validate.isTrue(predicate != null && listener.getErrors().isEmpty(),
+				"Error evaluating filter expression: %s",
+				Validator.concatErrors(listener.getErrors()));
 	}
 
 	public boolean satisfiesFilter(Map<String, Object> record) {
 		PredicateContext context = new PredicateContext(record);
 		return predicate.satisfiedBy(context);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("RecordFilter [predicate=").append(predicate).append("]");
+		return builder.toString();
 	}
 
 

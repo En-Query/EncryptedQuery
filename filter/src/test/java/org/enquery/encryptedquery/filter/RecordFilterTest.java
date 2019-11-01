@@ -19,18 +19,25 @@ package org.enquery.encryptedquery.filter;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.time.LocalDate;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.enquery.encryptedquery.core.FieldType;
+import org.enquery.encryptedquery.data.DataSchema;
+import org.enquery.encryptedquery.data.DataSchemaElement;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 public class RecordFilterTest {
+	private static final Logger log = LoggerFactory.getLogger(RecordFilterTest.class);
 
 	@Test
 	public void basicTest() {
@@ -100,8 +107,9 @@ public class RecordFilterTest {
 		rf = new RecordFilter("TIMESTAMP '2001-07-04T00:00:00Z' = DATE '2001-07-04'");
 		assertTrue(rf.satisfiesFilter(record));
 
-		rf = new RecordFilter("CURRENT_DATE = DATE '" + LocalDate.now().toString() + "'");
-		assertTrue(rf.satisfiesFilter(record));
+		rf = new RecordFilter("CURRENT_DATE = DATE '" + Instant.now().truncatedTo(ChronoUnit.DAYS) + "'");
+		log.info(rf.toString());
+		assertTrue(rf.toString(), rf.satisfiesFilter(record));
 	}
 
 	@Test
@@ -213,6 +221,12 @@ public class RecordFilterTest {
 		assertTrue(rf.satisfiesFilter(record));
 
 		rf = new RecordFilter("name = Null");
+		assertTrue(rf.satisfiesFilter(record));
+
+		rf = new RecordFilter("name = 'pepe'");
+		assertFalse(rf.satisfiesFilter(record));
+
+		rf = new RecordFilter("name = lastName");
 		assertTrue(rf.satisfiesFilter(record));
 
 		record.put("name", "");
@@ -392,6 +406,39 @@ public class RecordFilterTest {
 		compareWith(record, "<", false);
 		compareWith(record, "<=", false);
 		compareWith(record, "=", false);
+	}
+
+	@Test
+	public void withDataSchema() {
+		Map<String, Object> record = new HashMap<>();
+		record.put("value", 9);
+
+		DataSchema dataSchema = new DataSchema();
+		DataSchemaElement element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("value");
+		element.setPosition(0);
+		dataSchema.addElement(element);
+
+		RecordFilter rf = new RecordFilter("value = 9", dataSchema);
+		assertTrue(rf.satisfiesFilter(record));
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void withDataSchemaFieldNotFound() {
+		Map<String, Object> record = new HashMap<>();
+		record.put("value", 9);
+
+		DataSchema dataSchema = new DataSchema();
+		dataSchema.setName("Test Data Schema");
+		DataSchemaElement element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("other");
+		element.setPosition(0);
+		dataSchema.addElement(element);
+
+		RecordFilter rf = new RecordFilter("value = 9", dataSchema);
+		assertTrue(rf.satisfiesFilter(record));
 	}
 
 	private void compareWith(Map<String, Object> record, String op, boolean expected) {

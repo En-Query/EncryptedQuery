@@ -16,8 +16,9 @@
 		<mkdir dir="${querier.build.dir}" />
 		<mkdir dir="${responder.build.dir}" />
 
-		<get src="https://ftp.gnu.org/gnu/gmp/gmp-${gmp.version}.tar.bz2" dest="${gmp.build.dir}" skipexisting="true" />
-
+		<get src="https://gmplib.org/download/gmp/gmp-${gmp.version}.tar.bz2" dest="${gmp.build.dir}" skipexisting="true" />
+		
+		
 		<exec dir="${gmp.build.dir}" executable="tar" failonerror="true">
 			<arg line="-xjf" />
 			<arg line="${gmp.build.dir}/gmp-${gmp.version}.tar.bz2" />

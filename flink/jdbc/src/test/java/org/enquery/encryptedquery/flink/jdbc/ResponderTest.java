@@ -56,6 +56,7 @@ import org.enquery.encryptedquery.data.QueryKey;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.QuerySchemaElement;
 import org.enquery.encryptedquery.data.Response;
+import org.enquery.encryptedquery.data.validation.FilterValidator;
 import org.enquery.encryptedquery.encryption.CryptoScheme;
 import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.encryption.paillier.PaillierCryptoScheme;
@@ -315,6 +316,21 @@ public class ResponderTest extends JDBCTestBase {
 		EncryptQuery queryEnc = new EncryptQuery();
 		queryEnc.setCrypto(crypto);
 		queryEnc.setRandomProvider(randomProvider);
+		queryEnc.setFilterValidator(new FilterValidator() {
+
+			@Override
+			public void validate(String exp, DataSchema dataSchema) {}
+
+			@Override
+			public boolean isValid(String exp, DataSchema dataSchema) {
+				return true;
+			}
+
+			@Override
+			public List<String> collectErrors(String exp, DataSchema dataSchema) {
+				return null;
+			}
+		});
 
 		return queryEnc.encrypt(querySchema, selectors, DATA_CHUNK_SIZE, HASH_BIT_SIZE, filterExpression);
 	}

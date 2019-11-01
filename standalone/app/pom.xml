@@ -25,7 +25,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-standalone-parent</artifactId>
-		<version>2.2.2</version>
+		<version>2.2.3</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<artifactId>encryptedquery-standalone-app</artifactId>
@@ -80,7 +80,11 @@
 			<artifactId>encryptedquery-null-encryption</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>encryptedquery-seal-bfv-encryption</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		
 
 		<!-- test dependencies -->

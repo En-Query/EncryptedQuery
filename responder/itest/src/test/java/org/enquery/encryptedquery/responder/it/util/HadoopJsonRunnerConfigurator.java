@@ -34,7 +34,7 @@ public class HadoopJsonRunnerConfigurator {
 	}
 
 
-	public void create(String name, String dataSchemaName, boolean useVersion1, String hadoopConf, String userAccount) throws IOException {
+	public void create(String name, String dataSchemaName, String hadoopConf, String userAccount) throws IOException {
 		conf = confAdmin.createFactoryConfiguration(org.enquery.encryptedquery.responder.hadoop.mapreduce.runner.HadoopMapReduceRunner.class.getName(), "?");
 
 		Hashtable<String, String> properties = new Hashtable<>();
@@ -53,9 +53,7 @@ public class HadoopJsonRunnerConfigurator {
 		properties.put(".hadoop.install.dir", System.getProperty("hadoop.install.dir"));
 		properties.put(".application.jar.path", System.getProperty("hadoop.mr.app"));
 		properties.put(".run.directory", tempDir.getAbsolutePath());
-		if (useVersion1) {
-			properties.put(".hadoop.processing.method", "v1");
-		}
+		properties.put(".column.buffer.memory.mb", "10");
 
 		conf.update(properties);
 	}

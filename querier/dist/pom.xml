@@ -26,7 +26,7 @@
 	<parent>
 		<groupId>org.enquery.encryptedquery</groupId>
 		<artifactId>encryptedquery-querier-parent</artifactId>
-		<version>2.2.2</version>
+		<version>2.2.3</version>
 	</parent>
 
 	<artifactId>encryptedquery-querier-dist</artifactId>
@@ -35,18 +35,10 @@
 	<name>EncryptedQuery :: Querier :: Distribution</name>
 
 	<dependencies>
-		<dependency>
+	   	<dependency>
 			<groupId>org.apache.karaf.features</groupId>
 			<artifactId>framework</artifactId>
 			<type>kar</type>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.karaf.features</groupId>
-			<artifactId>framework</artifactId>
-			<version>${karaf.version}</version>
-			<classifier>features</classifier>
-			<type>xml</type>
-			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.karaf.features</groupId>
@@ -113,39 +105,6 @@
 							</pluginExecutors>
 						</configuration>
 					</execution>
-					<!-- <execution>
-						<id>iter-native-libs</id>
-						<phase>package</phase>
-						<goals>
-							<goal>iterator</goal>
-						</goals>
-						<configuration>
-							iterate over the folders under environments
-							<folder>${project.build.directory}/environments/</folder>
-							<pluginExecutors>
-								<pluginExecutor>
-									<plugin>
-										<groupId>org.apache.maven.plugins</groupId>
-										<artifactId>maven-dependency-plugin</artifactId>
-									</plugin>
-									<goal>unpack</goal>
-									<configuration>
-										<artifactItems>
-											<artifactItem>
-												<groupId>org.enquery.encryptedquery</groupId>
-												<artifactId>encryptedquery-paillier-encryption</artifactId>
-												<version>${project.version}</version>
-												<classifier>native-libs</classifier>
-												<type>tar.gz</type>
-												<overWrite>true</overWrite>
-												<outputDirectory>${project.build.directory}/environments/${item}/resources/lib</outputDirectory>
-											</artifactItem>
-										</artifactItems>
-									</configuration>
-								</pluginExecutor>
-							</pluginExecutors>
-						</configuration>
-					</execution> -->
 					<execution>
 						<id>iter-gen-assemblies</id>
 						<phase>package</phase>
@@ -169,29 +128,10 @@
 										<workDirectory>${project.build.directory}/environments/${item}/assembly</workDirectory>
 										<startupFeatures>
 											<feature>eventadmin</feature>
-										</startupFeatures>
+ 										</startupFeatures>
 										<bootFeatures>
-											<feature>wrap</feature>
-											<feature>shell</feature>
-											<feature>feature</feature>
-											<feature>jaas</feature>
-											<feature>ssh</feature>
-											<feature>management</feature>
-											<feature>bundle</feature>
-											<feature>config</feature>
-											<feature>deployer</feature>
-											<feature>diagnostic</feature>
-											<feature>feature</feature>
-											<feature>instance</feature>
-											<feature>kar</feature>
-											<feature>log</feature>
-											<feature>package</feature>
-											<feature>service</feature>
-											<feature>system</feature>
 											<feature>encryptedquery-querier-${item}</feature>
 										</bootFeatures>
-										<libraries>
-										</libraries>
 										<javase>1.8</javase>
 									</configuration>
 								</pluginExecutor>

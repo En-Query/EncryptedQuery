@@ -32,8 +32,10 @@ public interface QueryNames {
 	QName NUM_SELECTORS = new QName(QUERY_NS, "numSelectors");
 	QName HASH_BIT_SIZE = new QName(QUERY_NS, "hashBitSize");
 	QName HASH_KEY = new QName(QUERY_NS, "hashKey");
-	QName NUM_BITS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numBitsPerDataElement");
 	QName DATA_CHUNK_SIZE = new QName(QUERY_NS, "dataChunkSize");
-	QName NUM_PARTITIONS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numPartitionsPerDataElement");
 	QName FILTER_EXPRESSION = new QName(QUERY_NS, "filterExpression");
+
+	// obsolete values, kept for backward compatibility
+	QName NUM_BITS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numBitsPerDataElement");
+	QName NUM_PARTITIONS_PER_DATA_ELEMENT = new QName(QUERY_NS, "numPartitionsPerDataElement");
 }

@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.querier.data.entity.json;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -30,6 +31,7 @@ public class RestResponse<E> {
 	private E data;
 	@JsonView(Views.ListView.class)
 	private Collection<Map<String, Object>> included;
+	private Collection<Error> errors;
 
 	public RestResponse() {}
 
@@ -55,8 +57,29 @@ public class RestResponse<E> {
 
 	@Override
 	public String toString() {
+		final int maxLen = 10;
 		StringBuilder builder = new StringBuilder();
-		builder.append("RestResponse [data=").append(data).append("]");
+		builder.append("RestResponse [data=").append(data).append(", errors=").append(errors != null ? toString(errors, maxLen) : null).append("]");
 		return builder.toString();
+	}
+
+	private String toString(Collection<?> collection, int maxLen) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("[");
+		int i = 0;
+		for (Iterator<?> iterator = collection.iterator(); iterator.hasNext() && i < maxLen; i++) {
+			if (i > 0) builder.append(", ");
+			builder.append(iterator.next());
+		}
+		builder.append("]");
+		return builder.toString();
+	}
+
+	public Collection<Error> getErrors() {
+		return errors;
+	}
+
+	public void setErrors(Collection<Error> errors) {
+		this.errors = errors;
 	}
 }

@@ -8,5 +8,6 @@ Import-Package: \
 	org.enquery.encryptedquery.querier.data.transformation,\
 	org.apache.camel.http.common,\
 	org.apache.http.conn,\
+	javax.persistence,\
 	*
 

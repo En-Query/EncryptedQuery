@@ -127,15 +127,8 @@ public class HadoopMapRedRemoteIT extends BaseRestServiceItest {
 	}
 
 	@Test
-	public void happyPathV2() throws Exception {
-		installHadoopDataSource(false);
-		ExecutionResource execution = runQuery();
-		validateSingleResult(execution);
-	}
-
-	@Test
-	public void happyPathV1() throws Exception {
-		installHadoopDataSource(true);
+	public void happyPath() throws Exception {
+		installHadoopDataSource();
 		ExecutionResource execution = runQuery();
 		validateSingleResult(execution);
 	}
@@ -244,15 +237,14 @@ public class HadoopMapRedRemoteIT extends BaseRestServiceItest {
 	}
 
 
-	private void installHadoopDataSource(boolean useVersion1) throws Exception {
+	private void installHadoopDataSource() throws Exception {
 		final String dataSchemaName = booksDataSchema.getDataSchema().getName();
-		final String dataSourceName = "hadoop-books-json" + ((useVersion1) ? "-v1" : "v2");
+		final String dataSourceName = "hadoop-books-json";// + ((useVersion1) ? "-v1" : "v2");
 
 		// Add a QueryRunner
 		HadoopJsonRunnerConfigurator runnerConfigurator = new HadoopJsonRunnerConfigurator(confAdmin);
 		runnerConfigurator.create(dataSourceName,
 				dataSchemaName,
-				useVersion1,
 				Paths.get("etc/remote-hadoop-conf.xml").toAbsolutePath().toString(),
 				"enquery");
 

@@ -1,0 +1,4 @@
+Bundle-NativeCode: native/darwin/libseal.dylib;\
+			osname=MacOSX;\
+			processor=x86-64,\
+			*

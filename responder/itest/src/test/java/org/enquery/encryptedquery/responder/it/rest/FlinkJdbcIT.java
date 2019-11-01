@@ -43,7 +43,6 @@ import org.enquery.encryptedquery.data.ClearTextQueryResponse.Record;
 import org.enquery.encryptedquery.data.ClearTextQueryResponse.Selector;
 import org.enquery.encryptedquery.data.QuerySchema;
 import org.enquery.encryptedquery.data.Response;
-import org.enquery.encryptedquery.encryption.CryptoSchemeRegistry;
 import org.enquery.encryptedquery.loader.SchemaLoader;
 import org.enquery.encryptedquery.querier.decrypt.DecryptResponse;
 import org.enquery.encryptedquery.querier.encrypt.EncryptQuery;
@@ -86,13 +85,15 @@ public class FlinkJdbcIT extends BaseRestServiceItest {
 	private QueryTypeConverter queryConverter;
 	@Inject
 	protected SessionFactory sessionFactory;
-	@Inject
-	private CryptoSchemeRegistry cryptoSchemeRegistry;
+	// @Inject
+	// private CryptoSchemeRegistry cryptoSchemeRegistry;
 	@Inject
 	private DecryptResponse decryptor;
+	@Inject
+	private ResponseTypeConverter responseConverter;
 
 	private static final String DATA_SOURCE_NAME = "test-name";
-	private static final Integer DATA_CHUNK_SIZE = 1;
+	private static final Integer DATA_CHUNK_SIZE = 20;
 	private static final Integer HASH_BIT_SIZE = 9;
 
 	private DataSchemaResource booksDataSchema;
@@ -101,7 +102,6 @@ public class FlinkJdbcIT extends BaseRestServiceItest {
 	private DerbyBookDatabase derbyDatabase = new DerbyBookDatabase();
 	private KarafController kafkaController;
 	private Querier querier;
-	private ResponseTypeConverter responseConverter;
 	private int resultId;
 
 	@Configuration
@@ -138,14 +138,6 @@ public class FlinkJdbcIT extends BaseRestServiceItest {
 		flinkDriver.init();
 		derbyDatabase.init();
 		kafkaController = new KarafController(sessionFactory);
-
-		queryConverter.setCryptoRegistry(cryptoSchemeRegistry);
-		queryConverter.initialize();
-
-		responseConverter = new ResponseTypeConverter();
-		responseConverter.setQueryConverter(queryConverter);
-		responseConverter.setSchemeRegistry(cryptoSchemeRegistry);
-		responseConverter.initialize();
 	}
 
 	@After

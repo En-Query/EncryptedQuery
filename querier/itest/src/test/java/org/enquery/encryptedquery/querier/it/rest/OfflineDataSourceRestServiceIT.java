@@ -17,6 +17,8 @@
 package org.enquery.encryptedquery.querier.it.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -61,6 +63,8 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 @ExamReactorStrategy(PerClass.class)
 public class OfflineDataSourceRestServiceIT extends BaseRestServiceItest {
 
+	private static final String DATA_SOURCE_1_NAME = "data source 1";
+	private static final String SCHEMA_1_NAME = "Offline Data Schema 1";
 	@Inject
 	private DataSourceExportConverter converter;
 	@Inject
@@ -129,20 +133,32 @@ public class OfflineDataSourceRestServiceIT extends BaseRestServiceItest {
 	private void validate() {
 		DataSchemaCollectionResponse retrieveDataSchemas;
 		retrieveDataSchemas = retrieveDataSchemas();
-		assertEquals(1, retrieveDataSchemas.getData().size());
-		assertEquals("Schema 1", retrieveDataSchemas.getData().iterator().next().getName());
+		assertTrue(retrieveDataSchemas.getData().size() > 0);
 
-		DataSchemaResponse dataSchema = retrieveDataSchema(retrieveDataSchemas.getData().iterator().next().getSelfUri());
+		org.enquery.encryptedquery.querier.data.entity.json.DataSchema dataSchema = retrieveDataSchemas.getData()
+				.stream()
+				.filter(s -> SCHEMA_1_NAME.equals(s.getName()))
+				.findFirst()
+				.get();
 
-		DataSourceCollectionResponse dataSources = retrieveDataSources(dataSchema);
-		assertEquals(1, dataSources.getData().size());
-		assertEquals("data source 1", dataSources.getData().iterator().next().getName());
+		assertEquals(SCHEMA_1_NAME, dataSchema.getName());
+
+		DataSchemaResponse response = retrieveDataSchema(dataSchema.getSelfUri());
+
+		DataSourceCollectionResponse dataSources = retrieveDataSources(response);
+
+		org.enquery.encryptedquery.querier.data.entity.json.DataSource dSrc = dataSources.getData().stream()
+				.filter(s -> DATA_SOURCE_1_NAME.equals(s.getName()))
+				.findFirst()
+				.orElseGet(null);
+
+		assertNotNull(dSrc);
 	}
 
 
 	private Path createDataSourceXML() throws JAXBException, UnsupportedEncodingException, IOException, XMLStreamException, FactoryConfigurationError {
-		DataSchemaCollectionResponse retrieveDataSchemas = retrieveDataSchemas();
-		assertEquals(0, retrieveDataSchemas.getData().size());
+		// DataSchemaCollectionResponse retrieveDataSchemas = retrieveDataSchemas();
+		// assertEquals(0, retrieveDataSchemas.getData().size());
 
 		DataSourceExport dse = new DataSourceExport();
 		DataSchemaResource schemaRes1 = new DataSchemaResource();
@@ -150,7 +166,7 @@ public class OfflineDataSourceRestServiceIT extends BaseRestServiceItest {
 		schemaRes1.setSelfUri("schema 1 uri");
 		schemaRes1.setDataSourcesUri("schema 1 data sources");
 		DataSchema schema1 = new DataSchema();
-		schema1.setName("Schema 1");
+		schema1.setName(SCHEMA_1_NAME);
 		Field field1 = new Field();
 		field1.setDataType("string");
 		field1.setName("field 1");
@@ -167,10 +183,10 @@ public class OfflineDataSourceRestServiceIT extends BaseRestServiceItest {
 		dataSourceRes.setSelfUri("data source uri");
 		dataSourceRes.setExecutionsUri("executions uri");
 		DataSource dataSource1 = new DataSource();
-		dataSource1.setName("data source 1");
-		dataSource1.setDataSchemaName("data source 1");
+		dataSource1.setName(DATA_SOURCE_1_NAME);
+		dataSource1.setDataSchemaName(DATA_SOURCE_1_NAME);
 		dataSource1.setDescription("description of data source 1");
-		dataSource1.setDataSchemaName("Schema 1");
+		dataSource1.setDataSchemaName(SCHEMA_1_NAME);
 		dataSource1.setType("Batch");
 		dataSourceRes.setDataSource(dataSource1);
 		DataSourceResources dataSourceResources = new DataSourceResources();
