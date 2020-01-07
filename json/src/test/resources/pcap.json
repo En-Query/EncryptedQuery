@@ -1,0 +1,123 @@
+{
+	"_index": "packets-2019-01-11",
+	"_type": "pcap_file",
+	"_score": null,
+	"_source": {
+		"layers": {
+			"frame": {
+				"frame.encap_type": "1",
+				"frame.time": "Jan 11, 2019 08:57:40.932992000 EST",
+				"frame.offset_shift": "0.000000000",
+				"frame.time_epoch": "1547215060.932992000",
+				"frame.time_delta": "0.000234000",
+				"frame.time_delta_displayed": "0.000234000",
+				"frame.time_relative": "6.453914000",
+				"frame.number": "50",
+				"frame.len": "72",
+				"frame.cap_len": "72",
+				"frame.marked": "0",
+				"frame.ignored": "0",
+				"frame.protocols": "eth:ethertype:ip:tcp:mysql"
+			},
+			"eth": {
+				"eth.dst": "00:0c:29:2b:ab:1b",
+				"eth.dst_tree": {
+					"eth.dst_resolved": "Vmware_2b:ab:1b",
+					"eth.addr": "00:0c:29:2b:ab:1b",
+					"eth.addr_resolved": "Vmware_2b:ab:1b",
+					"eth.lg": "0",
+					"eth.ig": "0"
+				},
+				"eth.src": "00:50:56:c0:00:08",
+				"eth.src_tree": {
+					"eth.src_resolved": "Vmware_c0:00:08",
+					"eth.addr": "00:50:56:c0:00:08",
+					"eth.addr_resolved": "Vmware_c0:00:08",
+					"eth.lg": "0",
+					"eth.ig": "0"
+				},
+				"eth.type": "0x00000800"
+			},
+			"ip": {
+				"ip.version": "4",
+				"ip.hdr_len": "20",
+				"ip.dsfield": "0x00000000",
+				"ip.dsfield_tree": {
+					"ip.dsfield.dscp": "0",
+					"ip.dsfield.ecn": "0"
+				},
+				"ip.len": "58",
+				"ip.id": "0x00007be0",
+				"ip.flags": "0x00004000",
+				"ip.flags_tree": {
+					"ip.flags.rb": "0",
+					"ip.flags.df": "1",
+					"ip.flags.mf": "0",
+					"ip.frag_offset": "0"
+				},
+				"ip.ttl": "128",
+				"ip.proto": "6",
+				"ip.checksum": "0x0000e10a",
+				"ip.checksum.status": "2",
+				"ip.src": "192.168.142.1",
+				"ip.addr": "192.168.142.128",
+				"ip.src_host": "192.168.142.1",
+				"ip.host": "192.168.142.128",
+				"ip.dst": "192.168.142.128",
+				"ip.dst_host": "192.168.142.128"
+			},
+			"tcp": {
+				"tcp.srcport": "58590",
+				"tcp.dstport": "3306",
+				"tcp.port": "3306",
+				"tcp.stream": "1",
+				"tcp.len": "18",
+				"tcp.seq": "440",
+				"tcp.nxtseq": "458",
+				"tcp.ack": "971",
+				"tcp.hdr_len": "20",
+				"tcp.flags": "0x00000018",
+				"tcp.flags_tree": {
+					"tcp.flags.res": "0",
+					"tcp.flags.ns": "0",
+					"tcp.flags.cwr": "0",
+					"tcp.flags.ecn": "0",
+					"tcp.flags.urg": "0",
+					"tcp.flags.ack": "1",
+					"tcp.flags.push": "1",
+					"tcp.flags.reset": "0",
+					"tcp.flags.syn": "0",
+					"tcp.flags.fin": "0",
+					"tcp.flags.str": "Â·Â·Â·Â·Â·Â·Â·APÂ·Â·Â·"
+				},
+				"tcp.window_size_value": "252",
+				"tcp.window_size": "64512",
+				"tcp.window_size_scalefactor": "256",
+				"tcp.checksum": "0x000052af",
+				"tcp.checksum.status": "2",
+				"tcp.urgent_pointer": "0",
+				"tcp.analysis": {
+					"tcp.analysis.acks_frame": "49",
+					"tcp.analysis.ack_rtt": "0.000234000",
+					"tcp.analysis.initial_rtt": "0.000260000",
+					"tcp.analysis.bytes_in_flight": "18",
+					"tcp.analysis.push_bytes_sent": "18"
+				},
+				"Timestamps": {
+					"tcp.time_relative": "0.173111000",
+					"tcp.time_delta": "0.000234000"
+				},
+				"tcp.payload": "0e:00:00:00:03:55:53:45:20:60:65:6e:71:75:65:72:79:60",
+				"tcp.pdu.size": "18"
+			},
+			"mysql": {
+				"mysql.packet_length": "14",
+				"mysql.packet_number": "0",
+				"mysql.request": {
+					"mysql.command": "3",
+					"mysql.query": "USE `enquery`"
+				}
+			}
+		}
+	}
+}

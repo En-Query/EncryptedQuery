@@ -1,0 +1,24 @@
+{
+	"device": 89,
+	"collection_time": "2019-12-12T14:11:52.901116787+00:00",
+	"specimens": [
+		{
+			"name": "Bird",
+			"val": 40
+		},
+		{
+			"region": "northeast",
+			"level": 43
+		},
+		{
+			"span": "street",
+			"shape": "circular"
+		}
+	],
+	"weather": {
+		"wind": "moderate",
+		"sun": "bright",
+		"temp": 68
+	}
+}
+

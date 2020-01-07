@@ -17,6 +17,7 @@
 package org.enquery.encryptedquery.json;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import org.enquery.encryptedquery.data.DataSchema;
 
@@ -25,12 +26,8 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.ValueInstantiator;
 
 public class MapWithSchemaInstantiator extends ValueInstantiator.Base {
-	// private static final Logger log = LoggerFactory.getLogger(MapWithSchemaInstantiator.class);
 	private final DataSchema schema;
 
-	/**
-	 * @param src
-	 */
 	protected MapWithSchemaInstantiator(DataSchema schema) {
 		super(MapWithSchema.class);
 		this.schema = schema;
@@ -44,9 +41,34 @@ public class MapWithSchemaInstantiator extends ValueInstantiator.Base {
 	@Override
 	public Object createUsingDefault(DeserializationContext derContext) throws IOException {
 		final JsonStreamContext parsingContext = derContext.getParser().getParsingContext();
+		boolean includeAll = fullObjectRequested(parsingContext, null);
+		if (includeAll) {
+			return new HashMap<String, Object>();
+		}
 		final String prefix = calcPrefix(parsingContext, null);
-		// log.info("name={}", prefix);
 		return new MapWithSchema(schema, prefix);
+	}
+
+	/**
+	 * True, if current or any ancestor key is named in the data schema, false otherwise.
+	 * 
+	 * @param ctx
+	 * @param prefix
+	 * @return
+	 */
+	private boolean fullObjectRequested(final JsonStreamContext ctx, final String prefix) {
+		if (ctx == null) return false;
+
+		final String currentName = ctx.getCurrentName();
+		boolean result = fullObjectRequested(ctx.getParent(), currentName);
+		if (result) return true;
+
+		final String fullName = concat(currentName, prefix);
+		if (fullName != null) {
+			result = schema.elementByName(fullName) != null;
+		}
+
+		return result;
 	}
 
 	/**

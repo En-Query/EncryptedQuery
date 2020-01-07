@@ -205,7 +205,8 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 		Iterator<ConsumerRecord<Long, String>> iterator = consumerRecords.iterator();
 		while (canRun() && iterator.hasNext()) {
 			final ConsumerRecord<Long, String> consumerRecord = iterator.next();
-			final Map<String, Object> record = jsonConverter.toStringObjectFlatMap(consumerRecord.value());
+			final String rawValue = consumerRecord.value();
+			final Map<String, Object> record = jsonConverter.toStringObjectFlatMap(rawValue);
 			try {
 				if (emissionSemaphore != null) emissionSemaphore.acquire();
 
@@ -224,7 +225,7 @@ public class TimedKafkaConsumer extends TimeBoundStoppableConsumer {
 							consumerRecord.key(),
 							consumerRecord.partition(),
 							consumerRecord.offset(),
-							consumerRecord.value(),
+							rawValue,
 							e);
 				}
 			}

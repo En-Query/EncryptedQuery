@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.apache.commons.codec.Charsets;
 import org.apache.commons.lang3.Validate;
 import org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor;
 import org.enquery.encryptedquery.data.DataSchema;
@@ -33,11 +34,11 @@ import org.enquery.encryptedquery.utils.ISO8601DateParser;
 
 /**
  * A HashMap, that given a DataSchema, keeps only elements that are defined in the data schema and
- * automatically flattens embeded maps. Used for parsing JSON.
+ * automatically flattens embedded maps. Used for parsing JSON.
  */
 public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValueConverterVisitor, Serializable {
 
-	// private static final Logger log = LoggerFactory.getLogger(MapWithSchema.class);
+	private static final String PREFIX_CHAR = "|";
 	private static final long serialVersionUID = 1L;
 	private final DataSchema schema;
 	private final String propertyNamePrefix;
@@ -57,30 +58,34 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	@Override
 	public Object put(String key, Object value) {
 
-		String elementName;
+		String elementName = key;
 		if (propertyNamePrefix != null) {
-			elementName = propertyNamePrefix + "|" + key;
-		} else {
-			elementName = key;
+			elementName = propertyNamePrefix + PREFIX_CHAR + key;
 		}
 
 		// log.info("put '{}'='{}' of type {}", elementName, value, (value != null) ?
 		// value.getClass().getName() : "null");
+
 		// nulls are not added to the map
 		if (value == null) return null;
-
 
 		if (value instanceof MapWithSchema) {
 			this.putAll((MapWithSchema) value);
 			return null;
-		} else {
-			// if key is not in the schema it is not added to the map
-			DataSchemaElement dse = schema.elementByName(elementName);
-			if (dse == null) return null;
-			// convert to expected data type based on the schema
-			final Object actualValue = dse.getDataType().convert(this, value);
-			return data.put(elementName, actualValue);
 		}
+
+		Object result = null;
+		Object realValue = null;
+		final DataSchemaElement dse = schema.elementByName(elementName);
+		if (dse != null) {
+			realValue = dse.getDataType().convert(this, value);
+		}
+
+		if (realValue != null) {
+			result = data.put(elementName, realValue);
+		}
+
+		return result;
 	}
 
 	/*
@@ -307,7 +312,13 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	 */
 	@Override
 	public byte[] visitByteArray(Object value) {
-		return (byte[]) value;
+		if (value == null) return null;
+
+		if (value instanceof byte[]) {
+			return (byte[]) value;
+		}
+
+		return visitString(value).getBytes(Charsets.UTF_8);
 	}
 
 	/*
@@ -504,9 +515,16 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	 * org.enquery.encryptedquery.core.FieldTypeUntypedValueConverterVisitor#visitString(java.lang.
 	 * Object)
 	 */
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Override
 	public String visitString(Object value) {
-		return (value instanceof String) ? (String) value : value.toString();
+		if (value instanceof String) {
+			return (String) value;
+		} else if (value instanceof Map) {
+			return JSONStringConverter.toString((Map) value);
+		} else {
+			return value.toString();
+		}
 	}
 
 	/*
@@ -544,4 +562,10 @@ public class MapWithSchema implements Map<String, Object>, FieldTypeUntypedValue
 	public List<Boolean> visitBooleanList(Object value) {
 		return convertList(value, v -> visitBoolean(v));
 	}
+
+	@Override
+	public String toString() {
+		return data.toString();
+	}
+
 }

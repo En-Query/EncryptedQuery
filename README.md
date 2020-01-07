@@ -10,6 +10,8 @@ Encrypted Query is designed to allow a user to query a remote database without r
 Full service Integration and Support are available from EnQuery (https://enquery.net/)
 
 ### New Features!
+2.2.4
+ - Added support for returning JSON nested fields. These should be declared as type STRING_LIST or BYTEARRAY_LIST.
 2.2.3
  - Added HTTPS Support
  - Added Seal-BFV crypto scheme for significantly improved performance. *Note* For Research Purposes Only.

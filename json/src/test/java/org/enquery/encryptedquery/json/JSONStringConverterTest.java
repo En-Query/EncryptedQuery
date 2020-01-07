@@ -28,6 +28,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.codec.Charsets;
+import org.apache.commons.io.IOUtils;
 import org.enquery.encryptedquery.core.FieldType;
 import org.enquery.encryptedquery.data.DataSchema;
 import org.enquery.encryptedquery.data.DataSchemaElement;
@@ -45,43 +47,42 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 public class JSONStringConverterTest {
 
 	private static final Logger log = LoggerFactory.getLogger(JSONStringConverterTest.class);
-	private String json = "{"
-			+ "\"string\":\"string value\","
-			+ "\"byte\": \"1\","
-			+ "\"booleanTrue\": true,"
-			+ "\"booleanFalse\": false,"
-			+ "\"booleanNull\": null,"
-			+ "\"null\":null,"
-			+ "\"int\": 12345,"
-			+ "\"double\": 1547215054.479078000,"
-			+ "\"ISO8601Date\": \"2001-01-01T19:32:11Z\","
-			+ "\"array\":[1, 2, 3, 4, 5],"
-			+ "\"object1\":{"
-			+ "		\"string\":\"string value\","
-			+ "		\"byte\":\"1\","
-			+ "		\"booleanTrue\": true,"
-			+ "		\"null\":null,"
-			+ "		\"int\": 12345,"
-			+ "		\"double\": 1547215054.479078000,"
-			+ "		\"array\":[1, 2, 3, 4, 5],"
-			+ "		\"object2\":{"
-			+ "			\"string\":\"string value\","
-			+ "			\"byte\":\"1\","
-			+ "			\"booleanTrue\": true,"
-			+ "			\"null\":null,"
-			+ "			\"int\": 12345,"
-			+ "			\"double\": 1547215054.479078000,"
-			+ "			\"array\":[1, 2, 3, 4, 5]"
-			+ "		}"
-			+ "}}";
-
 
 	private List<Integer> expectedArray = Arrays.asList(1, 2, 3, 4, 5);
 
 	@Test
 	public void testFlatMap() {
 
-		DataSchema ds = makeSchema();
+		DataSchema ds = makeFlatSchema();
+		String json = "{"
+				+ "\"string\":\"string value\","
+				+ "\"byte\": \"1\","
+				+ "\"booleanTrue\": true,"
+				+ "\"booleanFalse\": false,"
+				+ "\"booleanNull\": null,"
+				+ "\"null\":null,"
+				+ "\"int\": 12345,"
+				+ "\"double\": 1547215054.479078000,"
+				+ "\"ISO8601Date\": \"2001-01-01T19:32:11Z\","
+				+ "\"array\":[1, 2, 3, 4, 5],"
+				+ "\"object1\":{"
+				+ "		\"string\":\"string value\","
+				+ "		\"byte\":\"1\","
+				+ "		\"booleanTrue\": true,"
+				+ "		\"null\":null,"
+				+ "		\"int\": 12345,"
+				+ "		\"double\": 1547215054.479078000,"
+				+ "		\"array\":[1, 2, 3, 4, 5],"
+				+ "		\"object2\":{"
+				+ "			\"string\":\"string value\","
+				+ "			\"byte\":\"1\","
+				+ "			\"booleanTrue\": true,"
+				+ "			\"null\":null,"
+				+ "			\"int\": 12345,"
+				+ "			\"double\": 1547215054.479078000,"
+				+ "			\"array\":[1, 2, 3, 4, 5]"
+				+ "		}"
+				+ "}}";
 
 		JSONStringConverter converter = new JSONStringConverter(ds);
 		Map<String, Object> flat = converter.toStringObjectFlatMap(json);
@@ -91,7 +92,7 @@ public class JSONStringConverterTest {
 		validate(flat);
 	}
 
-	private DataSchema makeSchema() {
+	private DataSchema makeFlatSchema() {
 		DataSchema ds = new DataSchema();
 		DataSchemaElement element;
 		int pos = 0;
@@ -284,6 +285,7 @@ public class JSONStringConverterTest {
 
 		// second level object
 		value = flat.get("object1|string");
+		assertNotNull(value);
 		assertTrue("Actual type=" + value.getClass(), value instanceof String);
 		assertEquals("string value", value);
 
@@ -370,5 +372,184 @@ public class JSONStringConverterTest {
 		log.info("read '{}' of type '{}'.", val, val.getClass().getName());
 		assertTrue(val instanceof Integer);
 		assertEquals(Integer.valueOf(12345), val);
+	}
+
+	@SuppressWarnings("static-access")
+	@Test
+	public void testObjectAsString() throws IOException {
+
+		int pos = 0;
+		DataSchema ds = new DataSchema();
+		DataSchemaElement element = new DataSchemaElement();
+		element.setDataType(FieldType.INT);
+		element.setName("device");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.ISO8601DATE);
+		element.setName("collection_time");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.STRING_LIST);
+		element.setName("specimens");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		element = new DataSchemaElement();
+		element.setDataType(FieldType.BYTEARRAY);
+		element.setName("weather");
+		element.setPosition(pos++);
+		ds.addElement(element);
+
+		JSONStringConverter converter = new JSONStringConverter(ds);
+		String json = IOUtils.resourceToString("/array-of-objects.json", Charsets.UTF_8);
+		Map<String, Object> flat = converter.toStringObjectFlatMap(json);
+		log.info("Flattened to: {}", flat);
+		assertEquals(4, flat.size());
+
+		Object weather = flat.get("weather");
+		assertNotNull(weather);
+		assertTrue(weather instanceof byte[]);
+		byte[] watherBytes = (byte[]) weather;
+		Map<String, Object> weatherObject = converter.toStringObjectMap(new String(watherBytes));
+		assertEquals(3, weatherObject.size());
+		assertEquals("moderate", weatherObject.get("wind"));
+		assertEquals("bright", weatherObject.get("sun"));
+		assertEquals(Integer.valueOf(68), weatherObject.get("temp"));
+
+		Object specimens = flat.get("specimens");
+		assertNotNull(specimens);
+		assertTrue(specimens instanceof List);
+
+		@SuppressWarnings("unchecked")
+		List<String> specimmenList = (List<String>) specimens;
+		assertEquals(3, specimmenList.size());
+		Map<String, Object> specimenZero = converter.toStringObjectMap(specimmenList.get(0));
+		assertEquals(2, specimenZero.size());
+		assertEquals("Bird", specimenZero.get("name"));
+		assertEquals(Integer.valueOf(40), specimenZero.get("val"));
+
+		Map<String, Object> specimenOne = converter.toStringObjectMap(specimmenList.get(1));
+		assertEquals(2, specimenOne.size());
+		assertEquals("northeast", specimenOne.get("region"));
+		assertEquals(Integer.valueOf(43), specimenOne.get("level"));
+
+		Map<String, Object> specimenTwo = converter.toStringObjectMap(specimmenList.get(2));
+		assertEquals(2, specimenTwo.size());
+		assertEquals("street", specimenTwo.get("span"));
+		assertEquals("circular", specimenTwo.get("shape"));
+	}
+
+
+	@Test
+	public void testPCap() throws IOException {
+		DataSchema ds = new DataSchema();
+		ds.setName("pcap");
+		DataSchemaElement dse1 = new DataSchemaElement();
+		dse1.setName("_index");
+		dse1.setDataType(FieldType.STRING);
+		dse1.setPosition(0);
+		ds.addElement(dse1);
+
+		DataSchemaElement dse2 = new DataSchemaElement();
+		dse2.setName("_score");
+		dse2.setDataType(FieldType.STRING);
+		dse2.setPosition(1);
+		ds.addElement(dse2);
+
+		DataSchemaElement dse3 = new DataSchemaElement();
+		dse3.setName("_source|layers|eth|eth.dst");
+		dse3.setDataType(FieldType.STRING);
+		dse3.setPosition(2);
+		ds.addElement(dse3);
+
+		DataSchemaElement dse4 = new DataSchemaElement();
+		dse4.setName("_source|layers|eth|eth.src");
+		dse4.setDataType(FieldType.STRING);
+		dse4.setPosition(3);
+		ds.addElement(dse4);
+
+		DataSchemaElement dse5 = new DataSchemaElement();
+		dse5.setName("_source|layers|eth|eth.type");
+		dse5.setDataType(FieldType.STRING);
+		dse5.setPosition(4);
+		ds.addElement(dse5);
+
+		DataSchemaElement dse6 = new DataSchemaElement();
+		dse6.setName("_source|layers|frame|frame.protocols");
+		dse6.setDataType(FieldType.STRING);
+		dse6.setPosition(5);
+		ds.addElement(dse6);
+
+		DataSchemaElement dse7 = new DataSchemaElement();
+		dse7.setName("_source|layers|frame|frame.time_epoch");
+		dse7.setDataType(FieldType.STRING);
+		dse7.setPosition(6);
+		ds.addElement(dse7);
+
+		DataSchemaElement dse9 = new DataSchemaElement();
+		dse9.setName("_source|layers|ip|ip.dst");
+		dse9.setDataType(FieldType.STRING);
+		dse9.setPosition(7);
+		ds.addElement(dse9);
+
+		DataSchemaElement dse10 = new DataSchemaElement();
+		dse10.setName("_source|layers|ip|ip.dst_host");
+		dse10.setDataType(FieldType.STRING);
+		dse10.setPosition(8);
+		ds.addElement(dse10);
+
+		DataSchemaElement dse11 = new DataSchemaElement();
+		dse11.setName("_source|layers|ip|ip.src");
+		dse11.setDataType(FieldType.STRING);
+		dse11.setPosition(9);
+		ds.addElement(dse11);
+
+		DataSchemaElement dse12 = new DataSchemaElement();
+		dse12.setName("_source|layers|ip|ip.src_host");
+		dse12.setDataType(FieldType.STRING);
+		dse12.setPosition(10);
+		ds.addElement(dse12);
+
+		DataSchemaElement dse13 = new DataSchemaElement();
+		dse13.setName("_source|layers|tcp|tcp.flags_tree|tcp.flags.syn_tree|_ws.expert|_ws.expert.message");
+		dse13.setDataType(FieldType.STRING);
+		dse13.setPosition(11);
+		ds.addElement(dse13);
+
+		DataSchemaElement dse14 = new DataSchemaElement();
+		dse14.setName("_source|layers|tcp|tcp.payload");
+		dse14.setDataType(FieldType.STRING);
+		dse14.setPosition(12);
+		ds.addElement(dse14);
+
+		DataSchemaElement dse15 = new DataSchemaElement();
+		dse15.setName("_source|layers|tcp|tcp.srcport");
+		dse15.setDataType(FieldType.STRING);
+		dse15.setPosition(13);
+		ds.addElement(dse15);
+
+		DataSchemaElement dse16 = new DataSchemaElement();
+		dse16.setName("_source|layers|tcp|tcp.dstport");
+		dse16.setDataType(FieldType.STRING);
+		dse16.setPosition(14);
+		ds.addElement(dse16);
+
+		DataSchemaElement dse17 = new DataSchemaElement();
+		dse17.setName("_type");
+		dse17.setDataType(FieldType.STRING);
+		dse17.setPosition(15);
+		ds.addElement(dse17);
+
+		JSONStringConverter converter = new JSONStringConverter(ds);
+		String json = IOUtils.resourceToString("/pcap.json", Charsets.UTF_8);
+		Map<String, Object> flat = converter.toStringObjectFlatMap(json);
+		log.info("Flattened to: {}", flat);
+		assertEquals(14, flat.size());
+		assertNull(flat.get("_score"));
+		assertEquals("58590", flat.get("_source|layers|tcp|tcp.srcport"));
 	}
 }

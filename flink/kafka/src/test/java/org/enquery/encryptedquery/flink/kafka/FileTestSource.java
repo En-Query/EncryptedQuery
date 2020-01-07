@@ -30,6 +30,8 @@ import org.enquery.encryptedquery.data.Query;
 import org.enquery.encryptedquery.flink.streaming.InputRecord;
 import org.enquery.encryptedquery.flink.streaming.TimeBoundStoppableConsumer;
 import org.enquery.encryptedquery.json.JSONStringConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -37,6 +39,8 @@ import org.enquery.encryptedquery.json.JSONStringConverter;
 public class FileTestSource extends TimeBoundStoppableConsumer {
 
 	private static final long serialVersionUID = 896339099221645435L;
+	public static final Logger log = LoggerFactory.getLogger(FileTestSource.class);
+
 	private final String inputDataFile;
 	private final DataSchema dataSchema;
 	private transient JSONStringConverter jsonConverter;
@@ -80,6 +84,7 @@ public class FileTestSource extends TimeBoundStoppableConsumer {
 				}
 
 				final Map<String, Object> record = jsonConverter.toStringObjectFlatMap(line);
+				log.debug("Converted: {}\nTo: {}", line, record);
 
 				collect(ctx, record, System.currentTimeMillis());
 			}
