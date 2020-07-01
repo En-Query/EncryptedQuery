@@ -82,7 +82,7 @@
 		<pax-exam.version>4.13.1</pax-exam.version>
 		<camel.version>2.24.1</camel.version>
 		<java.version>1.8</java.version>
-		<quartz.version>2.2.3</quartz.version>
+		<quartz.version>2.3.2</quartz.version>
 
 		<hibernate.version>5.4.2.Final</hibernate.version>
 		<aries.jpa.version>2.7.2</aries.jpa.version>
