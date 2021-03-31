@@ -104,7 +104,7 @@
 		<commons-collections.version>4.2</commons-collections.version>
 
 		<!-- Google Guava version -->
-		<guava.version>27.0.1-jre</guava.version>
+		<guava.version>29.0-jre</guava.version>
 		
 		<!-- Filter predicate evaluation -->
 		<libra.version>2.1.0</libra.version>

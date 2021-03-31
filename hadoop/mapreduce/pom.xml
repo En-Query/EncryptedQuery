@@ -117,7 +117,7 @@
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 				<!--$NO-MVN-MAN-VER$-->
-				<version>11.0.2</version>
+				<version>29.0-jre</version>
 			<scope>test</scope>
 		</dependency>
 
