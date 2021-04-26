@@ -97,7 +97,7 @@
 
 		<!-- commons versions -->
 		<commons-codec.version>1.11</commons-codec.version>
-		<commons-io.version>2.6</commons-io.version>
+		<commons-io.version>2.7</commons-io.version>
 		<commons-lang.version>3.5</commons-lang.version>
 		<commons-net.version>3.5</commons-net.version>
 		<commons-cli.version>1.4</commons-cli.version>
