@@ -93,7 +93,7 @@
 		<mariadb-client.version>2.3.0</mariadb-client.version>
 		<liquibase.version>3.6.1</liquibase.version>
 		<snakeyaml.version>1.21</snakeyaml.version>
-		<derby-db.version>10.13.1.1</derby-db.version>
+		<derby-db.version>10.14.2.0</derby-db.version>
 
 		<!-- commons versions -->
 		<commons-codec.version>1.11</commons-codec.version>
