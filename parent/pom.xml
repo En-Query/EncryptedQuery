@@ -92,7 +92,7 @@
 		<pax-jdbc.version>1.3.0</pax-jdbc.version>
 		<mariadb-client.version>2.3.0</mariadb-client.version>
 		<liquibase.version>3.6.1</liquibase.version>
-		<snakeyaml.version>1.21</snakeyaml.version>
+		<snakeyaml.version>1.31</snakeyaml.version>
 		<derby-db.version>10.13.1.1</derby-db.version>
 
 		<!-- commons versions -->
